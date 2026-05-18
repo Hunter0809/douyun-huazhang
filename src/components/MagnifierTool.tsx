@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+﻿import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { MappedPixel } from '../utils/pixelation';
 import { getColorKeyByHex, ColorSystem } from '../utils/colorSystemUtils';
 

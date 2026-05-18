@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 
 interface SettingsPanelProps {
   guidanceMode: 'nearest' | 'largest' | 'edge-first';

@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+﻿import { useCallback } from 'react';
 import { MappedPixel } from '../utils/pixelation';
 import { 
   floodFillErase, 

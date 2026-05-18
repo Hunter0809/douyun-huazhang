@@ -1,4 +1,4 @@
-import { MappedPixel } from './pixelation';
+﻿import { MappedPixel } from './pixelation';
 
 // 洪水填充获取连通区域
 export function getConnectedRegion(

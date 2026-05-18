@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import type { BeadCount } from "./countBeads";
 import type { CultureCopy } from "./cultureTextGenerator";

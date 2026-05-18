@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import type { CulturePromptOptions } from "./promptBuilder";
 import { getAspectRatio } from "@/data/aspectRatios";
@@ -12,7 +12,7 @@ import {
   type PaletteColor,
   type RgbColor,
 } from "./pixelation";
-import { getMardToHexMapping } from "./colorSystemUtils";
+import { getHeritageToHexMapping } from "./colorSystemUtils";
 
 export type BeadPattern = {
   grid: MappedPixel[][];
@@ -22,7 +22,7 @@ export type BeadPattern = {
   source: "sample" | "ai" | "upload";
 };
 
-const fullPalette: PaletteColor[] = Object.entries(getMardToHexMapping())
+const fullPalette: PaletteColor[] = Object.entries(getHeritageToHexMapping())
   .map(([key, hex]) => {
     const rgb = hexToRgb(hex);
     return rgb ? { key, hex: hex.toUpperCase(), rgb } : null;
@@ -49,7 +49,7 @@ function getFocusedPalette(): PaletteColor[] {
   return Array.from(byHex.values());
 }
 
-function clampColorCount(grid: MappedPixel[][], maxColors: number): MappedPixel[][] {
+function clampColorCount(grid: MappedPixel[][], maxColors: number, forcedHexColors: string[] = []): MappedPixel[][] {
   const counts = new Map<string, { count: number; cell: MappedPixel }>();
 
   grid.flat().forEach((cell) => {
@@ -59,17 +59,35 @@ function clampColorCount(grid: MappedPixel[][], maxColors: number): MappedPixel[
     counts.set(key, { count: (current?.count ?? 0) + 1, cell });
   });
 
-  const dominant = Array.from(counts.values())
-    .sort((a, b) => b.count - a.count)
-    .slice(0, maxColors)
-    .map((entry) => entry.cell);
+  // 强制颜色必须出现在最终调色板中
+  const forcedSet = new Set(forcedHexColors.map(c => c.toUpperCase()));
+  const forcedEntries: { count: number; cell: MappedPixel }[] = [];
+  const otherEntries: { count: number; cell: MappedPixel }[] = [];
 
-  if (dominant.length === 0) return grid;
+  Array.from(counts.entries()).forEach(([hex, entry]) => {
+    if (forcedSet.has(hex)) {
+      forcedEntries.push(entry);
+    } else {
+      otherEntries.push(entry);
+    }
+  });
 
-  const dominantPalette = dominant
-    .map((cell) => {
-      const rgb = hexToRgb(cell.color);
-      return rgb ? { key: cell.key, hex: cell.color.toUpperCase(), rgb } : null;
+  // 如果指定了强制颜色，先包含它们
+  const selected: { count: number; cell: MappedPixel }[] = [...forcedEntries];
+
+  // 填充剩余名额：按出现次数排序的非强制颜色
+  const remainingSlots = maxColors - selected.length;
+  if (remainingSlots > 0) {
+    const sortedOthers = otherEntries.sort((a, b) => b.count - a.count).slice(0, remainingSlots);
+    selected.push(...sortedOthers);
+  }
+
+  if (selected.length === 0) return grid;
+
+  const dominantPalette = selected
+    .map((entry) => {
+      const rgb = hexToRgb(entry.cell.color);
+      return rgb ? { key: entry.cell.key, hex: entry.cell.color.toUpperCase(), rgb } : null;
     })
     .filter((item): item is PaletteColor => Boolean(item));
 
@@ -144,13 +162,40 @@ function drawThemeSample(
   }
 }
 
+/**
+ * 渲染内置样例的设计原图（前色板映射的原始主题设计），返回 data URL。
+ * 用于展示第 1 张"设计原图"。
+ */
+export function renderSampleDesignOriginal(options: CulturePromptOptions): string {
+  const gridSize = options.gridSize;
+  const cell = Math.max(8, Math.floor(640 / gridSize));
+  const canvas = document.createElement("canvas");
+  canvas.width = gridSize * cell;
+  canvas.height = gridSize * cell;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas is not available");
+  // Temp canvas at grid resolution
+  const tempCanvas = document.createElement("canvas");
+  tempCanvas.width = gridSize;
+  tempCanvas.height = gridSize;
+  const tempCtx = tempCanvas.getContext("2d");
+  if (!tempCtx) throw new Error("Canvas is not available");
+  drawThemeSample(tempCtx, options);
+  // Scale up with crisp pixel rendering
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(tempCanvas, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL("image/png");
+}
+
 export function generateSamplePattern(
   options: CulturePromptOptions & { antiAlias: boolean },
+  forcedHexColors: string[] = [],
 ): BeadPattern {
   const canvas = document.createElement("canvas");
   canvas.width = options.gridSize;
   canvas.height = options.gridSize;
   const ctx = canvas.getContext("2d");
+
   if (!ctx) throw new Error("Canvas is not available");
 
   drawThemeSample(ctx, options);
@@ -166,7 +211,7 @@ export function generateSamplePattern(
     whiteFallback,
   );
 
-  const limited = clampColorCount(grid, options.colorCount);
+  const limited = clampColorCount(grid, options.colorCount, forcedHexColors);
   const cleaned = options.antiAlias ? removeSingleCellNoise(limited) : limited;
 
   return {
@@ -181,6 +226,7 @@ export function generateSamplePattern(
 export async function imageDataUrlToPattern(
   imageUrl: string,
   options: CulturePromptOptions & { antiAlias: boolean; source: "ai" | "upload"; preserveSourceRatio?: boolean },
+  forcedHexColors: string[] = [],
 ): Promise<BeadPattern> {
   const image = new Image();
   image.crossOrigin = "anonymous";
@@ -216,14 +262,14 @@ export async function imageDataUrlToPattern(
     PixelationMode.Dominant,
     whiteFallback,
   );
-  const limited = clampColorCount(grid, options.colorCount);
+  const limited = clampColorCount(grid, options.colorCount, forcedHexColors);
   const cleaned = options.antiAlias ? removeSingleCellNoise(limited) : limited;
 
   return {
     grid: cleaned,
     width: gridWidth,
     height: gridHeight,
-    palette: Array.from(new Set(cleaned.flat().map((cell) => cell.color))).sort((a, b) => {
+    palette: Array.from(new Set(cleaned.flat().map((cell) => cell.color))).sort((a: string, b: string) => {
       const rgbA = hexToRgb(a) as RgbColor;
       const rgbB = hexToRgb(b) as RgbColor;
       return colorDistance(rgbA, { r: 255, g: 255, b: 255 }) - colorDistance(rgbB, { r: 255, g: 255, b: 255 });
@@ -232,7 +278,81 @@ export async function imageDataUrlToPattern(
   };
 }
 
+/** 在 canvas 上绘制拼豆网格（带行列号），用于前端展示 */
 export function renderPatternToCanvas(
+  canvas: HTMLCanvasElement,
+  pattern: BeadPattern,
+  showGrid: boolean,
+): void {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  const cell = Math.max(8, Math.floor(640 / Math.max(pattern.width, pattern.height)));
+
+  // 行列号相关尺寸
+  const labelWidth = 28;
+  const labelHeight = 16;
+  const fontSize = Math.max(7, Math.min(10, Math.floor(cell * 0.28)));
+
+  // 总画布尺寸 = 标签边距 + 网格区域
+  const gridPixelWidth = pattern.width * cell;
+  const gridPixelHeight = pattern.height * cell;
+  canvas.width = labelWidth + gridPixelWidth;
+  canvas.height = labelHeight + gridPixelHeight;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // 绘制网格区域
+  pattern.grid.forEach((row, y) => {
+    row.forEach((pixel, x) => {
+      const px = labelWidth + x * cell;
+      const py = labelHeight + y * cell;
+      ctx.fillStyle = pixel.isExternal ? "#ffffff" : pixel.color;
+      ctx.fillRect(px, py, cell, cell);
+      if (showGrid) {
+        ctx.strokeStyle = "rgba(17, 24, 39, 0.18)";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px + 0.5, py + 0.5, cell, cell);
+      }
+    });
+  });
+
+  // 绘制顶部列号（1 ~ width）
+  ctx.fillStyle = "#f1f5f9";
+  ctx.fillRect(0, 0, canvas.width, labelHeight);
+  ctx.strokeStyle = "#cbd5e1";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(0, 0, canvas.width, labelHeight);
+
+  ctx.fillStyle = "#475569";
+  ctx.font = `${fontSize}px monospace`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  for (let x = 0; x < pattern.width; x++) {
+    const cx = labelWidth + x * cell + cell / 2;
+    ctx.fillText(String(x + 1), cx, labelHeight / 2);
+  }
+
+  // 绘制左侧行号（1 ~ height）
+  ctx.fillStyle = "#f1f5f9";
+  ctx.fillRect(0, labelHeight, labelWidth, gridPixelHeight);
+  ctx.strokeStyle = "#cbd5e1";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(labelWidth, labelHeight);
+  ctx.lineTo(labelWidth, canvas.height);
+  ctx.stroke();
+
+  ctx.fillStyle = "#475569";
+  ctx.font = `${fontSize}px monospace`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  for (let y = 0; y < pattern.height; y++) {
+    const cy = labelHeight + y * cell + cell / 2;
+    ctx.fillText(String(y + 1), labelWidth / 2, cy);
+  }
+}
+
+/** 在 canvas 上绘制拼豆网格（不带行列号），用于导出或场景预览参考图 */
+export function renderPatternToCanvasClean(
   canvas: HTMLCanvasElement,
   pattern: BeadPattern,
   showGrid: boolean,

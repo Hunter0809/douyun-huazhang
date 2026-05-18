@@ -1,4 +1,4 @@
-import CultureGeneratorApp from "@/components/CultureGeneratorApp";
+﻿import CultureGeneratorApp from "@/components/CultureGeneratorApp";
 
 export const dynamic = "force-dynamic";
 

@@ -1,38 +1,19 @@
-<div align="center">
+# 豆韵传统拼豆生成器
 
-# ✦ Perler Beads Generator ✦
-
-### 任意图片 → 拼豆底稿，一键生成
-
-[![Mobile](https://img.shields.io/badge/移动端-perlerbeadsold.zippland.com-ff69b4?style=for-the-badge)](https://perlerbeadsold.zippland.com)
-[![Desktop](https://img.shields.io/badge/桌面端-perlerbeads.zippland.com-8b5cf6?style=for-the-badge)](https://perlerbeads.zippland.com)
-[![License](https://img.shields.io/badge/License-AGPL%20v3-blue?style=for-the-badge)](./LICENSE)
-[![PRs Welcome](https://img.shields.io/badge/PRs-Welcome-brightgreen?style=for-the-badge)](https://github.com/Zippland/perler-beads/pulls)
-
-开源的智能拼豆图纸生成器 — 自动颜色映射 · 多品牌色号适配 · 杂色清理 · 一键导出图纸与采购清单
-
-**移动端**（竖屏）：快速生成图纸，适合手机使用 · **桌面端**（横屏）：完整工作台，适合电脑精细编辑
-
-</div>
-
----
+面向中华传统文化主题的开源拼豆图纸生成工具。项目支持上传图片或使用 AI 生成传统纹样素材，并将其转换为带色号标注的拼豆网格、用量统计和可下载图纸。
 
 ## 功能
 
-- **智能像素化** — 基于主导色提取的像素化算法，消除传统均值池化导致的灰色毛边
-- **多色板适配** — 内置 5 大品牌色号体系（MARD / COCO / 漫漫 / 盼盼 / 咪小窝），支持 168 / 144 / 96 等多种色板规格
-- **自动颜色合并** — BFS 连通区域检测 + 可调相似度阈值，自动清理杂色
-- **背景智能移除** — 边界洪水填充算法自动识别并剥离外部背景
-- **颜色排除与重映射** — 一键排除不想要的颜色，自动重映射到最近似可用色
-- **手动精修** — 支持对单个像素格进行手动着色和修改
-- **导出图纸** — 下载带色号标注和网格线的 PNG 图纸，可直接打印使用
-- **导出采购清单** — 自动统计各颜色用量，生成采购清单图
+- **传统文化主题**：内置青花瓷、敦煌文化、京剧脸谱、山海经、二十四节气、甲骨文等创作方向。
+- **AI 图案生成**：根据主题、元素和文化叙述生成适合拼豆表达的图案素材。
+- **图片转拼豆**：上传图片后进行主体提取、像素化、颜色映射和网格绘制。
+- **开源色号体系**：使用传统色号、配色编号、顺序编号等中性标注，不绑定任何外部供应、店铺或品牌体系。
+- **颜色控制**：可限制颜色数量，也可指定已有颜色参与映射。
+- **制作资料导出**：导出带网格图纸和颜色用量 CSV，便于个人创作、教学活动和开源二次开发。
 
 ## 快速开始
 
 ```bash
-git clone https://github.com/Zippland/perler-beads.git
-cd perler-beads
 npm install
 npm run dev
 ```
@@ -42,60 +23,33 @@ npm run dev
 ## 技术栈
 
 | 层 | 技术 |
-|---|------|
-| 框架 | Next.js (React) + TypeScript |
+|---|---|
+| 框架 | Next.js + React + TypeScript |
 | 样式 | Tailwind CSS |
-| 图像处理 | Canvas API（浏览器端） |
-| 部署 | Vercel |
+| 图像处理 | Browser Canvas API |
+| 色彩映射 | Oklab 距离 + 有限调色板映射 |
 
 ## 核心算法
 
-### 1. 初始颜色映射
+1. **主导色像素化**：对每个网格单元提取出现频率最高的像素 RGB，再映射到开源色表中的最近颜色。
+2. **区域合并**：基于邻接关系和颜色距离合并相似区域，减少孤立杂色。
+3. **背景识别**：通过边界连通区域标记外部背景，统计和导出时忽略外部格子。
+4. **颜色重映射**：当用户指定可用颜色或限制颜色数量时，把非保留颜色重映射到最近的可用颜色。
 
-对每个网格单元，提取原图对应区域内出现频率最高的像素 RGB 值（主导色），通过欧氏距离映射到当前色板中最接近的颜色。相比均值池化，主导色提取有效避免了色块边界处的灰色毛边问题。
+## 色板数据
 
-### 2. 区域颜色合并
+色板数据位于 [`src/app/colorSystemMapping.json`](src/app/colorSystemMapping.json)，每个 hex 色值对应三种开源标注：
 
-使用 BFS 从未访问单元格出发，将欧氏距离小于阈值的邻近单元格聚合为连通区域，统一设置为区域内出现次数最多的色号。该步骤显著减少杂色，提升色块纯净度。
+- `heritage`：传统色号
+- `palette`：配色编号
+- `sequence`：顺序编号
 
-### 3. 背景移除
+这些字段只用于图纸展示和统计，不包含外部供应、购买或销售推荐语义。
 
-定义背景色号列表，从所有边界单元格执行洪水填充，标记与边界连通且属于背景色的单元格为"外部"。统计和导出时忽略外部单元格，实现自动背景剥离。
+## 开源说明
 
-### 4. 颜色排除与重映射
+本项目面向拼豆爱好者、教师、学生和开源开发者。欢迎提交 issue、改进算法、增加传统文化主题和完善导出格式。
 
-当用户排除某颜色时，在当前存在且未被排除的颜色子集中寻找最近似替代色进行重映射。恢复颜色时触发完整的重处理流程。
+## License
 
-### 调色板数据
-
-色板数据定义在 [`src/app/colorSystemMapping.json`](src/app/colorSystemMapping.json)，包含 291 种标准颜色到 5 个品牌色号体系的完整映射。色板组合在 [`src/app/page.tsx`](src/app/page.tsx) 的 `paletteOptions` 中配置。
-
-## Roadmap
-
-- [ ] CIEDE2000 (Delta E) 颜色距离算法，替代 RGB 欧氏距离
-- [ ] Floyd-Steinberg 抖动，在有限色板下模拟更丰富的颜色过渡
-- [ ] Web Workers 后台计算，优化大图性能
-- [ ] 用户自定义调色板上传
-- [ ] 微信小程序版本
-
-## 参与贡献
-
-欢迎提交 Issue 和 Pull Request。
-
-1. Fork 本仓库
-2. 创建特性分支 (`git checkout -b feature/your-feature`)
-3. 提交更改 (`git commit -m 'Add some feature'`)
-4. 推送到分支 (`git push origin feature/your-feature`)
-5. 创建 Pull Request
-
-## 共创声明
-
-本项目永久开源，由维护者无偿运营 [perlerbeadsold.zippland.com](https://perlerbeadsold.zippland.com) 供所有拼豆爱好者免费使用。
-
-我们公开全部算法细节和源代码，目的是推动拼豆工具生态的共同进步。欢迎所有人学习、使用、改进。
-
-**但请勿将本项目代码恶意抄袭后包装为闭源商业产品。** 这一行为违反开源协议，也伤害每一位贡献者的热情。使用本项目代码的衍生作品须遵守许可证条款，保留原始版权声明，并以相同协议开源。
-
-## 许可证
-
-[AGPL-3.0](./LICENSE) &copy; [Zippland](https://github.com/Zippland)
+Apache 2.0

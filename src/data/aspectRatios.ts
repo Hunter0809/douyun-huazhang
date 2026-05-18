@@ -1,4 +1,4 @@
-export type AspectRatioId = "1:1" | "3:4" | "9:16" | "4:3" | "16:9";
+﻿export type AspectRatioId = "1:1" | "3:4" | "9:16" | "4:3" | "16:9";
 
 export type AspectRatioOption = {
   id: AspectRatioId;

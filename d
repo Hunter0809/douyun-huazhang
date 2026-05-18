@@ -1,4 +1,4 @@
-﻿const STORAGE_KEY = 'customPerlerPaletteSelections';
+const STORAGE_KEY = 'customPerlerPaletteSelections';
 
 export interface PaletteSelections {
   [hexValue: string]: boolean;
@@ -6,14 +6,16 @@ export interface PaletteSelections {
 
 /**
  * 检查 localStorage 是否可用（避免 SSR 时出错）
- * Node.js 25+ 可能内置 localStorage 但不可用，需要检查 getItem 是否为函数
+ * Node.js 25+ 可能内置实验性 localStorage 但不可用，需要兜底检查
  */
 function isLocalStorageAvailable(): boolean {
   // 首先检查是否在浏览器环境（SSR 安全保护）
   if (typeof window === 'undefined') return false;
-  // Node.js 25+ 实验性 localStorage 可能不是真实的 Storage 对象
-  if (typeof localStorage?.getItem !== 'function') return false;
+  // Node.js 25+ 实验性的 localSorage 对象存在但可能没有 setItem/getItem 方法
+  // 使用 try/catch 包围所有访问
   try {
+    if (typeof localStorage === 'undefined' || localStorage === null) return false;
+    if (typeof localStorage.getItem !== 'function') return false;
     const testKey = '__ls_test__';
     localStorage.setItem(testKey, '1');
     const result = localStorage.getItem(testKey);
@@ -59,43 +61,43 @@ export function loadPaletteSelections(): PaletteSelections | null {
 export function presetToSelections(allHexValues: string[], presetHexValues: string[]): PaletteSelections {
   const presetSet = new Set(presetHexValues.map(hex => hex.toUpperCase()));
   const selections: PaletteSelections = {};
-  
+
   allHexValues.forEach(hex => {
     const normalizedHex = hex.toUpperCase();
     selections[normalizedHex] = presetSet.has(normalizedHex);
   });
-  
+
   return selections;
 }
 
 /**
- * 根据传统色号色号预设生成基于hex值的选择状态（用于兼容旧预设）
+ * 根据MARD色号预设生成基于hex值的选择状态（用于兼容旧预设）
  */
 export function presetKeysToHexSelections(
-  allBeadPalette: Array<{key: string, hex: string}>, 
+  allBeadPalette: Array<{key: string, hex: string}>,
   presetKeys: string[]
 ): PaletteSelections {
   const presetKeySet = new Set(presetKeys);
   const selections: PaletteSelections = {};
   const processedHexValues = new Set<string>();
-  
+
   console.log(`presetKeysToHexSelections: 输入调色板大小 ${allBeadPalette.length}, 预设键数量 ${presetKeys.length}`);
-  
+
   allBeadPalette.forEach(color => {
     const normalizedHex = color.hex.toUpperCase();
-    
+
     // 检查是否已经处理过这个hex值
     if (processedHexValues.has(normalizedHex)) {
-      console.warn(`重复的hex值: ${normalizedHex}, 传统色号键: ${color.key}`);
+      console.warn(`重复的hex值: ${normalizedHex}, MARD键: ${color.key}`);
       return; // 跳过重复的hex值
     }
-    
+
     processedHexValues.add(normalizedHex);
     selections[normalizedHex] = presetKeySet.has(color.key);
   });
-  
+
   const selectedCount = Object.values(selections).filter(Boolean).length;
   console.log(`presetKeysToHexSelections: 生成选择对象，总数 ${Object.keys(selections).length}, 选中 ${selectedCount}`);
-  
+
   return selections;
-} 
+}

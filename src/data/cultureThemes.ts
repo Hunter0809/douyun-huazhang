@@ -1,4 +1,4 @@
-export type CultureTheme = {
+﻿export type CultureTheme = {
   id: string;
   name: string;
   elements: string[];

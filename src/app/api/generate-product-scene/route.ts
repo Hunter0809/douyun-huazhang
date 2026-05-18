@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { getAspectRatio } from "@/data/aspectRatios";
 import { getProductTemplate } from "@/data/productTemplates";
 
@@ -35,7 +35,7 @@ export async function POST(req: Request) {
 
   const prompt = [
     product.scenePrompt,
-    "必须保留参考图中拼豆成果的主要图案、颜色关系和颗粒感，不要把图案替换成其他插画。",
+    "必须保留参考图中的拼豆成果图案，包括其颜色关系、颗粒质感和网格化结构，不要把图案替换成其他插画。",
     "输出真实生活场景照片感预览，构图干净，主体文创产品清晰，避免文字、水印和夸张装饰。",
   ].join("\n");
 

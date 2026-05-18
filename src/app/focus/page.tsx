@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { MappedPixel } from '../../utils/pixelation';
@@ -122,10 +122,20 @@ export default function FocusMode() {
 
   // 从localStorage加载数据
   useEffect(() => {
-    const savedPixelData = localStorage.getItem('focusMode_pixelData');
-    const savedGridDimensions = localStorage.getItem('focusMode_gridDimensions');
-    const savedColorCounts = localStorage.getItem('focusMode_colorCounts');
-    const savedColorSystem = localStorage.getItem('focusMode_selectedColorSystem');
+    // SSR 安全检查：确保 localStorage 可用且是浏览器环境
+    if (typeof window === 'undefined' || typeof localStorage?.getItem !== 'function') return;
+    let savedPixelData = null, savedGridDimensions = null, savedColorCounts = null, savedColorSystem = null;
+    try {
+      // 安全访问 localStorage（SSR / Node.js 实验性 localStorage）
+      if (typeof localStorage?.getItem === 'function') {
+        savedPixelData = localStorage.getItem('focusMode_pixelData');
+        savedGridDimensions = localStorage.getItem('focusMode_gridDimensions');
+        savedColorCounts = localStorage.getItem('focusMode_colorCounts');
+        savedColorSystem = localStorage.getItem('focusMode_selectedColorSystem');
+      }
+    } catch {
+      return; // localStorage 不可用时不加载
+    }
 
     if (savedPixelData && savedGridDimensions && savedColorCounts) {
       try {
@@ -142,7 +152,7 @@ export default function FocusMode() {
         const colors = Object.entries(colorCounts).map(([, colorData]) => {
           const data = colorData as { color: string; count: number };
           // 通过hex值获取对应色号系统的色号
-          const displayKey = getColorKeyByHex(data.color, savedColorSystem as ColorSystem || 'MARD');
+          const displayKey = getColorKeyByHex(data.color, savedColorSystem as ColorSystem || 'heritage');
           return {
             color: data.color,
             name: displayKey, // 使用色号系统的色号作为名称

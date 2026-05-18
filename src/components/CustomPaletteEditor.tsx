@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect } from 'react';
 import { PaletteColor } from '../utils/pixelation';
@@ -13,7 +13,7 @@ function groupColorsByPrefix(colors: PaletteColor[], selectedColorSystem: ColorS
     const displayKey = getDisplayColorKey(color.hex, selectedColorSystem);
     
     let prefix: string;
-    if (selectedColorSystem === '盼盼' || selectedColorSystem === '咪小窝') {
+    if (selectedColorSystem === 'sequence') {
       // 对于纯数字的色号系统，按数字范围分组
       if (/^\d+$/.test(displayKey)) {
         const num = parseInt(displayKey, 10);
@@ -48,7 +48,7 @@ function groupColorsByPrefix(colors: PaletteColor[], selectedColorSystem: ColorS
       const displayKeyA = getDisplayColorKey(a.hex, selectedColorSystem);
       const displayKeyB = getDisplayColorKey(b.hex, selectedColorSystem);
       
-      if (selectedColorSystem === '盼盼' || selectedColorSystem === '咪小窝') {
+      if (selectedColorSystem === 'sequence') {
         // 对于纯数字色号，按数字大小排序
         const numA = parseInt(displayKeyA, 10) || 0;
         const numB = parseInt(displayKeyB, 10) || 0;

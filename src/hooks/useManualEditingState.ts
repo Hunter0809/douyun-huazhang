@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+﻿import { useState, useCallback } from 'react';
 import { MappedPixel } from '../utils/pixelation';
 
 // 颜色替换状态类型

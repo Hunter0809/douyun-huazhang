@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useCallback, useState } from 'react';
+﻿import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { MappedPixel } from '../utils/pixelation';
 
 interface FocusCanvasProps {

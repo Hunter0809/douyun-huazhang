@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { buildCulturePrompt } from "@/utils/promptBuilder";
 import { getAspectRatio } from "@/data/aspectRatios";
 

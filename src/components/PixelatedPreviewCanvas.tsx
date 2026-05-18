@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useRef, useEffect, TouchEvent, MouseEvent, useState } from 'react';
 import { MappedPixel } from '../utils/pixelation';

@@ -1,4 +1,4 @@
-import type { BeadCount } from "./countBeads";
+﻿import type { BeadCount } from "./countBeads";
 
 export type CultureTextOptions = {
   theme: string;

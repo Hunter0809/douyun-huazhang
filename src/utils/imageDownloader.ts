@@ -1,4 +1,4 @@
-import { GridDownloadOptions } from '../types/downloadTypes';
+﻿import { GridDownloadOptions } from '../types/downloadTypes';
 import { MappedPixel, PaletteColor } from './pixelation';
 import { getDisplayColorKey, getColorKeyByHex, ColorSystem } from './colorSystemUtils';
 

@@ -1,4 +1,4 @@
-import { MappedPixel } from './pixelation';
+﻿import { MappedPixel } from './pixelation';
 
 // 透明键定义
 export const TRANSPARENT_KEY = 'ERASE';

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { cultureThemes } from "@/data/cultureThemes";
 import { productTemplates } from "@/data/productTemplates";

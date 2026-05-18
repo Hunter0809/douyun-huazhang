@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AIGeneratePanel from "@/components/AIGeneratePanel";
@@ -17,8 +17,10 @@ import {
   generateSamplePattern,
   imageDataUrlToPattern,
   renderPatternToCanvas,
+  renderSampleDesignOriginal,
   type BeadPattern,
 } from "@/utils/culturePattern";
+
 
 export default function CultureGeneratorPage() {
   const [theme, setTheme] = useState("青花瓷");
@@ -42,6 +44,8 @@ export default function CultureGeneratorPage() {
   const [error, setError] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRequestKeyRef = useRef<string | null>(null);
+  const sceneAbortRef = useRef<AbortController | null>(null);
+
 
   const product = getProductTemplate(productId);
   const extractedImageKey = extractedImageUrl?.length ?? 0;
@@ -59,18 +63,35 @@ export default function CultureGeneratorPage() {
     [theme, element, meaning, product.name, product.aiPrompt, aspectRatio, gridSize, colorCount],
   );
 
+  /** 中止正在进行的场景生成请求 */
+  const abortSceneRequest = useCallback(() => {
+    if (sceneAbortRef.current) {
+      sceneAbortRef.current.abort();
+      sceneAbortRef.current = null;
+    }
+  }, []);
+
   const regenerateFromSample = useCallback(() => {
+    // 中止仍在进行的场景生成请求
+    abortSceneRequest();
+
+    // 第1张：设计原图
+    const designUrl = renderSampleDesignOriginal(options);
+    setSourceImageUrl(designUrl);
+
+    // 第2张：主题元素提取图（内置样例的设计图已直接是主题元素，无需二次提取）
+    setExtractedImageUrl(designUrl);
+
+    // 第3张：拼豆网格图纸
     const next = generateSamplePattern({ ...options, antiAlias });
     setPattern(next);
-    const canvas = document.createElement("canvas");
-    renderPatternToCanvas(canvas, next, false);
-    const sampleUrl = canvas.toDataURL("image/png");
-    setSourceImageUrl(sampleUrl);
-    setExtractedImageUrl(sampleUrl);
+
+    // 第4张：清空之前的场景预览，由 effect 重新触发生成
     setAiCopy(null);
     setProductSceneUrl(null);
     setError(null);
-  }, [antiAlias, options]);
+  }, [antiAlias, options, abortSceneRequest]);
+
 
   useEffect(() => {
     if (!pattern || !canvasRef.current) return;
@@ -83,11 +104,18 @@ export default function CultureGeneratorPage() {
   }, [regenerateFromSample]);
 
   useEffect(() => {
-    if (!patternUrl || !pattern || pattern.source === "sample") return;
+
+    if (!patternUrl || !pattern) return;
+
     const sceneKey = `${pattern.source}:${productId}:${aspectRatio}:${pattern.width}x${pattern.height}:${extractedImageKey}`;
     if (sceneRequestKeyRef.current === sceneKey) return;
     sceneRequestKeyRef.current = sceneKey;
-    let cancelled = false;
+
+    // 立即中止上一次请求
+    abortSceneRequest();
+
+    const abortController = new AbortController();
+    sceneAbortRef.current = abortController;
     setSceneLoading(true);
     setProductSceneUrl(null);
 
@@ -99,6 +127,7 @@ export default function CultureGeneratorPage() {
         productId,
         aspectRatio,
       }),
+      signal: abortController.signal,
     })
       .then(async (response) => {
         const result = await response.json();
@@ -106,24 +135,27 @@ export default function CultureGeneratorPage() {
         return result.imageUrl as string;
       })
       .then((url) => {
-        if (cancelled) return;
         setProductSceneUrl(url);
         setMockupUrl(url);
       })
       .catch((err) => {
-        if (cancelled) return;
+        if (err.name === "AbortError") return; // 被中止，忽略
         setError(err instanceof Error ? err.message : "文创产品场景预览生成失败");
       })
       .finally(() => {
-        if (!cancelled) setSceneLoading(false);
+        setSceneLoading(false);
       });
 
     return () => {
-      cancelled = true;
+      abortController.abort();
+      if (sceneAbortRef.current === abortController) {
+        sceneAbortRef.current = null;
+      }
     };
-  }, [aspectRatio, extractedImageKey, pattern, patternUrl, productId]);
+  }, [aspectRatio, extractedImageKey, pattern, patternUrl, productId, abortSceneRequest]);
 
-  const beadCounts = useMemo(() => (pattern ? countBeads(pattern.grid, "MARD") : []), [pattern]);
+
+  const beadCounts = useMemo(() => (pattern ? countBeads(pattern.grid, "heritage") : []), [pattern]);
   const copy = useMemo(
     () => {
       if (aiCopy) return aiCopy;
@@ -157,9 +189,12 @@ export default function CultureGeneratorPage() {
   };
 
   const handleGenerateAI = async () => {
+    // 中止仍在进行的场景生成请求
+    abortSceneRequest();
     setLoading(true);
     setError(null);
     try {
+
       const response = await fetch("/api/generate-culture-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -179,7 +214,7 @@ export default function CultureGeneratorPage() {
       setExtractedImageUrl(result.imageUrl);
       setProductSceneUrl(null);
       setPattern(next);
-      const nextCopy = await requestAiCopy(result.imageUrl, countBeads(next.grid, "MARD"));
+      const nextCopy = await requestAiCopy(result.imageUrl, countBeads(next.grid, "heritage"));
       setAiCopy(nextCopy);
     } catch (err) {
       setError(err instanceof Error ? err.message : "AI 生成请求失败");
@@ -189,11 +224,14 @@ export default function CultureGeneratorPage() {
   };
 
   const handleUpload = (file: File) => {
+    // 中止仍在进行的场景生成请求
+    abortSceneRequest();
     const reader = new FileReader();
     reader.onload = async () => {
       try {
         const url = String(reader.result);
         setLoading(true);
+
         setSourceImageUrl(url);
         const extractResponse = await fetch("/api/extract-theme-image", {
           method: "POST",
@@ -216,7 +254,7 @@ export default function CultureGeneratorPage() {
           preserveSourceRatio: false,
         });
         setPattern(next);
-        const nextCopy = await requestAiCopy(extractResult.imageUrl, countBeads(next.grid, "MARD"));
+        const nextCopy = await requestAiCopy(extractResult.imageUrl, countBeads(next.grid, "heritage"));
         setAiCopy(nextCopy);
         setError(null);
       } catch (err) {
@@ -238,12 +276,12 @@ export default function CultureGeneratorPage() {
             <p className="text-sm font-semibold text-cyan-700 dark:text-cyan-300">
               AI 驱动的中华文创拼豆设计系统
             </p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">豆韵华章</h1>
+            <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">豆韵</h1>
             <h2 className="mt-1 text-xl font-semibold text-slate-700 dark:text-slate-200">
               主题元素提取 · 拼豆底稿生成 · 文创产品场景预览
             </h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-              豆韵华章：输入文化主题或上传图片，生成主题元素、拼豆底稿、材料清单、真实文创场景预览和作品说明。
+              豆韵：输入文化主题或上传图片，生成主题元素、拼豆底稿、材料清单、真实文创场景预览和作品说明。
             </p>
           </div>
         </header>
@@ -333,7 +371,7 @@ export default function CultureGeneratorPage() {
             </div>
 
             <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-              <h2 className="mb-3 text-lg font-bold">导出参赛作品</h2>
+              <h2 className="mb-3 text-lg font-bold">导出作品</h2>
               <ExportPanel
                 title={copy.title}
                 patternUrl={patternUrl}

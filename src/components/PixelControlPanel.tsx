@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { aspectRatios, type AspectRatioId } from "@/data/aspectRatios";
 
