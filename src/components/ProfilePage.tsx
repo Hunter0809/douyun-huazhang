@@ -24,7 +24,7 @@ type Props = {
 
 export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Props) {
   const [apiConfig, setApiConfig] = useState(() =>
-    loadApiConfig() ?? { textModelApiKey: "", textModelName: TEXT_MODEL_OPTIONS[0]!.name, imageModelApiKey: "", imageModelName: IMAGE_MODEL_OPTIONS[0]!.name }
+    loadApiConfig() ?? { textModelApiKey: "", textModelName: "", imageModelApiKey: "", imageModelName: "" }
   );
   const [saved, setSaved] = useState(false);
   const [showTextKey, setShowTextKey] = useState(false);
@@ -271,6 +271,7 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Prop
                   className={`w-full appearance-none rounded-md border py-2 pl-9 pr-8 text-sm ${apiConfig.useDefaultModel ? 'border-emerald-200 bg-emerald-50/50 text-stone-500' : 'border-stone-300'}`}
                   disabled={apiConfig.useDefaultModel}
                 >
+                  <option value="" disabled className="text-stone-400">请选择</option>
                   {TEXT_MODEL_OPTIONS.map(m => <option key={m.name} value={m.name}>{m.icon} {m.name}</option>)}
                 </select>
                 <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-base">{currentTextOption?.icon ?? "🤖"}</span>
@@ -300,6 +301,7 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Prop
                   className={`w-full appearance-none rounded-md border py-2 pl-9 pr-8 text-sm ${apiConfig.useDefaultModel ? 'border-emerald-200 bg-emerald-50/50 text-stone-500' : 'border-stone-300'}`}
                   disabled={apiConfig.useDefaultModel}
                 >
+                  <option value="" disabled className="text-stone-400">请选择</option>
                   {IMAGE_MODEL_OPTIONS.map(m => <option key={m.name} value={m.name}>{m.icon} {m.name}</option>)}
                 </select>
                 <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-base">{currentImageOption?.icon ?? "🎨"}</span>
