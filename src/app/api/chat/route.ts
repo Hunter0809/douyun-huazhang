@@ -16,6 +16,10 @@ function formatUpstreamError(detail: string, fallback: string): string {
   }
 }
 
+function firstConfiguredValue(...values: Array<string | undefined>): string {
+  return values.map((value) => value?.trim()).find(Boolean) ?? "";
+}
+
 const SYSTEM_PROMPT = `你是豆韵助手，一个专注解答中华传统文化和拼豆制作相关问题的 AI 助手。
 
 你可以回答以下几类问题：
@@ -35,12 +39,21 @@ const SYSTEM_PROMPT = `你是豆韵助手，一个专注解答中华传统文化
 export async function POST(req: Request) {
   const body = await req.json();
   const { messages, config } = body;
+  const useDefaultModel = config?.useDefaultModel === true;
 
-  // 优先使用请求中携带的用户自定义 API 配置
-  const apiKey = config?.textModelApiKey || config?.imageModelApiKey
-    || process.env.AI_API_KEY || process.env.ARK_API_KEY || process.env.OPENAI_API_KEY;
-  const model = config?.textModelName || process.env.AI_TEXT_MODEL || "gpt-4o-mini";
-  const baseUrl = config?.textModelBaseUrl || process.env.AI_BASE_URL || "https://api.openai.com/v1";
+  const envApiKey = firstConfiguredValue(
+    process.env.AI_API_KEY,
+    process.env.ARK_API_KEY,
+    process.env.OPENAI_API_KEY,
+  );
+  const userApiKey = firstConfiguredValue(config?.textModelApiKey, config?.imageModelApiKey);
+  const apiKey = useDefaultModel ? envApiKey : firstConfiguredValue(userApiKey, envApiKey);
+  const model = useDefaultModel
+    ? firstConfiguredValue(process.env.AI_TEXT_MODEL, "gpt-4o-mini")
+    : firstConfiguredValue(config?.textModelName, process.env.AI_TEXT_MODEL, "gpt-4o-mini");
+  const baseUrl = useDefaultModel
+    ? firstConfiguredValue(process.env.AI_BASE_URL, "https://api.openai.com/v1")
+    : firstConfiguredValue(config?.textModelBaseUrl, process.env.AI_BASE_URL, "https://api.openai.com/v1");
 
   if (!apiKey) {
     return NextResponse.json(
