@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { isApiConfigured } from "@/utils/aiChat";
 
 type Props = {
   onClick: () => void;
@@ -13,6 +14,14 @@ export default function FloatingAiButton({ onClick }: Props) {
   const dragRef = useRef({ startX: 0, startY: 0, offsetX: 0, offsetY: 0, dragging: false });
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [hasMoved, setHasMoved] = useState(false);
+  const [showUnconfiguredHint, setShowUnconfiguredHint] = useState(false);
+  const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const apiConfigured = useRef(false);
+  // 只在组件挂载时检测一次
+  useEffect(() => {
+    apiConfigured.current = isApiConfigured();
+  }, []);
 
   // 初始化位置：右下角，留出边距
   useEffect(() => {
@@ -20,6 +29,13 @@ export default function FloatingAiButton({ onClick }: Props) {
     const h = window.innerHeight;
     setPosition({ x: w - 80, y: h - 100 });
     setVisible(true);
+  }, []);
+
+  // 清理提示定时器
+  useEffect(() => {
+    return () => {
+      if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+    };
   }, []);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -97,27 +113,47 @@ export default function FloatingAiButton({ onClick }: Props) {
 
   const handleClick = useCallback(() => {
     if (hasMoved) return;
-    onClick();
+    if (apiConfigured.current) {
+      onClick();
+    } else {
+      // 未配置 API，显示提示
+      setShowUnconfiguredHint(true);
+      if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+      hintTimerRef.current = setTimeout(() => setShowUnconfiguredHint(false), 3000);
+    }
   }, [onClick, hasMoved]);
 
   if (!visible) return null;
 
   return (
-    <button
-      ref={buttonRef}
-      type="button"
-      onClick={handleClick}
-      onMouseDown={handleMouseDown}
-      onTouchStart={handleTouchStart}
-      className="fixed z-[150] flex h-14 w-14 cursor-grab items-center justify-center rounded-full bg-[#8f1d21] text-2xl text-white shadow-lg transition hover:bg-[#a52327] hover:shadow-xl active:cursor-grabbing active:scale-95"
-      style={{
-        left: position.x,
-        top: position.y,
-        touchAction: "none",
-      }}
-      title="豆韵助手 - 问答传统文化与拼豆知识"
-    >
-      🤖
-    </button>
+    <>
+      {showUnconfiguredHint && (
+        <div
+          className="fixed z-[160] animate-bounce rounded-md border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800 shadow-lg"
+          style={{
+            left: Math.max(8, position.x - 120),
+            top: position.y - 56,
+          }}
+        >
+          ⚠️ 未配置API，暂时无法使用豆韵助手
+        </div>
+      )}
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={handleClick}
+        onMouseDown={handleMouseDown}
+        onTouchStart={handleTouchStart}
+        className="fixed z-[150] flex h-14 w-14 cursor-grab items-center justify-center rounded-full bg-[#8f1d21] text-2xl text-white shadow-lg transition hover:bg-[#a52327] hover:shadow-xl active:cursor-grabbing active:scale-95"
+        style={{
+          left: position.x,
+          top: position.y,
+          touchAction: "none",
+        }}
+        title="豆韵助手 - 问答传统文化与拼豆知识"
+      >
+        🤖
+      </button>
+    </>
   );
 }
