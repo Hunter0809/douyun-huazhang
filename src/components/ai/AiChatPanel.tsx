@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { isApiConfigured, checkServerEnvConfig, sendChatMessage, type ChatMessage } from "@/utils/aiChat";
+import { isApiConfigured, checkServerEnvConfig, streamChatMessage, type ChatMessage } from "@/utils/aiChat";
 
 type Props = {
   onClose: () => void;
@@ -9,7 +9,7 @@ type Props = {
 
 export default function AiChatPanel({ onClose }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: "assistant", content: "你好！我是豆韵助手，有任何关于传统文化、拼豆制作或工具使用的问题都可以问我 😊" },
+    { role: "assistant", content: "你好！我是豆韵助手，有任何关于传统文化、拼豆制作或工具使用的问题都可以问我。" },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -19,7 +19,6 @@ export default function AiChatPanel({ onClose }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // 检测服务端是否已配置API（更新缓存状态）
     checkServerEnvConfig().then(() => {
       if (!isApiConfigured()) {
         setShowApiWarning(true);
@@ -39,16 +38,27 @@ export default function AiChatPanel({ onClose }: Props) {
     setError(null);
 
     const userMsg: ChatMessage = { role: "user", content: text };
-    setMessages((prev) => [...prev, userMsg]);
+    const nextMessages = [...messages, userMsg];
+    const assistantIndex = nextMessages.length;
+    setMessages([...nextMessages, { role: "assistant", content: "" }]);
     setLoading(true);
 
     try {
-      const reply = await sendChatMessage([...messages, userMsg]);
-      setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
+      await streamChatMessage(nextMessages, (delta) => {
+        setMessages((prev) =>
+          prev.map((msg, index) =>
+            index === assistantIndex ? { ...msg, content: msg.content + delta } : msg,
+          ),
+        );
+      });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "发送失败，请重试";
       setError(msg);
-      setMessages((prev) => [...prev, { role: "assistant", content: `❌ ${msg}` }]);
+      setMessages((prev) =>
+        prev.map((item, index) =>
+          index === assistantIndex ? { role: "assistant", content: `出错了：${msg}` } : item,
+        ),
+      );
     } finally {
       setLoading(false);
     }
@@ -62,7 +72,7 @@ export default function AiChatPanel({ onClose }: Props) {
       }
       if (e.key === "Escape") onClose();
     },
-    [handleSend, onClose]
+    [handleSend, onClose],
   );
 
   return (
@@ -71,16 +81,16 @@ export default function AiChatPanel({ onClose }: Props) {
         className="mx-4 flex h-[600px] w-full max-w-lg flex-col rounded-xl bg-white shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* 标题栏 */}
         <div className="flex items-center justify-between rounded-t-xl bg-[#2b2118] px-5 py-3 text-white">
           <div className="flex items-center gap-2">
-            <span className="text-xl">🤖</span>
+            <span className="text-xl">AI</span>
             <span className="font-semibold">豆韵助手</span>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="grid h-8 w-8 place-items-center rounded-full text-white/70 transition hover:bg-white/10 hover:text-white"
+            aria-label="关闭"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -88,10 +98,9 @@ export default function AiChatPanel({ onClose }: Props) {
           </button>
         </div>
 
-        {/* API 未配置警告 */}
         {showApiWarning && (
           <div className="mx-4 mt-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            ⚠️ 未配置 API，暂时无法使用豆韵助手
+            未配置 API，暂时无法使用豆韵助手。
             <button
               type="button"
               onClick={() => setShowApiWarning(false)}
@@ -102,36 +111,29 @@ export default function AiChatPanel({ onClose }: Props) {
           </div>
         )}
 
-        {/* 消息列表 */}
         <div className="flex-1 overflow-y-auto px-4 py-3">
           {messages.map((msg, index) => (
             <div key={index} className={`mb-3 flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
               <div
-                className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
                   msg.role === "user"
-                    ? "bg-[#8f1d21] text-white rounded-br-md"
-                    : "bg-stone-100 text-stone-800 rounded-bl-md"
+                    ? "rounded-br-md bg-[#8f1d21] text-white"
+                    : "rounded-bl-md bg-stone-100 text-stone-800"
                 }`}
               >
-                {msg.content}
+                {msg.content || (
+                  <span className="inline-flex gap-1 text-stone-500">
+                    <span className="animate-bounce">.</span>
+                    <span className="animate-bounce" style={{ animationDelay: "0.2s" }}>.</span>
+                    <span className="animate-bounce" style={{ animationDelay: "0.4s" }}>.</span>
+                  </span>
+                )}
               </div>
             </div>
           ))}
-          {loading && (
-            <div className="flex justify-start">
-              <div className="rounded-2xl rounded-bl-md bg-stone-100 px-4 py-2.5 text-sm text-stone-500">
-                <span className="inline-flex gap-1">
-                  <span className="animate-bounce">.</span>
-                  <span className="animate-bounce" style={{ animationDelay: "0.2s" }}>.</span>
-                  <span className="animate-bounce" style={{ animationDelay: "0.4s" }}>.</span>
-                </span>
-              </div>
-            </div>
-          )}
           <div ref={messagesEndRef} />
         </div>
 
-        {/* 输入区域 */}
         <div className="border-t border-stone-200 px-4 py-3">
           {error && !loading && (
             <p className="mb-2 text-xs text-red-500">{error}</p>
