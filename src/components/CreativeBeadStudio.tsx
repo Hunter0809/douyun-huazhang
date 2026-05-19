@@ -4,9 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CultureExplanation from "@/components/CultureExplanation";
 import ExportPanel from "@/components/ExportPanel";
 import FilterDropdown from "@/components/FilterDropdown";
-import InteractiveMatting from "@/components/InteractiveMatting";
 import ProductMockup from "@/components/ProductMockup";
 import ProfilePage from "@/components/ProfilePage";
+import SubjectMaskEditor from "@/components/SubjectMaskEditor";
 import LoginModal from "@/components/LoginModal";
 import AiChatPanel from "@/components/ai/AiChatPanel";
 import FloatingAiButton from "@/components/ai/FloatingAiButton";
@@ -24,7 +24,7 @@ import {
   type BeadPattern,
 } from "@/utils/culturePattern";
 import { generateCultureCopy } from "@/utils/cultureTextGenerator";
-import { analyzeSubjectImage } from "@/utils/subjectAnalysis";
+import type { SubjectAnalysis } from "@/utils/subjectAnalysis";
 import {
   getAllHexValues,
   getDisplayColorKey,
@@ -569,7 +569,6 @@ export default function CreativeBeadStudio() {
   const [mockupUrl, setMockupUrl] = useState<string | null>(null);
   const [productSceneUrl, setProductSceneUrl] = useState<string | null>(null);
   const [sceneLoading, setSceneLoading] = useState(false);
-  const [showMatting, setShowMatting] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -701,6 +700,15 @@ export default function CreativeBeadStudio() {
   // 检查是否有未保存的进度
   const hasUnsavedWork = !!(sourceImageUrl || pattern || patternUrl);
 
+  const clearPatternArtifacts = useCallback(() => {
+    setPattern(null);
+    setPatternUrl(null);
+    setCleanPatternUrl(null);
+    setProductSceneUrl(null);
+    setMockupUrl(null);
+    setSubjectColorSummary(null);
+  }, []);
+
   const doUseSample = useCallback(() => {
     abortScene();
     clearPatternArtifacts();
@@ -708,11 +716,10 @@ export default function CreativeBeadStudio() {
     setSourceImageUrl(original);
     setExtractedImageUrl(original);
     setSubjectColorSummary(null);
-    setShowMatting(false);
     setError(null);
     setConfirmNew(null);
     setStep("extract");
-  }, [abortScene, options]);
+  }, [abortScene, clearPatternArtifacts, options]);
 
   const doUpload = async (file: File) => {
     abortScene();
@@ -726,24 +733,10 @@ export default function CreativeBeadStudio() {
         reader.readAsDataURL(file);
       });
       setSourceImageUrl(imageUrl);
-      const analysis = await analyzeSubjectImage(imageUrl);
-      setSubjectColorSummary(analysis.colorSummary);
-      const response = await fetch("/api/extract-theme-image", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          imageUrl: analysis.subjectImageUrl,
-          isUpload: true,
-          colorSummary: analysis.colorSummary,
-          colors: analysis.colors,
-          ...options,
-        }),
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result?.error ?? "主体提取失败");
-      setExtractedImageUrl(result.imageUrl);
-      setExtractPrompt(result.prompt);
-      setShowMatting(true);
+      setExtractedImageUrl(null);
+      setExtractPrompt(null);
+      setSubjectColorSummary(null);
+      clearPatternArtifacts();
       setStep("extract");
     } catch (err) {
       setError(err instanceof Error ? err.message : "图片处理失败");
@@ -773,15 +766,6 @@ export default function CreativeBeadStudio() {
     setTheme(next.name);
     setElement(next.elements[0] ?? "");
     setMeaning(next.meaning);
-  };
-
-  const clearPatternArtifacts = () => {
-    setPattern(null);
-    setPatternUrl(null);
-    setCleanPatternUrl(null);
-    setProductSceneUrl(null);
-    setMockupUrl(null);
-    setSubjectColorSummary(null);
   };
 
   const buildPatternFromExtracted = async () => {
@@ -855,7 +839,6 @@ export default function CreativeBeadStudio() {
       setExtractPrompt(result.prompt);
       setSubjectColorSummary(null);
       clearPatternArtifacts();
-      setShowMatting(false);
       setStep("extract");
     } catch (err) {
       setError(err instanceof Error ? err.message : "AI 图案生成失败");
@@ -873,26 +856,11 @@ export default function CreativeBeadStudio() {
       try {
         const imageUrl = String(reader.result);
         setSourceImageUrl(imageUrl);
-        const analysis = await analyzeSubjectImage(imageUrl);
-        setSubjectColorSummary(analysis.colorSummary);
-        const response = await fetch("/api/extract-theme-image", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            imageUrl: analysis.subjectImageUrl,
-            isUpload: true,
-            colorSummary: analysis.colorSummary,
-            colors: analysis.colors,
-            ...options,
-          }),
-        });
-        const result = await response.json();
-        if (!response.ok) throw new Error(result?.error ?? "主体提取失败");
-      setExtractedImageUrl(result.imageUrl);
-      setExtractPrompt(result.prompt);
-      clearPatternArtifacts();
-      setShowMatting(true);
-      setStep("extract");
+        setExtractedImageUrl(null);
+        setExtractPrompt(null);
+        setSubjectColorSummary(null);
+        clearPatternArtifacts();
+        setStep("extract");
     } catch (err) {
       setError(err instanceof Error ? err.message : "图片处理失败");
     } finally {
@@ -902,11 +870,10 @@ export default function CreativeBeadStudio() {
     reader.readAsDataURL(file);
   };
 
-  const applyMattingResult = async (resultImageUrl: string) => {
+  const handleSubjectAnalysis = useCallback(async (analysis: SubjectAnalysis) => {
     setLoading(true);
     setError(null);
     try {
-      const analysis = await analyzeSubjectImage(resultImageUrl);
       setSubjectColorSummary(analysis.colorSummary);
       const response = await fetch("/api/extract-theme-image", {
         method: "POST",
@@ -929,7 +896,7 @@ export default function CreativeBeadStudio() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [clearPatternArtifacts, options]);
 
   const generateScene = async () => {
     const scenePatternUrl = cleanPatternUrl ?? patternUrl;
@@ -1201,9 +1168,7 @@ export default function CreativeBeadStudio() {
       return (
         <div className="grid gap-6 lg:grid-cols-2">
           <section className="rounded-lg border border-stone-200 bg-white p-5">
-            <h2 className="text-xl font-semibold">🖼️ 原始素材</h2>
-            <p className="mt-1 text-sm text-stone-500">AI 生成或上传的原图会保留在这里，用于回看主题来源。</p>
-            <div className="mt-4">{renderImageBox(sourceImageUrl, "原始素材")}</div>
+            <SubjectMaskEditor imageUrl={sourceImageUrl} loading={loading} onSubjectChange={handleSubjectAnalysis} />
             <div className="mt-4 flex flex-wrap gap-3">
               <button type="button" onClick={handleGenerateAI} disabled={loading} className="rounded-md bg-[#8f1d21] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
                 {loading ? "生成中..." : "重新 AI 生成"}
@@ -1240,26 +1205,12 @@ export default function CreativeBeadStudio() {
               )}
               <div className="mt-4">{renderImageBox(extractedImageUrl, "主体素材")}</div>
               <div className="mt-4 flex flex-wrap gap-3">
-                {sourceImageUrl && (
-                  <button type="button" onClick={() => setShowMatting((value) => !value)} className="rounded-md border border-stone-300 bg-white px-4 py-2 text-sm font-semibold">
-                    {showMatting ? "收起交互式抠图" : "打开交互式抠图"}
-                  </button>
-                )}
                 <button type="button" onClick={buildPatternFromExtracted} disabled={loading || !extractedImageUrl} className="rounded-md bg-stone-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
                   {loading ? "生成中..." : "生成拼豆图纸"}
                 </button>
               </div>
             </section>
           </div>
-          {showMatting && sourceImageUrl && (
-            <div className="lg:col-span-2">
-              <InteractiveMatting
-                imageUrl={sourceImageUrl}
-                onMattingResult={applyMattingResult}
-                onClose={() => setShowMatting(false)}
-              />
-            </div>
-          )}
         </div>
       );
     }

@@ -15,6 +15,13 @@ export type SubjectAnalysis = {
   bounds: { x: number; y: number; width: number; height: number };
 };
 
+export type SubjectMask = {
+  imageData: ImageData;
+  mask: Uint8Array;
+  width: number;
+  height: number;
+};
+
 type LabPoint = {
   l: number;
   a: number;
@@ -344,7 +351,7 @@ function summarizeColors(data: Uint8ClampedArray, mask: Uint8Array, width: numbe
     .sort((a, b) => b.count - a.count);
 }
 
-export async function analyzeSubjectImage(imageUrl: string): Promise<SubjectAnalysis> {
+export async function createSubjectMask(imageUrl: string): Promise<SubjectMask> {
   const image = new Image();
   image.crossOrigin = "anonymous";
   await new Promise<void>((resolve, reject) => {
@@ -368,6 +375,11 @@ export async function analyzeSubjectImage(imageUrl: string): Promise<SubjectAnal
 
   const imageData = ctx.getImageData(0, 0, width, height);
   const mask = largestComponent(buildForegroundMask(imageData.data, width, height), width, height);
+  return { imageData, mask, width, height };
+}
+
+export function analyzeSubjectMask(input: SubjectMask): SubjectAnalysis {
+  const { imageData, mask, width, height } = input;
   const bounds = calculateBounds(mask, width, height);
   const colors = summarizeColors(imageData.data, mask, width);
 
@@ -403,4 +415,8 @@ export async function analyzeSubjectImage(imageUrl: string): Promise<SubjectAnal
     colorSummary,
     bounds,
   };
+}
+
+export async function analyzeSubjectImage(imageUrl: string): Promise<SubjectAnalysis> {
+  return analyzeSubjectMask(await createSubjectMask(imageUrl));
 }
