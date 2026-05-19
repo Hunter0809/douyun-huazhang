@@ -1,22 +1,34 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { isApiConfigured, checkServerEnvConfig, streamChatMessage, type ChatMessage } from "@/utils/aiChat";
+import {
+  DEFAULT_CHAT_MESSAGES,
+  checkServerEnvConfig,
+  isApiConfigured,
+  loadAiChatHistory,
+  saveAiChatHistory,
+  streamChatMessage,
+  type ChatMessage,
+} from "@/utils/aiChat";
 
 type Props = {
+  isOpen: boolean;
   onClose: () => void;
+  resetToken?: number;
 };
 
-export default function AiChatPanel({ onClose }: Props) {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: "assistant", content: "你好！我是豆韵助手，有任何关于传统文化、拼豆制作或工具使用的问题都可以问我。" },
-  ]);
+export default function AiChatPanel({ isOpen, onClose, resetToken = 0 }: Props) {
+  const [messages, setMessages] = useState<ChatMessage[]>(() => loadAiChatHistory());
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showApiWarning, setShowApiWarning] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const charQueueRef = useRef<string[]>([]);
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const assistantIndexRef = useRef<number | null>(null);
+  const resetTokenRef = useRef(resetToken);
 
   useEffect(() => {
     checkServerEnvConfig().then(() => {
@@ -30,6 +42,59 @@ export default function AiChatPanel({ onClose }: Props) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  useEffect(() => {
+    saveAiChatHistory(messages);
+  }, [messages]);
+
+  useEffect(() => {
+    if (resetTokenRef.current === resetToken) return;
+    resetTokenRef.current = resetToken;
+    setMessages(DEFAULT_CHAT_MESSAGES);
+    setError(null);
+    setInput("");
+    setLoading(false);
+    charQueueRef.current = [];
+    assistantIndexRef.current = null;
+    if (typingTimerRef.current) {
+      clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = null;
+    }
+  }, [resetToken]);
+
+  const drainCharQueue = useCallback(() => {
+    if (typingTimerRef.current) return;
+
+    const tick = () => {
+      const next = charQueueRef.current.shift();
+      const assistantIndex = assistantIndexRef.current;
+
+      if (next && assistantIndex !== null) {
+        setMessages((prev) =>
+          prev.map((msg, index) =>
+            index === assistantIndex ? { ...msg, content: msg.content + next } : msg,
+          ),
+        );
+        typingTimerRef.current = setTimeout(tick, 18);
+      } else {
+        typingTimerRef.current = null;
+      }
+    };
+
+    typingTimerRef.current = setTimeout(tick, 0);
+  }, []);
+
+  const waitForTypingComplete = useCallback(async () => {
+    while (charQueueRef.current.length > 0 || typingTimerRef.current) {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    };
+  }, []);
+
   const handleSend = useCallback(async () => {
     const text = input.trim();
     if (!text || loading) return;
@@ -40,18 +105,23 @@ export default function AiChatPanel({ onClose }: Props) {
     const userMsg: ChatMessage = { role: "user", content: text };
     const nextMessages = [...messages, userMsg];
     const assistantIndex = nextMessages.length;
+    assistantIndexRef.current = assistantIndex;
+    charQueueRef.current = [];
     setMessages([...nextMessages, { role: "assistant", content: "" }]);
     setLoading(true);
 
     try {
       await streamChatMessage(nextMessages, (delta) => {
-        setMessages((prev) =>
-          prev.map((msg, index) =>
-            index === assistantIndex ? { ...msg, content: msg.content + delta } : msg,
-          ),
-        );
+        charQueueRef.current.push(...Array.from(delta));
+        drainCharQueue();
       });
+      await waitForTypingComplete();
     } catch (err) {
+      charQueueRef.current = [];
+      if (typingTimerRef.current) {
+        clearTimeout(typingTimerRef.current);
+        typingTimerRef.current = null;
+      }
       const msg = err instanceof Error ? err.message : "发送失败，请重试";
       setError(msg);
       setMessages((prev) =>
@@ -62,7 +132,7 @@ export default function AiChatPanel({ onClose }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [input, loading, messages]);
+  }, [drainCharQueue, input, loading, messages, waitForTypingComplete]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -74,6 +144,8 @@ export default function AiChatPanel({ onClose }: Props) {
     },
     [handleSend, onClose],
   );
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[200] grid place-items-center bg-black/40" onClick={onClose}>

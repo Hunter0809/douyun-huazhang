@@ -5,7 +5,42 @@ export interface ChatMessage {
   content: string;
 }
 
+export const AI_CHAT_HISTORY_KEY = "douyun_ai_chat_history";
+
+export const DEFAULT_CHAT_MESSAGES: ChatMessage[] = [
+  { role: "assistant", content: "你好！我是豆韵助手，有任何关于传统文化、拼豆制作或工具使用的问题都可以问我。" },
+];
+
 let serverEnvConfigured: boolean | null = null;
+
+function isStorageAvailable(): boolean {
+  return typeof window !== "undefined" && typeof window.localStorage?.getItem === "function";
+}
+
+export function loadAiChatHistory(): ChatMessage[] {
+  if (!isStorageAvailable()) return DEFAULT_CHAT_MESSAGES;
+  try {
+    const raw = localStorage.getItem(AI_CHAT_HISTORY_KEY);
+    if (!raw) return DEFAULT_CHAT_MESSAGES;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return DEFAULT_CHAT_MESSAGES;
+    return parsed.filter((item): item is ChatMessage =>
+      (item?.role === "user" || item?.role === "assistant") && typeof item?.content === "string",
+    );
+  } catch {
+    return DEFAULT_CHAT_MESSAGES;
+  }
+}
+
+export function saveAiChatHistory(messages: ChatMessage[]): void {
+  if (!isStorageAvailable()) return;
+  localStorage.setItem(AI_CHAT_HISTORY_KEY, JSON.stringify(messages));
+}
+
+export function clearAiChatHistory(): void {
+  if (!isStorageAvailable()) return;
+  localStorage.removeItem(AI_CHAT_HISTORY_KEY);
+}
 
 export async function checkServerEnvConfig(): Promise<boolean> {
   try {

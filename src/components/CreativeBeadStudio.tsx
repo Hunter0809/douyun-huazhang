@@ -10,6 +10,7 @@ import SubjectMaskEditor from "@/components/SubjectMaskEditor";
 import LoginModal from "@/components/LoginModal";
 import AiChatPanel from "@/components/ai/AiChatPanel";
 import FloatingAiButton from "@/components/ai/FloatingAiButton";
+import { clearAiChatHistory } from "@/utils/aiChat";
 import { saveProjectRecord, loadCurrentUserProfile, type StoredUser } from "@/utils/profileStorage";
 import type { ProjectRecord } from "@/types/projectTypes";
 import { type AspectRatioId, aspectRatios } from "@/data/aspectRatios";
@@ -634,6 +635,7 @@ export default function CreativeBeadStudio() {
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [toastType, setToastType] = useState<"warning" | "success">("warning");
   const [showAiChat, setShowAiChat] = useState(false);
+  const [aiChatResetToken, setAiChatResetToken] = useState(0);
   const [extractPrompt, setExtractPrompt] = useState<string | null>(null);
   const [scenePrompt, setScenePrompt] = useState<string | null>(null);
   const [subjectColorSummary, setSubjectColorSummary] = useState<string | null>(null);
@@ -1701,7 +1703,12 @@ export default function CreativeBeadStudio() {
         <ProfilePage
           onBack={() => setView("home")}
           onRestoreProject={handleRestoreProject}
-          onLogout={() => setCurrentUser(null)}
+          onLogout={() => {
+            clearAiChatHistory();
+            setAiChatResetToken((value) => value + 1);
+            setShowAiChat(false);
+            setCurrentUser(null);
+          }}
         />
       )}
 
@@ -2008,9 +2015,7 @@ export default function CreativeBeadStudio() {
 
       {/* AI 豆韵助手 - 浮动按钮 & 聊天面板 */}
       <FloatingAiButton onClick={() => setShowAiChat(true)} />
-      {showAiChat && (
-        <AiChatPanel onClose={() => setShowAiChat(false)} />
-      )}
+      <AiChatPanel isOpen={showAiChat} resetToken={aiChatResetToken} onClose={() => setShowAiChat(false)} />
 
       {/* 页脚 - 产权标语 */}
       <footer className="border-t border-stone-200 bg-[#fffdf7]">
