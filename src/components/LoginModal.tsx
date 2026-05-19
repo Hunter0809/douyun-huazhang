@@ -56,8 +56,8 @@ export default function LoginModal({ onClose, onLoggedIn, initialStep, onRegiste
   }, [username, onLoggedIn, onClose]);
 
   const handleRegister = useCallback(() => {
-    const trimmed = username.trim();
-    if (!trimmed) {
+    const effectiveUsername = username.trim() || nickname.trim();
+    if (!effectiveUsername) {
       setError("请输入用户名");
       return;
     }
@@ -68,10 +68,10 @@ export default function LoginModal({ onClose, onLoggedIn, initialStep, onRegiste
     setLoading(true);
     setError("");
 
-    registerUser(trimmed, { nickname: nickname.trim(), avatarUrl });
+    registerUser(effectiveUsername, { nickname: nickname.trim(), avatarUrl });
     const user = loadCurrentUserProfile();
     if (user) {
-      onRegisterSuccess?.(trimmed);
+      onRegisterSuccess?.(effectiveUsername);
       onLoggedIn(user);
       onClose();
     } else {
