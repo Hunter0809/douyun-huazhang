@@ -45,6 +45,7 @@ export default function SubjectMaskEditor({ imageUrl, loading, onSubjectChange }
   const [brushSize, setBrushSize] = useState(16);
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
   const [ready, setReady] = useState(false);
+  const [analysis, setAnalysis] = useState<SubjectAnalysis | null>(null);
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -66,6 +67,7 @@ export default function SubjectMaskEditor({ imageUrl, loading, onSubjectChange }
       overlay.data[dataIndex + 2] = 74;
       overlay.data[dataIndex + 3] = 105;
     }
+
     const overlayCanvas = document.createElement("canvas");
     overlayCanvas.width = subject.width;
     overlayCanvas.height = subject.height;
@@ -78,12 +80,15 @@ export default function SubjectMaskEditor({ imageUrl, loading, onSubjectChange }
   const publish = useCallback(() => {
     const subject = maskRef.current;
     if (!subject) return;
-    onSubjectChange(analyzeSubjectMask(subject));
+    const next = analyzeSubjectMask(subject);
+    setAnalysis(next);
+    onSubjectChange(next);
   }, [onSubjectChange]);
 
   useEffect(() => {
     let cancelled = false;
     setReady(false);
+    setAnalysis(null);
     maskRef.current = null;
     if (!imageUrl) return;
 
@@ -93,7 +98,9 @@ export default function SubjectMaskEditor({ imageUrl, loading, onSubjectChange }
         maskRef.current = subject;
         setReady(true);
         draw();
-        onSubjectChange(analyzeSubjectMask(subject));
+        const next = analyzeSubjectMask(subject);
+        setAnalysis(next);
+        onSubjectChange(next);
       })
       .catch(() => {
         if (!cancelled) setReady(false);
@@ -118,10 +125,10 @@ export default function SubjectMaskEditor({ imageUrl, loading, onSubjectChange }
   const applyBrush = useCallback((x: number, y: number, nextValue: 0 | 1) => {
     const subject = maskRef.current;
     if (!subject) return;
-    const radius = brushSize;
-    const radiusSquared = radius * radius;
-    for (let yy = Math.max(0, y - radius); yy <= Math.min(subject.height - 1, y + radius); yy++) {
-      for (let xx = Math.max(0, x - radius); xx <= Math.min(subject.width - 1, x + radius); xx++) {
+    const radiusSquared = brushSize * brushSize;
+
+    for (let yy = Math.max(0, y - brushSize); yy <= Math.min(subject.height - 1, y + brushSize); yy++) {
+      for (let xx = Math.max(0, x - brushSize); xx <= Math.min(subject.width - 1, x + brushSize); xx++) {
         const dx = xx - x;
         const dy = yy - y;
         if (dx * dx + dy * dy <= radiusSquared) {
@@ -129,6 +136,7 @@ export default function SubjectMaskEditor({ imageUrl, loading, onSubjectChange }
         }
       }
     }
+
     draw();
   }, [brushSize, draw]);
 
@@ -154,6 +162,7 @@ export default function SubjectMaskEditor({ imageUrl, loading, onSubjectChange }
         cy > 0 ? current - subject.width : -1,
         cy + 1 < subject.height ? current + subject.width : -1,
       ];
+
       for (const next of neighbors) {
         if (next < 0 || visited[next]) continue;
         if (rgbDistance(subject.imageData.data, seedIndex, next) > threshold) continue;
@@ -296,6 +305,29 @@ export default function SubjectMaskEditor({ imageUrl, loading, onSubjectChange }
           <div className="grid min-h-[120px] place-items-center text-sm text-stone-400">正在识别主体...</div>
         )}
       </div>
+
+      {analysis && analysis.colors.length > 0 && (
+        <div className="mt-4 rounded-md border border-stone-200 bg-stone-50 p-3">
+          <p className="text-xs font-semibold text-stone-600">主体颜色占比（代码计算）</p>
+          <div className="mt-3 space-y-2">
+            {analysis.colors.map((color) => {
+              const percent = color.ratio * 100;
+              return (
+                <div key={color.hex} className="grid grid-cols-[5.5rem_1fr_3.5rem] items-center gap-2 text-xs">
+                  <span className="font-mono font-semibold text-stone-700">{color.hex}:</span>
+                  <div className="h-4 overflow-hidden rounded-full bg-white ring-1 ring-stone-200">
+                    <div
+                      className="h-full rounded-full"
+                      style={{ width: `${Math.max(2, percent)}%`, backgroundColor: color.hex }}
+                    />
+                  </div>
+                  <span className="text-right font-mono text-stone-600">{percent.toFixed(1)}%</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

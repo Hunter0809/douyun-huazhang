@@ -638,7 +638,6 @@ export default function CreativeBeadStudio() {
   const [aiChatResetToken, setAiChatResetToken] = useState(0);
   const [extractPrompt, setExtractPrompt] = useState<string | null>(null);
   const [scenePrompt, setScenePrompt] = useState<string | null>(null);
-  const [subjectColorSummary, setSubjectColorSummary] = useState<string | null>(null);
 
   // 首页打字机动画状态
   const homeTypingLine1 = "方寸之间，粒粒皆可触摸的东方诗篇";
@@ -708,7 +707,6 @@ export default function CreativeBeadStudio() {
     setCleanPatternUrl(null);
     setProductSceneUrl(null);
     setMockupUrl(null);
-    setSubjectColorSummary(null);
   }, []);
 
   const doUseSample = useCallback(() => {
@@ -717,7 +715,6 @@ export default function CreativeBeadStudio() {
     const original = renderSampleDesignOriginal(options);
     setSourceImageUrl(original);
     setExtractedImageUrl(original);
-    setSubjectColorSummary(null);
     setError(null);
     setConfirmNew(null);
     setStep("extract");
@@ -737,7 +734,6 @@ export default function CreativeBeadStudio() {
       setSourceImageUrl(imageUrl);
       setExtractedImageUrl(null);
       setExtractPrompt(null);
-      setSubjectColorSummary(null);
       clearPatternArtifacts();
       setStep("extract");
     } catch (err) {
@@ -837,9 +833,8 @@ export default function CreativeBeadStudio() {
       const result = await response.json();
       if (!response.ok) throw new Error(result?.error ?? "AI 图案生成失败");
       setSourceImageUrl(result.imageUrl);
-      setExtractedImageUrl(result.imageUrl);
+      setExtractedImageUrl(null);
       setExtractPrompt(result.prompt);
-      setSubjectColorSummary(null);
       clearPatternArtifacts();
       setStep("extract");
     } catch (err) {
@@ -860,7 +855,6 @@ export default function CreativeBeadStudio() {
         setSourceImageUrl(imageUrl);
         setExtractedImageUrl(null);
         setExtractPrompt(null);
-        setSubjectColorSummary(null);
         clearPatternArtifacts();
         setStep("extract");
     } catch (err) {
@@ -876,7 +870,6 @@ export default function CreativeBeadStudio() {
     setLoading(true);
     setError(null);
     try {
-      setSubjectColorSummary(analysis.colorSummary);
       const response = await fetch("/api/extract-theme-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1199,13 +1192,7 @@ export default function CreativeBeadStudio() {
             <section className="rounded-lg border border-stone-200 bg-white p-5">
               <h2 className="text-xl font-semibold">✂️ 主体提取与再创作</h2>
               <p className="mt-1 text-sm text-stone-500">由本地算法提取图片核心主体并计算主体颜色组成，AI 只根据计算结果进行传统文化风格再创作；接下来在第三阶段（拼豆图纸）进行像素化处理。</p>
-              {subjectColorSummary && (
-                <div className="mt-3 rounded-md border border-stone-200 bg-stone-50 p-3">
-                  <p className="text-xs font-semibold text-stone-600">主体颜色占比（代码计算）</p>
-                  <pre className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-stone-600">{subjectColorSummary}</pre>
-                </div>
-              )}
-              <div className="mt-4">{renderImageBox(extractedImageUrl, "主体素材")}</div>
+              <div className="mt-4">{renderImageBox(extractedImageUrl, "AI 再创作图像")}</div>
               <div className="mt-4 flex flex-wrap gap-3">
                 <button type="button" onClick={buildPatternFromExtracted} disabled={loading || !extractedImageUrl} className="rounded-md bg-stone-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
                   {loading ? "生成中..." : "生成拼豆图纸"}
@@ -1534,7 +1521,6 @@ export default function CreativeBeadStudio() {
     setCleanPatternUrl(record.cleanPatternUrl);
     setMockupUrl(record.mockupUrl);
     setProductSceneUrl(record.productSceneUrl);
-    setSubjectColorSummary(null);
 
     // 恢复 pattern 对象
     if (record.patternData) {
