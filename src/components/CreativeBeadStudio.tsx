@@ -44,7 +44,7 @@ type StudioStep = "config" | "extract" | "pattern" | "preview";
 
 const studioSteps: { id: StudioStep; label: string; desc: string; icon: string }[] = [
   { id: "config", label: "配置", desc: "选择传统主题、作品形式、网格尺寸、颜色数量和可用色", icon: "⚙️" },
-  { id: "extract", label: "主体提取", desc: "提取图片核心主体意象，结合中华文化进行艺术再创作（支持重新提取）", icon: "✂️" },
+  { id: "extract", label: "主体提取与再创作", desc: "提取图片核心主体意象，分析颜色组成后按原配色进行文化风格再创作（支持重新提取）", icon: "✂️" },
   { id: "pattern", label: "拼豆图纸", desc: "像素化处理、自动移除轮廓外浅色杂块以节省拼豆用量、生成带色号网格并统计用量", icon: "🧩" },
   { id: "preview", label: "场景预览", desc: "基于拼豆图纸生成真实拼豆成品场景预览、查看文化说明并导出完整制作资料", icon: "🖼️" },
 ];
@@ -1149,8 +1149,8 @@ export default function CreativeBeadStudio() {
             </div>
           </section>
           <section className="rounded-lg border border-stone-200 bg-white p-5">
-            <h2 className="text-xl font-semibold">✂️ 主体提取结果</h2>
-            <p className="mt-1 text-sm text-stone-500">上传图片会先提取主要主题意象，并结合当前主题进行传统文化艺术再创作；接下来在第三阶段（拼豆图纸）进行像素化处理。</p>
+            <h2 className="text-xl font-semibold">✂️ 主体提取与再创作</h2>
+            <p className="mt-1 text-sm text-stone-500">提取图片核心主体意象后，分析其颜色组成和比例，严格按照原配色进行传统文化风格再创作；接下来在第三阶段（拼豆图纸）进行像素化处理。</p>
             <div className="mt-4">{renderImageBox(extractedImageUrl, "主体素材")}</div>
             <div className="mt-4 flex flex-wrap gap-3">
               {sourceImageUrl && (
@@ -1742,7 +1742,7 @@ export default function CreativeBeadStudio() {
                     if (!canAccess) {
                       if (index === 1 && !sourceImageUrl && !extractedImageUrl) {
                         setToastType("warning");
-                        setToastMsg("请先生成或上传素材，再进入主体提取步骤。");
+                        setToastMsg("请先生成或上传素材，再进入主体提取与再创作步骤。");
                       } else if (index === 2 && !extractedImageUrl) {
                         setToastType("warning");
                         setToastMsg("请先完成主体提取，再生成拼豆图纸。");

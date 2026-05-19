@@ -28,7 +28,7 @@ type TabId = "config" | "extract" | "pattern" | "preview";
 
 const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: "config", label: "配置", icon: "⚙️" },
-  { id: "extract", label: "主体提取", icon: "✂️" },
+  { id: "extract", label: "主体提取与再创作", icon: "✂️" },
   { id: "pattern", label: "拼豆图纸", icon: "🧩" },
   { id: "preview", label: "场景预览", icon: "🖼️" },
 ];
