@@ -21,7 +21,6 @@ import {
   renderSampleDesignOriginal,
   type BeadPattern,
 } from "@/utils/culturePattern";
-import { hexToRgb, findClosestPaletteColor } from "@/utils/pixelation";
 import { generateCultureCopy } from "@/utils/cultureTextGenerator";
 import {
   getAllHexValues,
@@ -531,6 +530,7 @@ export default function CreativeBeadStudio() {
   const [aspectRatio, setAspectRatio] = useState<AspectRatioId>("1:1");
   const [showGrid, setShowGrid] = useState(true);
   const [antiAlias, setAntiAlias] = useState(true);
+  const [connectIslands, setConnectIslands] = useState(true);
   const [selectedFilter, setSelectedFilter] = useState<ImageFilter>("none");
   const [colorFamily, setColorFamily] = useState<ColorFamily>("全部");
   const [forcedColors, setForcedColors] = useState<string[]>([]);
@@ -758,7 +758,7 @@ export default function CreativeBeadStudio() {
     try {
       const next = await imageDataUrlToPattern(
         extractedImageUrl,
-        { ...options, antiAlias, source: sourceImageUrl === extractedImageUrl ? "ai" : "upload", preserveSourceRatio: false },
+        { ...options, antiAlias, connectIslands, source: sourceImageUrl === extractedImageUrl ? "ai" : "upload", preserveSourceRatio: false },
         forcedColors,
         selectedFilter,
       );
@@ -1002,6 +1002,10 @@ export default function CreativeBeadStudio() {
                 <label className="flex items-center justify-between rounded-md border border-stone-200 bg-stone-50 px-3 py-2 text-sm font-medium">
                   平滑杂点
                   <input type="checkbox" checked={antiAlias} onChange={(event) => setAntiAlias(event.target.checked)} />
+                </label>
+                <label className="flex items-center justify-between rounded-md border border-stone-200 bg-stone-50 px-3 py-2 text-sm font-medium">
+                  连接孤立色块
+                  <input type="checkbox" checked={connectIslands} onChange={(event) => setConnectIslands(event.target.checked)} />
                 </label>
               </div>
               <div className="flex flex-wrap gap-3">

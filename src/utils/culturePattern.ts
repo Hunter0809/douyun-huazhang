@@ -208,6 +208,195 @@ function markExternalBackground(
   return result;
 }
 
+/**
+ * 连接孤立色块到主体。
+ * 找出所有非外部背景的连通区域，将面积小于 `minArea` 的孤立区域
+ * 通过填充其边缘轮廓颜色连接到最近的主体区域。
+ * @param grid 像素网格
+ * @param minArea 最小面积阈值，小于此面积的区域被视为"孤立"（默认 8）
+ */
+export function connectIslands(
+  grid: MappedPixel[][],
+  minArea = 8,
+): MappedPixel[][] {
+  const M = grid.length;
+  if (M === 0) return grid;
+  const N = grid[0].length;
+
+  // 深拷贝
+  const result: MappedPixel[][] = grid.map((row) =>
+    row.map((cell) => ({ ...cell })),
+  );
+
+  // 1. 找出所有非外部单元格的连通区域
+  const visited: boolean[][] = Array.from({ length: M }, () =>
+    Array.from({ length: N }, () => false),
+  );
+
+  const components: {
+    cells: { row: number; col: number }[];
+    edgeCells: { row: number; col: number }[];
+  }[] = [];
+
+  const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+
+  for (let r = 0; r < M; r++) {
+    for (let c = 0; c < N; c++) {
+      const cell = result[r][c];
+      if (!cell || cell.isExternal || visited[r][c]) continue;
+
+      // BFS 找连通区域
+      const componentCells: { row: number; col: number }[] = [];
+      const edgeCells: { row: number; col: number }[] = [];
+      const queue: { row: number; col: number }[] = [{ row: r, col: c }];
+      visited[r][c] = true;
+
+      while (queue.length > 0) {
+        const curr = queue.shift()!;
+        componentCells.push(curr);
+
+        // 检查是否有外部背景相邻（边缘像素）
+        let isEdge = false;
+        for (const [dr, dc] of directions) {
+          const nr = curr.row + dr;
+          const nc = curr.col + dc;
+          if (nr < 0 || nr >= M || nc < 0 || nc >= N) continue;
+          const neighbor = result[nr][nc];
+          if (neighbor && neighbor.isExternal) {
+            isEdge = true;
+          }
+          if (neighbor && !neighbor.isExternal && !visited[nr][nc]) {
+            visited[nr][nc] = true;
+            queue.push({ row: nr, col: nc });
+          }
+        }
+        if (isEdge) {
+          edgeCells.push(curr);
+        }
+      }
+
+      components.push({ cells: componentCells, edgeCells });
+    }
+  }
+
+  // 如果没有组件或只有 1 个组件，无需连接
+  if (components.length <= 1) return result;
+
+  // 2. 找最大组件（主体）
+  components.sort((a, b) => b.cells.length - a.cells.length);
+  const mainComponent = components[0];
+  const mainCellSet = new Set(
+    mainComponent.cells.map((c) => `${c.row},${c.col}`),
+  );
+
+  // 3. 从每个孤立组件出发，BFS 寻找到主体最近的外部格子路径
+  for (let i = 1; i < components.length; i++) {
+    const island = components[i];
+    if (island.cells.length >= minArea) continue; // 大区域不处理
+
+    // 从该组件的边缘像素出发，在外部区域中 BFS 寻找到主体的路径
+    let bestPath: { row: number; col: number }[] | null = null;
+    const externalVisited = new Set<string>();
+
+    // 把该孤岛的所有边缘像素作为 BFS 起点
+    const bfsQueue: {
+      row: number;
+      col: number;
+      path: { row: number; col: number }[];
+    }[] = [];
+
+    for (const edge of island.edgeCells) {
+      // 检查边缘像素的 8 个邻居（包括对角线）中有没有外部格子
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue;
+          const nr = edge.row + dr;
+          const nc = edge.col + dc;
+          if (nr < 0 || nr >= M || nc < 0 || nc >= N) continue;
+          const key = `${nr},${nc}`;
+          if (externalVisited.has(key)) continue;
+
+          const neighbor = result[nr][nc];
+          if (neighbor && neighbor.isExternal) {
+            externalVisited.add(key);
+            bfsQueue.push({ row: nr, col: nc, path: [{ row: nr, col: nc }] });
+          }
+        }
+      }
+    }
+
+    // BFS 在外部区域中寻找
+    while (bfsQueue.length > 0) {
+      const current = bfsQueue.shift()!;
+
+      // 检查当前格的 4 方向邻居是否到达主体
+      for (const [dr, dc] of directions) {
+        const nr = current.row + dr;
+        const nc = current.col + dc;
+        if (nr < 0 || nr >= M || nc < 0 || nc >= N) continue;
+        if (mainCellSet.has(`${nr},${nc}`)) {
+          // 找到了通往主体的路径！
+          bestPath = current.path;
+          break;
+        }
+      }
+      if (bestPath) break;
+
+      // 继续向外扩展（只走外部格子）
+      for (const [dr, dc] of directions) {
+        const nr = current.row + dr;
+        const nc = current.col + dc;
+        if (nr < 0 || nr >= M || nc < 0 || nc >= N) continue;
+        const key = `${nr},${nc}`;
+        if (externalVisited.has(key)) continue;
+
+        const neighbor = result[nr][nc];
+        if (neighbor && neighbor.isExternal) {
+          externalVisited.add(key);
+          bfsQueue.push({
+            row: nr,
+            col: nc,
+            path: [...current.path, { row: nr, col: nc }],
+          });
+        }
+      }
+    }
+
+    // 4. 如果有路径，用孤岛中占主导的边缘颜色填充路径上的外部格子
+    if (bestPath && bestPath.length > 0) {
+      // 找出孤岛边缘最常见的颜色
+      const colorCount = new Map<string, { count: number; cell: MappedPixel }>();
+      for (const edge of island.edgeCells) {
+        const cell = result[edge.row][edge.col];
+        if (!cell || cell.isExternal) continue;
+        const existing = colorCount.get(cell.color);
+        colorCount.set(cell.color, {
+          count: (existing?.count ?? 0) + 1,
+          cell,
+        });
+      }
+      
+      // 选择最常见的颜色作为填充色
+      let fillColor: MappedPixel = { key: '#000000', color: '#000000' };
+      let maxCount = 0;
+      colorCount.forEach((data) => {
+        if (data.count > maxCount) {
+          maxCount = data.count;
+          fillColor = data.cell;
+        }
+      });
+
+      // 填充路径上的外部格子，将其变为内部格子
+      for (const p of bestPath) {
+        result[p.row][p.col] = { ...fillColor, isExternal: false };
+      }
+    }
+    // 如果没有路径（理论上不应该），保持原样
+  }
+
+  return result;
+}
+
 function removeSingleCellNoise(grid: MappedPixel[][]): MappedPixel[][] {
   return grid.map((row, y) =>
     row.map((cell, x) => {
@@ -292,8 +481,13 @@ export function renderSampleDesignOriginal(options: CulturePromptOptions): strin
   return canvas.toDataURL("image/png");
 }
 
+type PatternOptions = {
+  antiAlias: boolean;
+  connectIslands?: boolean;
+};
+
 export function generateSamplePattern(
-  options: CulturePromptOptions & { antiAlias: boolean },
+  options: CulturePromptOptions & PatternOptions,
   forcedHexColors: string[] = [],
   filter?: ImageFilter,
 ): BeadPattern {
@@ -321,19 +515,20 @@ export function generateSamplePattern(
   const limited = clampColorCount(grid, options.colorCount, forcedHexColors);
   const denoised = options.antiAlias ? removeSingleCellNoise(limited) : limited;
   const cleaned = markExternalBackground(denoised);
+  const connected = options.connectIslands ? connectIslands(cleaned) : cleaned;
 
   return {
-    grid: cleaned,
+    grid: connected,
     width: options.gridSize,
     height: options.gridSize,
-    palette: Array.from(new Set(cleaned.flat().map((cell) => cell.color))).sort(),
+    palette: Array.from(new Set(connected.flat().map((cell) => cell.color))).sort(),
     source: "sample",
   };
 }
 
 export async function imageDataUrlToPattern(
   imageUrl: string,
-  options: CulturePromptOptions & { antiAlias: boolean; source: "ai" | "upload"; preserveSourceRatio?: boolean },
+  options: CulturePromptOptions & { antiAlias: boolean; source: "ai" | "upload"; preserveSourceRatio?: boolean; connectIslands?: boolean },
   forcedHexColors: string[] = [],
   filter?: ImageFilter,
 ): Promise<BeadPattern> {
@@ -375,12 +570,13 @@ export async function imageDataUrlToPattern(
   const limited = clampColorCount(grid, options.colorCount, forcedHexColors);
   const denoised = options.antiAlias ? removeSingleCellNoise(limited) : limited;
   const cleaned = markExternalBackground(denoised);
+  const connected = options.connectIslands ? connectIslands(cleaned) : cleaned;
 
   return {
-    grid: cleaned,
+    grid: connected,
     width: gridWidth,
     height: gridHeight,
-    palette: Array.from(new Set(cleaned.flat().map((cell) => cell.color))).sort((a: string, b: string) => {
+    palette: Array.from(new Set(connected.flat().map((cell) => cell.color))).sort((a: string, b: string) => {
       const rgbA = hexToRgb(a) as RgbColor;
       const rgbB = hexToRgb(b) as RgbColor;
       return colorDistance(rgbA, { r: 255, g: 255, b: 255 }) - colorDistance(rgbB, { r: 255, g: 255, b: 255 });
@@ -389,20 +585,20 @@ export async function imageDataUrlToPattern(
   };
 }
 
-  /** 获取与背景色形成对比的文本颜色 */
-  function getContrastColor(hexColor: string): string {
-    const rgb = hexToRgb(hexColor);
-    if (!rgb) return '#000000';
-    const luma = 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b;
-    return luma > 140 ? '#000000' : '#FFFFFF';
-  }
+/** 获取与背景色形成对比的文本颜色 */
+function getContrastColor(hexColor: string): string {
+  const rgb = hexToRgb(hexColor);
+  if (!rgb) return '#000000';
+  const luma = 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b;
+  return luma > 140 ? '#000000' : '#FFFFFF';
+}
 
-  /** 在 canvas 上绘制拼豆网格（带行列号和色号），用于前端展示 */
-  export function renderPatternToCanvas(
-    canvas: HTMLCanvasElement,
-    pattern: BeadPattern,
-    showGrid: boolean,
-  ): void {
+/** 在 canvas 上绘制拼豆网格（带行列号和色号），用于前端展示 */
+export function renderPatternToCanvas(
+  canvas: HTMLCanvasElement,
+  pattern: BeadPattern,
+  showGrid: boolean,
+): void {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     // 提高分辨率：从 640 提升到 2000，确保拼豆图纸清晰显示
