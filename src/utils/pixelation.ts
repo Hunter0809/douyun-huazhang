@@ -341,13 +341,30 @@ export function calculatePixelGrid(
         return mappedData;
     }
 
-    // 如果指定了滤镜，在像素化之前应用滤镜到图像数据
-    if (filter && filter !== "none" && fullImageData) {
+    // 如果指定了滤镜，先计算"无滤镜"的网格，确定哪些单元格有内容（有色块）
+    // 然后只对这些有色块的区域应用滤镜，无内容的单元格保持透明
+    let validCellMask: boolean[][] | null = null;
+    if (filter && filter !== "none") {
+        // 先用"none"跑一遍确定有效单元格
+        const unfilteredData = calculatePixelGrid(
+            originalCtx, imgWidth, imgHeight, N, M, palette, mode, t1FallbackColor,
+            "none" // 强制无滤镜
+        );
+        validCellMask = unfilteredData.map(row =>
+            row.map(cell => !(cell.key === transparentColorData.key && cell.color === transparentColorData.color))
+        );
+        // 然后对完整图像应用滤镜
         fullImageData = applyImageFilter(fullImageData, filter);
     }
 
     for (let j = 0; j < M; j++) {
         for (let i = 0; i < N; i++) {
+            // 如果指定了滤镜，且该单元格在无滤镜下无内容，直接标记为透明
+            if (validCellMask && !validCellMask[j][i]) {
+                mappedData[j][i] = { ...transparentColorData };
+                continue;
+            }
+
             const startXOriginal = Math.floor(i * cellWidthOriginal);
             const startYOriginal = Math.floor(j * cellHeightOriginal);
             // 计算精确的单元格结束位置，避免超出图像边界
