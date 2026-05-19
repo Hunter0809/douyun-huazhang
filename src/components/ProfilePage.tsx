@@ -10,15 +10,17 @@ import {
   deleteProjectRecord,
   loadCurrentUserProfile,
   updateCurrentUserProfile,
+  logoutUser,
   type StoredUser,
 } from "@/utils/profileStorage";
 
 type Props = {
   onBack: () => void;
   onRestoreProject: (record: ProjectRecord) => void;
+  onLogout?: () => void;
 };
 
-export default function ProfilePage({ onBack, onRestoreProject }: Props) {
+export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Props) {
   const [apiConfig, setApiConfig] = useState(() =>
     loadApiConfig() ?? { textModelApiKey: "", textModelName: TEXT_MODEL_OPTIONS[0]!.name, imageModelApiKey: "", imageModelName: IMAGE_MODEL_OPTIONS[0]!.name }
   );
@@ -195,6 +197,22 @@ export default function ProfilePage({ onBack, onRestoreProject }: Props) {
               ))}
             </div>
           )}
+        </section>
+
+        {/* 登出 */}
+        <section className="rounded-lg border border-red-100 bg-white p-6">
+          <h2 className="text-xl font-semibold text-stone-800">账号设置</h2>
+          <p className="mt-1 text-sm text-stone-500">登出后将不再显示与该账号有关的信息，本地未保存的作品不会被删除。</p>
+          <button
+            type="button"
+            onClick={() => {
+              logoutUser();
+              onLogout?.();
+            }}
+            className="mt-4 rounded-md border border-red-300 bg-red-50 px-5 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100"
+          >
+            退出登录
+          </button>
         </section>
       </div>
     </main>

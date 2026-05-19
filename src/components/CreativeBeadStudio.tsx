@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CultureExplanation from "@/components/CultureExplanation";
 import ExportPanel from "@/components/ExportPanel";
+import FilterDropdown from "@/components/FilterDropdown";
 import InteractiveMatting from "@/components/InteractiveMatting";
 import ProductMockup from "@/components/ProductMockup";
 import ProfilePage from "@/components/ProfilePage";
@@ -26,7 +27,6 @@ import {
   getDisplayColorKey,
   sortColorsByHue,
   filterColorsByFamily,
-  IMAGE_FILTER_OPTIONS,
   COLOR_FAMILIES,
   type ColorFamily,
   type ImageFilter,
@@ -267,40 +267,60 @@ const helpData: HelpSection[] = [
         content: [
           "遍历 N×M 网格。对每个单元格，在原图对应区域内找出出现频率最高的像素 RGB 值（忽略透明/半透明像素）。使用欧氏距离在 RGB 空间中，将该主导色映射到当前选定调色板中最接近的颜色。记录每个单元格的初始映射色号和颜色。",
           "这种方法比直接使用平均色（Mean Pooling）效果更好，能够避免灰色毛边问题，保持色块纯净。",
+          "颜色映射的数学原理如下：对于网格中第 (i,j) 个单元格，记其覆盖的原图像素集合为 S_{ij}，单元格的主导色 D_{ij} 定义为：",
+          "D_{ij} = mode{ (R,G,B) | (R,G,B) ∈ S_{ij} }",
+          "即该区域内出现频率最高的 RGB 向量。随后将 D_{ij} 映射到调色板 P 中的最近色：",
+          "C_{ij} = argmin_{p ∈ P} || D_{ij} - p ||₂",
+          "其中 ||·||₂ 表示 RGB 空间中的欧几里得范数：",
+          "|| (r₁,g₁,b₁) - (r₂,g₂,b₂) ||₂ = √[(r₁−r₂)² + (g₁−g₂)² + (b₁−b₂)²]",
         ],
       },
       {
         title: "二、区域颜色合并（基于相似度 BFS）",
         content: [
-          "使用广度优先搜索（BFS）遍历初始映射数据。识别颜色相似（欧氏距离小于阈值）的连通区域。找出每个区域内出现次数最多的珠子色号，将该区域内所有单元格统一设置为这个主导色号对应的颜色。",
-          "这是去除杂色的关键步骤。通过调整相似度阈值可以控制合并程度，阈值越大合并越多，颜色越少但细节损失也会增加。",
+          "使用广度优先搜索（BFS）遍历初始映射数据。识别颜色相似（欧氏距离小于阈值 τ）的连通区域。找出每个区域内出现次数最多的珠子色号，将该区域内所有单元格统一设置为这个主导色号对应的颜色。",
+          "这是去除杂色的关键步骤。通过调整相似度阈值 τ 可以控制合并程度，τ 越大合并越多，颜色越少但细节损失也会增加。",
+          "颜色合并条件：对相邻单元格 (i,j) 和 (i',j')，若满足：",
+          "|| C_{ij} - C_{i'j'} ||₂ ≤ τ",
+          "则它们属于同一连通区域。该区域内所有单元格的颜色统一为：",
+          "C_region = mode{ C_{ij} | (i,j) ∈ region }",
+          "其中 mode 为区域内出现次数最多的色号。合并后的大色块便于实际摆豆操作，减少频繁换色。",
         ],
       },
       {
         title: "三、背景移除（基于边界洪水填充）",
         content: [
-          "定义一组背景色号。从图像所有边界单元格开始，使用洪水填充（Flood Fill）算法。标记所有从边界开始、颜色属于背景色号且相互连通的单元格为「外部背景」。统计和导出时将忽略这些外部单元格。",
+          "定义一组背景色号 B = {b₁, b₂, ..., bₖ}。从图像所有边界单元格开始，使用洪水填充（Flood Fill）算法。标记所有从边界开始、颜色属于 B 且相互连通的单元格为「外部背景」。统计和导出时将忽略这些外部单元格。",
           "这确保了用量统计只包含实际需要的拼豆，不会把背景色也算进去。",
+          "边界填充的递归定义：",
+          "isExternal(i,j) = True 若 (i,j) 在图像边界且 C_{ij} ∈ B",
+          "isExternal(i,j) = True 若 ∃ 邻域 (i',j') 满足 isExternal(i',j')=True 且 C_{ij} ∈ B",
+          "否则 isExternal(i,j) = False",
+          "实际实现采用队列形式的迭代 BFS 来代替递归，避免栈溢出。",
         ],
       },
       {
         title: "四、颜色排除与重映射",
         content: [
-          "当自动合并后仍有不满意颜色时，你可以手动排除某些颜色。排除后，系统会确定一个重映射目标调色板（包含网格中最初存在且当前未被排除的所有颜色），将所有使用被排除颜色的非外部单元格重新映射到目标调色板中的最接近颜色。",
-          "如果目标调色板为空（排除了所有可用颜色），系统会阻止此次排除。恢复被排除颜色时会触发完整的图像重新处理流程。",
+          "当自动合并后仍有不满意颜色时，你可以手动排除某些颜色。排除后，系统会确定一个重映射目标调色板 P'（包含网格中最初存在且当前未被排除的所有颜色），将所有使用被排除颜色的非外部单元格重新映射到 P' 中的最接近颜色。",
+          "如果目标调色板 P' 为空（排除了所有可用颜色），系统会阻止此次排除。恢复被排除颜色时会触发完整的图像重新处理流程。",
+          "颜色排除重映射公式：",
+          "P' = { C_{ij} | (i,j) 非外部单元格 } \\ {被排除色号}",
+          "C'_{ij} = argmin_{c ∈ P'} || C_{ij} - c ||₂  ,  当 C_{ij} ∈ 被排除色号集合时",
+          "即被排除色号集合中的所有单元格，在剩余颜色中寻找 RGB 欧氏距离最近的目标色。",
         ],
       },
       {
         title: "五、图像滤镜实现",
         content: [
-          "滤镜在对图像进行像素化之前应用，直接修改原始图像的像素RGB值。每种滤镜采用不同的像素级变换算法：",
-          "· 高对比：将RGB值向两端拉伸（接近0或255），增强色块边界",
-          "· 鲜艳：提高饱和度，使颜色更艳丽",
-          "· 柔和：降低饱和度并提高亮度，效果更温柔",
-          "· 暖色调：增加红色分量，减少蓝色分量",
-          "· 冷色调：增加蓝色分量，减少红色分量",
-          "· 灰度：使用加权平均法（0.299R + 0.587G + 0.114B）去色",
-          "· 怀旧：应用复古棕色调矩阵变换",
+          "滤镜在对图像进行像素化之前应用，直接修改原始图像的像素RGB值。每种滤镜采用不同的像素级变换算法，定义如下（记输入像素为 (R,G,B)，取值范围 [0,1]）：",
+          "· 高对比：R' = 1/(1+e^{-6(R-0.5)}), G' = 1/(1+e^{-6(G-0.5)}), B' = 1/(1+e^{-6(B-0.5)})，即 Sigmoid 函数拉伸对比度",
+          "· 鲜艳：转换到 HSL 空间，饱和度 S' = min(S × 1.4, 1.0)，然后转换回 RGB",
+          "· 柔和：转换到 HSL 空间，饱和度 S' = S × 0.6，亮度 L' = 0.3 + L × 0.7",
+          "· 暖色调：R' = min(R × 1.1, 1.0), G' = G, B' = max(B × 0.9, 0.0)",
+          "· 冷色调：R' = max(R × 0.9, 0.0), G' = G, B' = min(B × 1.1, 1.0)",
+          "· 灰度：Y = 0.299R + 0.587G + 0.114B，R'=G'=B'=Y（ITU-R BT.601 亮度公式）",
+          "· 怀旧：R' = R×0.393 + G×0.769 + B×0.189, G' = R×0.349 + G×0.686 + B×0.168, B' = R×0.272 + G×0.534 + B×0.131，然后限制到[0,1]区间",
           "滤镜选择直接影响像素化结果，同一张图在不同滤镜下会得到不同的拼豆图纸。建议尝试不同滤镜找到最适合主题的效果。",
         ],
       },
@@ -804,17 +824,10 @@ export default function CreativeBeadStudio() {
                   平滑杂点
                   <input type="checkbox" checked={antiAlias} onChange={(event) => setAntiAlias(event.target.checked)} />
                 </label>
-                <label className="relative text-sm font-medium">
-                  🌈 滤镜
-                  <select value={selectedFilter} onChange={(event) => setSelectedFilter(event.target.value as ImageFilter)} className="mt-1 w-full appearance-none rounded-md border border-stone-300 py-2 pl-10 pr-3">
-                    {IMAGE_FILTER_OPTIONS.map((f) => (
-                      <option key={f.key} value={f.key}>{f.icon} {f.name}</option>
-                    ))}
-                  </select>
-                  <span className="pointer-events-none absolute left-2 top-1/2 mt-4 -translate-y-1/2 text-base">
-                    {IMAGE_FILTER_OPTIONS.find((f) => f.key === selectedFilter)?.icon ?? "🎨"}
-                  </span>
-                </label>
+                <div className="flex items-center justify-between rounded-md border border-stone-200 bg-stone-50 px-3 py-2 text-sm font-medium">
+                  <span>🌈 滤镜</span>
+                  <FilterDropdown value={selectedFilter} onChange={(value) => setSelectedFilter(value)} />
+                </div>
               </div>
               <div className="flex flex-wrap gap-3">
                 <button
@@ -1103,17 +1116,10 @@ export default function CreativeBeadStudio() {
                   平滑杂点
                   <input type="checkbox" checked={antiAlias} onChange={(event) => setAntiAlias(event.target.checked)} />
                 </label>
-                <label className="relative text-sm font-medium">
-                  🌈 滤镜
-                  <select value={selectedFilter} onChange={(event) => setSelectedFilter(event.target.value as ImageFilter)} className="mt-1 w-full appearance-none rounded-md border border-stone-300 py-1.5 pl-8 pr-2 text-xs">
-                    {IMAGE_FILTER_OPTIONS.map((f) => (
-                      <option key={f.key} value={f.key}>{f.icon} {f.name}</option>
-                    ))}
-                  </select>
-                  <span className="pointer-events-none absolute left-2 top-1/2 mt-3 -translate-y-1/2 text-xs">
-                    {IMAGE_FILTER_OPTIONS.find((f) => f.key === selectedFilter)?.icon ?? "🎨"}
-                  </span>
-                </label>
+                <div className="flex items-center justify-between rounded-md border border-stone-200 bg-stone-50 px-3 py-2 text-sm font-medium">
+                  <span>🌈 滤镜</span>
+                  <FilterDropdown value={selectedFilter} onChange={(value) => setSelectedFilter(value)} />
+                </div>
               </div>
             </div>
           </section>
@@ -1298,6 +1304,7 @@ export default function CreativeBeadStudio() {
         <ProfilePage
           onBack={() => setView("home")}
           onRestoreProject={handleRestoreProject}
+          onLogout={() => setCurrentUser(null)}
         />
       )}
 
