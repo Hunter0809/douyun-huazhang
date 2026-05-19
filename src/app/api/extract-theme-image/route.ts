@@ -34,7 +34,7 @@ export async function POST(req: Request) {
   // 上传图片模式：忽略用户填写的主题/元素/说明，仅从图片本身分析
   const isUpload = body.isUpload === true;
 
-  const prompt = isUpload
+  const promptText = isUpload
     ? [
         "【任务：提取主体意象 · 分析颜色组成 · 按原配色再创作】",
         "这是一张用户上传的图片。请完成以下三步：",
@@ -90,7 +90,7 @@ export async function POST(req: Request) {
     },
     body: JSON.stringify({
       model,
-      prompt,
+      prompt: promptText,
       image_urls: [body.imageUrl],
       n: 1,
       size: ratio.imageSize,
@@ -116,5 +116,6 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     imageUrl: base64 ? `data:image/png;base64,${base64}` : url,
+    prompt: promptText,
   });
 }

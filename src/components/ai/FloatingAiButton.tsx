@@ -17,12 +17,6 @@ export default function FloatingAiButton({ onClick }: Props) {
   const [showUnconfiguredHint, setShowUnconfiguredHint] = useState(false);
   const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const apiConfigured = useRef(false);
-  // 只在组件挂载时检测一次
-  useEffect(() => {
-    apiConfigured.current = isApiConfigured();
-  }, []);
-
   // 初始化位置：右下角，留出边距
   useEffect(() => {
     const w = window.innerWidth;
@@ -113,7 +107,7 @@ export default function FloatingAiButton({ onClick }: Props) {
 
   const handleClick = useCallback(() => {
     if (hasMoved) return;
-    if (apiConfigured.current) {
+    if (isApiConfigured()) {
       onClick();
     } else {
       // 未配置 API，显示提示

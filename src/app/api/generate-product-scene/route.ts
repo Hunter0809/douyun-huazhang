@@ -33,7 +33,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "缺少拼豆成果参考图。" }, { status: 400 });
   }
 
-  const prompt = [
+  const promptText = [
     "【任务：拼豆成品真实场景预览 · 第四步（最后一步）】",
     "参考图中是一张已经完成像素化处理和拼豆颜色映射的拼豆图纸（像素网格图）。",
     "⚠️ 严格要求：请将参考图中的拼豆图纸忠实地呈现为真实的拼豆实体成品效果。",
@@ -57,7 +57,7 @@ export async function POST(req: Request) {
     },
     body: JSON.stringify({
       model,
-      prompt,
+      prompt: promptText,
       image_urls: [body.patternUrl],
       n: 1,
       size: ratio.imageSize,
@@ -83,5 +83,6 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     imageUrl: base64 ? `data:image/png;base64,${base64}` : url,
+    prompt: promptText,
   });
 }
