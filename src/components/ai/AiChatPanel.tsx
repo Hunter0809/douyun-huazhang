@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { isApiConfigured, sendChatMessage, type ChatMessage } from "@/utils/aiChat";
+import { isApiConfigured, checkServerEnvConfig, sendChatMessage, type ChatMessage } from "@/utils/aiChat";
 
 type Props = {
   onClose: () => void;
@@ -19,9 +19,12 @@ export default function AiChatPanel({ onClose }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!isApiConfigured()) {
-      setShowApiWarning(true);
-    }
+    // 检测服务端是否已配置API（更新缓存状态）
+    checkServerEnvConfig().then(() => {
+      if (!isApiConfigured()) {
+        setShowApiWarning(true);
+      }
+    });
   }, []);
 
   useEffect(() => {

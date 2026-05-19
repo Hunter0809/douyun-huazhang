@@ -5,11 +5,32 @@ export interface ChatMessage {
   content: string;
 }
 
+/** 服务端环境变量是否已配置API的缓存结果 */
+let serverEnvConfigured: boolean | null = null;
+
+/**
+ * 从服务端获取环境变量配置状态并缓存
+ * 在应用初始化时调用一次即可
+ */
+export async function checkServerEnvConfig(): Promise<boolean> {
+  try {
+    const res = await fetch("/api/env-config");
+    const data = await res.json();
+    serverEnvConfigured = data.configured === true;
+    return serverEnvConfigured;
+  } catch {
+    serverEnvConfigured = false;
+    return false;
+  }
+}
+
 /** 检查是否已配置 API（客户端本地或服务端环境变量） */
 export function isApiConfigured(): boolean {
   const config = loadApiConfig();
   if (config?.textModelApiKey || config?.imageModelApiKey) return true;
-  if (config?.useDefaultModel) return true; // 使用服务端默认模型，由服务端判断
+  if (config?.useDefaultModel) return true; // 用户已明确开启使用默认模型
+  // 服务端环境变量已配置API时也视为已配置
+  if (serverEnvConfigured === true) return true;
   return false;
 }
 

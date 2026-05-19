@@ -63,7 +63,7 @@ const formLabels = [
 const showcase = [
   { title: "青花莲纹", theme: "青花瓷", colors: ["#FFFFFF", "#1557A8", "#3677D2", "#CDE8FF"] },
   { title: "敦煌飞天", theme: "敦煌文化", colors: ["#FCF9E0", "#EDB045", "#943630", "#0B3C43"] },
-  { title: "京剧脸谱", theme: "戏曲脸谱", colors: ["#FFFFFF", "#E7002F", "#000000", "#FFDA45"] },
+  { title: "京剧脸谱", theme: "京剧脸谱", colors: ["#FFFFFF", "#E7002F", "#000000", "#FFDA45"] },
   { title: "山海瑞兽", theme: "山海经", colors: ["#1D1414", "#D30022", "#166F41", "#FFC830"] },
 ];
 
@@ -1160,21 +1160,29 @@ export default function CreativeBeadStudio() {
               </label>
             </div>
           </section>
-          <section className="rounded-lg border border-stone-200 bg-white p-5">
-            <h2 className="text-xl font-semibold">✂️ 主体提取与再创作</h2>
-            <p className="mt-1 text-sm text-stone-500">提取图片核心主体意象后，分析其颜色组成和比例，严格按照原配色进行传统文化风格再创作；接下来在第三阶段（拼豆图纸）进行像素化处理。</p>
-            <div className="mt-4">{renderImageBox(extractedImageUrl, "主体素材")}</div>
-            <div className="mt-4 flex flex-wrap gap-3">
-              {sourceImageUrl && (
-                <button type="button" onClick={() => setShowMatting((value) => !value)} className="rounded-md border border-stone-300 bg-white px-4 py-2 text-sm font-semibold">
-                  {showMatting ? "收起交互式抠图" : "打开交互式抠图"}
+          <div className="space-y-5">
+            <section className="rounded-lg border border-stone-200 bg-white p-5">
+              <h2 className="text-xl font-semibold">✂️ 主体提取与再创作</h2>
+              <p className="mt-1 text-sm text-stone-500">提取图片核心主体意象后，分析其颜色组成和比例，严格按照原配色进行传统文化风格再创作；接下来在第三阶段（拼豆图纸）进行像素化处理。</p>
+              <div className="mt-4">{renderImageBox(extractedImageUrl, "主体素材")}</div>
+              <div className="mt-4 flex flex-wrap gap-3">
+                {sourceImageUrl && (
+                  <button type="button" onClick={() => setShowMatting((value) => !value)} className="rounded-md border border-stone-300 bg-white px-4 py-2 text-sm font-semibold">
+                    {showMatting ? "收起交互式抠图" : "打开交互式抠图"}
+                  </button>
+                )}
+                <button type="button" onClick={buildPatternFromExtracted} disabled={loading || !extractedImageUrl} className="rounded-md bg-stone-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
+                  {loading ? "生成中..." : "生成拼豆图纸"}
                 </button>
-              )}
-              <button type="button" onClick={buildPatternFromExtracted} disabled={loading || !extractedImageUrl} className="rounded-md bg-stone-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
-                {loading ? "生成中..." : "生成拼豆图纸"}
-              </button>
-            </div>
-          </section>
+              </div>
+            </section>
+            {extractedImageUrl && (
+              <section className="rounded-lg border border-stone-200 bg-white p-5">
+                <h2 className="mb-3 text-xl font-semibold">📖 AI 文化说明</h2>
+                <CultureExplanation copy={copy} />
+              </section>
+            )}
+          </div>
           {showMatting && sourceImageUrl && (
             <div className="lg:col-span-2">
               <InteractiveMatting

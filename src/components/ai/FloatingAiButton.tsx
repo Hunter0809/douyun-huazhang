@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { isApiConfigured } from "@/utils/aiChat";
+import { isApiConfigured, checkServerEnvConfig } from "@/utils/aiChat";
 
 type Props = {
   onClick: () => void;
@@ -23,6 +23,8 @@ export default function FloatingAiButton({ onClick }: Props) {
     const h = window.innerHeight;
     setPosition({ x: w - 80, y: h - 100 });
     setVisible(true);
+    // 启动时检测服务端是否已配置API
+    checkServerEnvConfig();
   }, []);
 
   // 清理提示定时器
@@ -105,15 +107,21 @@ export default function FloatingAiButton({ onClick }: Props) {
     };
   }, [isDragging]);
 
-  const handleClick = useCallback(() => {
+  const handleClick = useCallback(async () => {
     if (hasMoved) return;
-    if (isApiConfigured()) {
-      onClick();
-    } else {
+    // 如果当前未检测到API，立即检查服务端环境变量
+    if (!isApiConfigured()) {
+      const configured = await checkServerEnvConfig();
+      if (configured) {
+        onClick();
+        return;
+      }
       // 未配置 API，显示提示
       setShowUnconfiguredHint(true);
       if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
       hintTimerRef.current = setTimeout(() => setShowUnconfiguredHint(false), 3000);
+    } else {
+      onClick();
     }
   }, [onClick, hasMoved]);
 
