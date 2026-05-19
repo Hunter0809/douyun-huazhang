@@ -140,23 +140,22 @@ function clampColorCount(grid: MappedPixel[][], maxColors: number, forcedHexColo
 }
 
 /**
- * 判断一个颜色的亮度（ITU-R BT.601 亮度公式），返回 0-255 范围。
+ * 判断一个颜色是否接近白色（RGB 每个通道都接近于 255）。
+ * 只有当颜色是纯白或极接近白色时返回 true。
  */
-function getColorBrightness(hex: string): number {
+function isNearWhite(hex: string, threshold = 30): boolean {
   const rgb = hexToRgb(hex);
-  if (!rgb) return 0;
-  return 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b;
+  if (!rgb) return false;
+  return (255 - rgb.r) <= threshold && (255 - rgb.g) <= threshold && (255 - rgb.b) <= threshold;
 }
 
 /**
- * 标记图像轮廓外的浅色区域为外部背景（isExternal = true）。
+ * 标记图像轮廓外的白色/接近白色的区域为外部背景（isExternal = true）。
  * 从所有边界单元格出发，使用洪水填充（BFS），
- * 将所有与边界连通且颜色亮度 > brightnessThreshold 的单元格标记为 isExternal。
- * 这可以移除拼豆图纸外围的白色/浅色杂块，节省拼豆用量。
+ * 只将边界上白色或接近白色的连通区域标记为 isExternal。
  */
 function markExternalBackground(
   grid: MappedPixel[][],
-  brightnessThreshold = 200,
 ): MappedPixel[][] {
   const M = grid.length;
   if (M === 0) return grid;
@@ -178,15 +177,14 @@ function markExternalBackground(
       const cell = result[row][col];
       if (!cell || cell.isExternal) continue;
 
-      const brightness = getColorBrightness(cell.color);
-      if (brightness > brightnessThreshold) {
+      if (isNearWhite(cell.color)) {
         cell.isExternal = true;
         queue.push({ row, col });
       }
     }
   }
 
-  // BFS 洪水填充：将所有与边界连通且亮度高于阈值的连续区域标记为外部
+  // BFS 洪水填充：将所有与边界连通且为白色的连续区域标记为外部
   const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
   let head = 0;
   while (head < queue.length) {
@@ -200,8 +198,7 @@ function markExternalBackground(
       const neighbor = result[nr][nc];
       if (!neighbor || neighbor.isExternal) continue;
 
-      const brightness = getColorBrightness(neighbor.color);
-      if (brightness > brightnessThreshold) {
+      if (isNearWhite(neighbor.color)) {
         neighbor.isExternal = true;
         queue.push({ row: nr, col: nc });
       }
