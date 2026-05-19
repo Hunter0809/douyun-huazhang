@@ -268,13 +268,12 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Prop
                 <select
                   value={apiConfig.textModelName}
                   onChange={(e) => setApiConfig(p => ({ ...p, textModelName: e.target.value }))}
-                  className={`w-full appearance-none rounded-md border py-2 pl-9 pr-8 text-sm ${apiConfig.useDefaultModel ? 'border-emerald-200 bg-emerald-50/50 text-stone-500' : 'border-stone-300'}`}
+                  className={`w-full appearance-none rounded-md border py-2 pl-3 pr-8 text-sm ${apiConfig.useDefaultModel ? 'border-emerald-200 bg-emerald-50/50 text-stone-500' : 'border-stone-300'}`}
                   disabled={apiConfig.useDefaultModel}
                 >
-                  <option value="" disabled className="text-stone-400">请选择</option>
+                  <option value="" disabled>请选择</option>
                   {TEXT_MODEL_OPTIONS.map(m => <option key={m.name} value={m.name}>{m.icon} {m.name}</option>)}
                 </select>
-                <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-base">{currentTextOption?.icon ?? "🤖"}</span>
               </div>
               {!apiConfig.useDefaultModel && (
                 <>
@@ -298,13 +297,12 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Prop
                 <select
                   value={apiConfig.imageModelName}
                   onChange={(e) => setApiConfig(p => ({ ...p, imageModelName: e.target.value }))}
-                  className={`w-full appearance-none rounded-md border py-2 pl-9 pr-8 text-sm ${apiConfig.useDefaultModel ? 'border-emerald-200 bg-emerald-50/50 text-stone-500' : 'border-stone-300'}`}
+                  className={`w-full appearance-none rounded-md border py-2 pl-3 pr-8 text-sm ${apiConfig.useDefaultModel ? 'border-emerald-200 bg-emerald-50/50 text-stone-500' : 'border-stone-300'}`}
                   disabled={apiConfig.useDefaultModel}
                 >
-                  <option value="" disabled className="text-stone-400">请选择</option>
+                  <option value="" disabled>请选择</option>
                   {IMAGE_MODEL_OPTIONS.map(m => <option key={m.name} value={m.name}>{m.icon} {m.name}</option>)}
                 </select>
-                <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-base">{currentImageOption?.icon ?? "🎨"}</span>
               </div>
               {!apiConfig.useDefaultModel && (
                 <>
