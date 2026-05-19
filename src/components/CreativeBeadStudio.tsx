@@ -8,6 +8,8 @@ import InteractiveMatting from "@/components/InteractiveMatting";
 import ProductMockup from "@/components/ProductMockup";
 import ProfilePage from "@/components/ProfilePage";
 import LoginModal from "@/components/LoginModal";
+import AiChatPanel from "@/components/ai/AiChatPanel";
+import FloatingAiButton from "@/components/ai/FloatingAiButton";
 import { saveProjectRecord, loadCurrentUserProfile, type StoredUser } from "@/utils/profileStorage";
 import type { ProjectRecord } from "@/types/projectTypes";
 import { type AspectRatioId, aspectRatios } from "@/data/aspectRatios";
@@ -607,6 +609,7 @@ export default function CreativeBeadStudio() {
   const [currentUser, setCurrentUser] = useState<StoredUser | null>(() => loadCurrentUserProfile());
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [toastType, setToastType] = useState<"warning" | "success">("warning");
+  const [showAiChat, setShowAiChat] = useState(false);
 
   // 首页打字机动画状态
   const homeTypingLine1 = "方寸之间，粒粒皆可触摸的东方诗篇";
@@ -1967,6 +1970,12 @@ export default function CreativeBeadStudio() {
             setToastMsg(`用户 ${username} 账号注册成功！`);
           }}
         />
+      )}
+
+      {/* AI 豆韵助手 - 浮动按钮 & 聊天面板 */}
+      <FloatingAiButton onClick={() => setShowAiChat(true)} />
+      {showAiChat && (
+        <AiChatPanel onClose={() => setShowAiChat(false)} />
       )}
 
       {/* 页脚 - 产权标语 */}

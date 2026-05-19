@@ -1,0 +1,123 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+
+type Props = {
+  onClick: () => void;
+};
+
+export default function FloatingAiButton({ onClick }: Props) {
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [visible, setVisible] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragRef = useRef({ startX: 0, startY: 0, offsetX: 0, offsetY: 0, dragging: false });
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [hasMoved, setHasMoved] = useState(false);
+
+  // 初始化位置：右下角，留出边距
+  useEffect(() => {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    setPosition({ x: w - 80, y: h - 100 });
+    setVisible(true);
+  }, []);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setHasMoved(false);
+    dragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      offsetX: position.x,
+      offsetY: position.y,
+      dragging: false,
+    };
+    setIsDragging(true);
+  }, [position]);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    setHasMoved(false);
+    dragRef.current = {
+      startX: e.touches[0].clientX,
+      startY: e.touches[0].clientY,
+      offsetX: position.x,
+      offsetY: position.y,
+      dragging: false,
+    };
+    setIsDragging(true);
+  }, [position]);
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const dx = e.clientX - dragRef.current.startX;
+      const dy = e.clientY - dragRef.current.startY;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+        dragRef.current.dragging = true;
+        setHasMoved(true);
+      }
+      setPosition({
+        x: Math.max(0, Math.min(window.innerWidth - 56, dragRef.current.offsetX + dx)),
+        y: Math.max(0, Math.min(window.innerHeight - 56, dragRef.current.offsetY + dy)),
+      });
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
+      const dx = e.touches[0].clientX - dragRef.current.startX;
+      const dy = e.touches[0].clientY - dragRef.current.startY;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+        dragRef.current.dragging = true;
+        setHasMoved(true);
+      }
+      setPosition({
+        x: Math.max(0, Math.min(window.innerWidth - 56, dragRef.current.offsetX + dx)),
+        y: Math.max(0, Math.min(window.innerHeight - 56, dragRef.current.offsetY + dy)),
+      });
+    };
+
+    const handleEnd = () => {
+      setIsDragging(false);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleEnd);
+    window.addEventListener("touchmove", handleTouchMove, { passive: true });
+    window.addEventListener("touchend", handleEnd);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleEnd);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleEnd);
+    };
+  }, [isDragging]);
+
+  const handleClick = useCallback(() => {
+    if (hasMoved) return;
+    onClick();
+  }, [onClick, hasMoved]);
+
+  if (!visible) return null;
+
+  return (
+    <button
+      ref={buttonRef}
+      type="button"
+      onClick={handleClick}
+      onMouseDown={handleMouseDown}
+      onTouchStart={handleTouchStart}
+      className="fixed z-[150] flex h-14 w-14 cursor-grab items-center justify-center rounded-full bg-[#8f1d21] text-2xl text-white shadow-lg transition hover:bg-[#a52327] hover:shadow-xl active:cursor-grabbing active:scale-95"
+      style={{
+        left: position.x,
+        top: position.y,
+        touchAction: "none",
+      }}
+      title="豆韵助手 - 问答传统文化与拼豆知识"
+    >
+      🤖
+    </button>
+  );
+}
