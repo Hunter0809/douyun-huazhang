@@ -43,6 +43,7 @@ export default function SubjectMaskEditor({ imageUrl, loading, onSubjectChange }
   const isDrawingRef = useRef(false);
   const [mode, setMode] = useState<MaskMode>("select");
   const [brushSize, setBrushSize] = useState(16);
+  const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
   const [ready, setReady] = useState(false);
 
   const draw = useCallback(() => {
@@ -230,18 +231,19 @@ export default function SubjectMaskEditor({ imageUrl, loading, onSubjectChange }
               </button>
             ))}
           </div>
-          <label className="flex items-center gap-2 text-xs text-stone-500">
-            画笔
-            <select
+          <label className="flex min-w-40 items-center gap-2 text-xs text-stone-500">
+            <span>画笔</span>
+            <input
+              type="range"
+              min={BRUSH_SIZES[0]}
+              max={BRUSH_SIZES[BRUSH_SIZES.length - 1]}
+              step={1}
               value={brushSize}
               onChange={(event) => setBrushSize(Number(event.target.value))}
               disabled={mode === "select"}
-              className="rounded-md border border-stone-300 bg-white px-2 py-1 text-xs disabled:opacity-50"
-            >
-              {BRUSH_SIZES.map((size) => (
-                <option key={size} value={size}>{size}px</option>
-              ))}
-            </select>
+              className="w-24 accent-[#8f1d21] disabled:opacity-50"
+            />
+            <span className="w-9 tabular-nums">{brushSize}px</span>
           </label>
           <button type="button" onClick={resetAutoMask} disabled={!imageUrl || loading} className="rounded-md border border-stone-300 bg-white px-3 py-1.5 text-xs font-semibold text-stone-600 disabled:opacity-50">
             重置识别
@@ -249,18 +251,44 @@ export default function SubjectMaskEditor({ imageUrl, loading, onSubjectChange }
         </div>
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-lg border border-stone-200 bg-stone-50">
+      <div className="relative mt-4 overflow-hidden rounded-lg border border-stone-200 bg-stone-50">
         {imageUrl ? (
-          <canvas
-            ref={canvasRef}
-            className={`block max-h-[520px] w-full object-contain ${mode === "select" ? "cursor-crosshair" : "cursor-none"}`}
-            style={{ touchAction: "none" }}
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            onPointerCancel={handlePointerUp}
-            onPointerLeave={handlePointerUp}
-          />
+          <>
+            <canvas
+              ref={canvasRef}
+              className={`block max-h-[520px] w-full object-contain ${mode === "select" ? "cursor-crosshair" : "cursor-none"}`}
+              style={{ touchAction: "none" }}
+              onPointerDown={handlePointerDown}
+              onPointerMove={(event) => {
+                const point = getCanvasPoint(event.clientX, event.clientY);
+                setCursor(point);
+                handlePointerMove(event);
+              }}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={() => {
+                setCursor(null);
+                handlePointerUp();
+              }}
+              onPointerLeave={() => {
+                setCursor(null);
+                handlePointerUp();
+              }}
+            />
+            {mode !== "select" && cursor && maskRef.current && canvasRef.current && (
+              <div
+                className={`pointer-events-none absolute rounded-full border-2 ${
+                  mode === "add" ? "border-emerald-500 bg-emerald-400/15" : "border-red-500 bg-red-400/15"
+                } shadow-[0_0_0_1px_rgba(255,255,255,0.9)]`}
+                style={{
+                  left: `${(cursor.x / maskRef.current.width) * canvasRef.current.getBoundingClientRect().width}px`,
+                  top: `${(cursor.y / maskRef.current.height) * canvasRef.current.getBoundingClientRect().height}px`,
+                  width: `${(brushSize * 2 / maskRef.current.width) * canvasRef.current.getBoundingClientRect().width}px`,
+                  height: `${(brushSize * 2 / maskRef.current.height) * canvasRef.current.getBoundingClientRect().height}px`,
+                  transform: "translate(-50%, -50%)",
+                }}
+              />
+            )}
+          </>
         ) : (
           <div className="grid min-h-[320px] place-items-center text-sm text-stone-400">暂无图片</div>
         )}
