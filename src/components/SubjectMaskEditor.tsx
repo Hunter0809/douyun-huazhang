@@ -308,7 +308,7 @@ export default function SubjectMaskEditor({ imageUrl, loading, onSubjectChange }
 
       {analysis && analysis.colors.length > 0 && (
         <div className="mt-4 rounded-md border border-stone-200 bg-stone-50 p-3">
-          <p className="text-xs font-semibold text-stone-600">主体颜色占比（代码计算）</p>
+          <p className="text-xs font-semibold text-stone-600">主体颜色占比</p>
           <div className="mt-3 space-y-2">
             {analysis.colors.map((color) => {
               const percent = color.ratio * 100;
