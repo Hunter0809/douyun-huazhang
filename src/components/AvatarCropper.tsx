@@ -92,7 +92,8 @@ export default function AvatarCropper({ file, onSave, onCancel }: Props) {
 
   const stopDragging = useCallback(() => setIsDragging(false), []);
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!image) return;
 
     const canvas = document.createElement("canvas");
@@ -126,7 +127,7 @@ export default function AvatarCropper({ file, onSave, onCancel }: Props) {
       onMouseLeave={stopDragging}
       onTouchEnd={stopDragging}
     >
-      <div className="mx-4 w-full max-w-sm rounded-xl bg-white p-5 shadow-2xl">
+      <div className="mx-4 w-full max-w-sm rounded-xl bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-center text-lg font-semibold">裁剪头像</h3>
         <p className="mt-1 text-center text-xs text-stone-500">
           拖动调整位置，滚轮或滑块缩放
@@ -205,7 +206,7 @@ export default function AvatarCropper({ file, onSave, onCancel }: Props) {
         <div className="mt-5 flex gap-3">
           <button
             type="button"
-            onClick={onCancel}
+            onClick={(e) => { e.stopPropagation(); onCancel(); }}
             className="flex-1 rounded-lg border border-stone-300 bg-white py-2.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50 active:scale-[0.98]"
           >
             放弃
