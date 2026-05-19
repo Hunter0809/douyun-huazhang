@@ -13,7 +13,7 @@ import {
   type RgbColor,
   type ImageFilter,
 } from "./pixelation";
-import { getHeritageToHexMapping } from "./colorSystemUtils";
+import { getDisplayColorKey, getHeritageToHexMapping } from "./colorSystemUtils";
 
 export type BeadPattern = {
   grid: MappedPixel[][];
@@ -33,75 +33,182 @@ const fullPalette: PaletteColor[] = Object.entries(getHeritageToHexMapping())
 const whiteFallback: PaletteColor =
   fullPalette.find((color) => color.hex === "#FFFFFF") ?? fullPalette[0];
 
-function closestPaletteFromHex(hex: string, palette: PaletteColor[]): PaletteColor {
-  const rgb = hexToRgb(hex);
-  return rgb ? findClosestPaletteColor(rgb, palette) : whiteFallback;
-}
-
 const samplePaletteHints = ["#FFFFFF", "#1557A8", "#3677D2", "#CDE8FF", "#1C334D", "#EDB045"];
 
-function getFocusedPalette(): PaletteColor[] {
-  const seeded = samplePaletteHints.map((hex) => closestPaletteFromHex(hex, fullPalette));
-  const base = ["#FFFFFF", "#000000", "#F6EFE2", "#EDEDED"].map((hex) =>
-    closestPaletteFromHex(hex, fullPalette),
-  );
-  const byHex = new Map<string, PaletteColor>();
-  [...seeded, ...base, ...fullPalette].forEach((color) => byHex.set(color.hex, color));
-  return Array.from(byHex.values());
-}
-
+/**
+ * 智能颜色合并：通过迭代合并最相似颜色来减少颜色数量，而非直接丢弃低频颜色。
+ * 每次迭代找到最相似的两个颜色，将其中一个合并到另一个，从而最小化颜色失真。
+ */
 function clampColorCount(grid: MappedPixel[][], maxColors: number, forcedHexColors: string[] = []): MappedPixel[][] {
-  const counts = new Map<string, { count: number; cell: MappedPixel }>();
+  // 统计每种颜色的使用次数
+  const colorCounts = new Map<string, number>();
+  const colorCells = new Map<string, { key: string; color: string }>();
 
   grid.flat().forEach((cell) => {
     if (!cell || cell.isExternal) return;
     const key = cell.color.toUpperCase();
-    const current = counts.get(key);
-    counts.set(key, { count: (current?.count ?? 0) + 1, cell });
+    colorCounts.set(key, (colorCounts.get(key) ?? 0) + 1);
+    colorCells.set(key, { key: cell.key, color: cell.color.toUpperCase() });
   });
 
-  // 强制颜色必须出现在最终调色板中
-  const forcedSet = new Set(forcedHexColors.map(c => c.toUpperCase()));
-  const forcedEntries: { count: number; cell: MappedPixel }[] = [];
-  const otherEntries: { count: number; cell: MappedPixel }[] = [];
+  // 如果已有颜色数量 <= 上限，无需合并
+  if (colorCounts.size <= maxColors) return grid;
 
-  Array.from(counts.entries()).forEach(([hex, entry]) => {
-    if (forcedSet.has(hex)) {
-      forcedEntries.push(entry);
-    } else {
-      otherEntries.push(entry);
+  const forcedSet = new Set(forcedHexColors.map(c => c.toUpperCase()));
+
+  // 使用 Map: hex -> { count, key, color }
+  const paletteMap = new Map<string, { count: number; key: string; color: string }>();
+  colorCounts.forEach((count, hex) => {
+    const cell = colorCells.get(hex);
+    if (cell) {
+      paletteMap.set(hex, { count, key: cell.key, color: cell.color });
     }
   });
 
-  // 如果指定了强制颜色，先包含它们
-  const selected: { count: number; cell: MappedPixel }[] = [...forcedEntries];
+  // 迭代合并：每次合并最相似的两个非强制颜色
+  while (paletteMap.size > maxColors) {
+    let minDistance = Infinity;
+    let mergeTarget: string | null = null;   // 保留的颜色
+    let mergeSource: string | null = null;   // 被合并的颜色（合并到 target）
 
-  // 填充剩余名额：按出现次数排序的非强制颜色
-  const remainingSlots = maxColors - selected.length;
-  if (remainingSlots > 0) {
-    const sortedOthers = otherEntries.sort((a, b) => b.count - a.count).slice(0, remainingSlots);
-    selected.push(...sortedOthers);
+    const entries = Array.from(paletteMap.entries());
+
+    for (let i = 0; i < entries.length; i++) {
+      const [hexA, dataA] = entries[i];
+      if (forcedSet.has(hexA)) continue; // 强制颜色不可被合并
+
+      for (let j = i + 1; j < entries.length; j++) {
+        const [hexB, dataB] = entries[j];
+        if (forcedSet.has(hexB)) continue; // 强制颜色不可被合并
+
+        const rgbA = hexToRgb(hexA);
+        const rgbB = hexToRgb(hexB);
+        if (!rgbA || !rgbB) continue;
+
+        const dist = colorDistance(rgbA, rgbB);
+        if (dist < minDistance) {
+          minDistance = dist;
+          // 保留出现次数更多的颜色，合并出现次数更少的
+          if (dataA.count >= dataB.count) {
+            mergeTarget = hexA;
+            mergeSource = hexB;
+          } else {
+            mergeTarget = hexB;
+            mergeSource = hexA;
+          }
+        }
+      }
+    }
+
+    // 如果没有可合并的，跳出循环
+    if (!mergeSource || !mergeTarget) break;
+
+    // 合并：将 source 的计数加到 target
+    const targetData = paletteMap.get(mergeTarget);
+    const sourceData = paletteMap.get(mergeSource);
+    if (targetData && sourceData) {
+      targetData.count += sourceData.count;
+      paletteMap.delete(mergeSource);
+    }
   }
 
-  if (selected.length === 0) return grid;
+  // 构建最终的调色板
+  const dominantPalette: PaletteColor[] = [];
+  paletteMap.forEach((data, hex) => {
+    const rgb = hexToRgb(hex);
+    if (rgb) {
+      dominantPalette.push({ key: data.key, hex, rgb });
+    }
+  });
 
-  const dominantPalette = selected
-    .map((entry) => {
-      const rgb = hexToRgb(entry.cell.color);
-      return rgb ? { key: entry.cell.key, hex: entry.cell.color.toUpperCase(), rgb } : null;
-    })
-    .filter((item): item is PaletteColor => Boolean(item));
+  if (dominantPalette.length === 0) return grid;
 
+  // 将网格中每个像素映射到最近的最终调色板颜色
   return grid.map((row) =>
     row.map((cell) => {
       if (!cell || cell.isExternal) return cell;
-      if (dominantPalette.some((color) => color.hex === cell.color.toUpperCase())) return cell;
-      const rgb = hexToRgb(cell.color);
+      const cellHex = cell.color.toUpperCase();
+      // 如果颜色已在调色板中，保持原样
+      if (dominantPalette.some((c) => c.hex === cellHex)) return cell;
+      // 否则映射到最近的调色板颜色
+      const rgb = hexToRgb(cellHex);
       if (!rgb) return cell;
       const closest = findClosestPaletteColor(rgb, dominantPalette);
       return { key: closest.key, color: closest.hex };
     }),
   );
+}
+
+/**
+ * 判断一个颜色的亮度（ITU-R BT.601 亮度公式），返回 0-255 范围。
+ */
+function getColorBrightness(hex: string): number {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return 0;
+  return 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b;
+}
+
+/**
+ * 标记图像轮廓外的浅色区域为外部背景（isExternal = true）。
+ * 从所有边界单元格出发，使用洪水填充（BFS），
+ * 将所有与边界连通且颜色亮度 > brightnessThreshold 的单元格标记为 isExternal。
+ * 这可以移除拼豆图纸外围的白色/浅色杂块，节省拼豆用量。
+ */
+function markExternalBackground(
+  grid: MappedPixel[][],
+  brightnessThreshold = 200,
+): MappedPixel[][] {
+  const M = grid.length;
+  if (M === 0) return grid;
+  const N = grid[0].length;
+
+  // 深拷贝 grid 并保留 isExternal 状态
+  const result: MappedPixel[][] = grid.map((row) =>
+    row.map((cell) => ({ ...cell, isExternal: cell.isExternal ?? false })),
+  );
+
+  const queue: { row: number; col: number }[] = [];
+
+  // 从所有边界单元格开始检查
+  for (let row = 0; row < M; row++) {
+    for (let col = 0; col < N; col++) {
+      const isBorder = row === 0 || row === M - 1 || col === 0 || col === N - 1;
+      if (!isBorder) continue;
+
+      const cell = result[row][col];
+      if (!cell || cell.isExternal) continue;
+
+      const brightness = getColorBrightness(cell.color);
+      if (brightness > brightnessThreshold) {
+        cell.isExternal = true;
+        queue.push({ row, col });
+      }
+    }
+  }
+
+  // BFS 洪水填充：将所有与边界连通且亮度高于阈值的连续区域标记为外部
+  const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+  let head = 0;
+  while (head < queue.length) {
+    const { row, col } = queue[head++];
+
+    for (const [dr, dc] of directions) {
+      const nr = row + dr;
+      const nc = col + dc;
+      if (nr < 0 || nr >= M || nc < 0 || nc >= N) continue;
+
+      const neighbor = result[nr][nc];
+      if (!neighbor || neighbor.isExternal) continue;
+
+      const brightness = getColorBrightness(neighbor.color);
+      if (brightness > brightnessThreshold) {
+        neighbor.isExternal = true;
+        queue.push({ row: nr, col: nc });
+      }
+    }
+  }
+
+  return result;
 }
 
 function removeSingleCellNoise(grid: MappedPixel[][]): MappedPixel[][] {
@@ -201,7 +308,7 @@ export function generateSamplePattern(
   if (!ctx) throw new Error("Canvas is not available");
 
   drawThemeSample(ctx, options);
-  const palette = getFocusedPalette();
+  const palette = fullPalette;
   const grid = calculatePixelGrid(
     ctx,
     canvas.width,
@@ -215,7 +322,8 @@ export function generateSamplePattern(
   );
 
   const limited = clampColorCount(grid, options.colorCount, forcedHexColors);
-  const cleaned = options.antiAlias ? removeSingleCellNoise(limited) : limited;
+  const denoised = options.antiAlias ? removeSingleCellNoise(limited) : limited;
+  const cleaned = markExternalBackground(denoised);
 
   return {
     grid: cleaned,
@@ -268,7 +376,8 @@ export async function imageDataUrlToPattern(
     filter,
   );
   const limited = clampColorCount(grid, options.colorCount, forcedHexColors);
-  const cleaned = options.antiAlias ? removeSingleCellNoise(limited) : limited;
+  const denoised = options.antiAlias ? removeSingleCellNoise(limited) : limited;
+  const cleaned = markExternalBackground(denoised);
 
   return {
     grid: cleaned,
@@ -283,78 +392,100 @@ export async function imageDataUrlToPattern(
   };
 }
 
-/** 在 canvas 上绘制拼豆网格（带行列号），用于前端展示 */
-export function renderPatternToCanvas(
-  canvas: HTMLCanvasElement,
-  pattern: BeadPattern,
-  showGrid: boolean,
-): void {
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-  const cell = Math.max(8, Math.floor(640 / Math.max(pattern.width, pattern.height)));
+  /** 获取与背景色形成对比的文本颜色 */
+  function getContrastColor(hexColor: string): string {
+    const rgb = hexToRgb(hexColor);
+    if (!rgb) return '#000000';
+    const luma = 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b;
+    return luma > 140 ? '#000000' : '#FFFFFF';
+  }
 
-  // 行列号相关尺寸
-  const labelWidth = 28;
-  const labelHeight = 16;
-  const fontSize = Math.max(7, Math.min(10, Math.floor(cell * 0.28)));
+  /** 在 canvas 上绘制拼豆网格（带行列号和色号），用于前端展示 */
+  export function renderPatternToCanvas(
+    canvas: HTMLCanvasElement,
+    pattern: BeadPattern,
+    showGrid: boolean,
+  ): void {
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    // 提高分辨率：从 640 提升到 2000，确保拼豆图纸清晰显示
+    const cell = Math.max(12, Math.floor(2000 / Math.max(pattern.width, pattern.height)));
 
-  // 总画布尺寸 = 标签边距 + 网格区域
-  const gridPixelWidth = pattern.width * cell;
-  const gridPixelHeight = pattern.height * cell;
-  canvas.width = labelWidth + gridPixelWidth;
-  canvas.height = labelHeight + gridPixelHeight;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // 行列号相关尺寸
+    const labelWidth = 32;
+    const labelHeight = 20;
+    const fontSize = Math.max(9, Math.min(13, Math.floor(cell * 0.26)));
 
-  // 绘制网格区域
-  pattern.grid.forEach((row, y) => {
-    row.forEach((pixel, x) => {
-      const px = labelWidth + x * cell;
-      const py = labelHeight + y * cell;
-      ctx.fillStyle = pixel.isExternal ? "#ffffff" : pixel.color;
-      ctx.fillRect(px, py, cell, cell);
-      if (showGrid) {
-        ctx.strokeStyle = "rgba(17, 24, 39, 0.18)";
-        ctx.lineWidth = 1;
-        ctx.strokeRect(px + 0.5, py + 0.5, cell, cell);
-      }
+    // 总画布尺寸 = 标签边距 + 网格区域
+    const gridPixelWidth = pattern.width * cell;
+    const gridPixelHeight = pattern.height * cell;
+    canvas.width = labelWidth + gridPixelWidth;
+    canvas.height = labelHeight + gridPixelHeight;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 色号文字的大小：根据格子大小自适应，最小 7px，最大 14px
+    const keyFontSize = Math.max(7, Math.min(14, Math.floor(cell * 0.3)));
+
+    // 绘制网格区域（每个格子包含颜色填充、边框和色号文字）
+    pattern.grid.forEach((row, y) => {
+      row.forEach((pixel, x) => {
+        const px = labelWidth + x * cell;
+        const py = labelHeight + y * cell;
+        ctx.fillStyle = pixel.isExternal ? "#ffffff" : pixel.color;
+        ctx.fillRect(px, py, cell, cell);
+        
+        // 在非外部背景的格子里显示色号
+        if (!pixel.isExternal && cell >= 10) {
+          ctx.fillStyle = getContrastColor(pixel.color);
+          ctx.font = `bold ${keyFontSize}px monospace`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(getDisplayColorKey(pixel.color), px + cell / 2, py + cell / 2);
+        }
+
+        if (showGrid) {
+          ctx.strokeStyle = "rgba(17, 24, 39, 0.18)";
+          ctx.lineWidth = 1;
+          ctx.strokeRect(px + 0.5, py + 0.5, cell, cell);
+        }
+      });
     });
-  });
 
-  // 绘制顶部列号（1 ~ width）
-  ctx.fillStyle = "#f1f5f9";
-  ctx.fillRect(0, 0, canvas.width, labelHeight);
-  ctx.strokeStyle = "#cbd5e1";
-  ctx.lineWidth = 1;
-  ctx.strokeRect(0, 0, canvas.width, labelHeight);
+    // 绘制顶部列号（1 ~ width）
+    ctx.fillStyle = "#f1f5f9";
+    ctx.fillRect(0, 0, canvas.width, labelHeight);
+    ctx.strokeStyle = "#cbd5e1";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(0, 0, canvas.width, labelHeight);
 
-  ctx.fillStyle = "#475569";
-  ctx.font = `${fontSize}px monospace`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  for (let x = 0; x < pattern.width; x++) {
-    const cx = labelWidth + x * cell + cell / 2;
-    ctx.fillText(String(x + 1), cx, labelHeight / 2);
+    ctx.fillStyle = "#475569";
+    ctx.font = `${fontSize}px monospace`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    for (let x = 0; x < pattern.width; x++) {
+      const cx = labelWidth + x * cell + cell / 2;
+      ctx.fillText(String(x + 1), cx, labelHeight / 2);
+    }
+
+    // 绘制左侧行号（1 ~ height）
+    ctx.fillStyle = "#f1f5f9";
+    ctx.fillRect(0, labelHeight, labelWidth, gridPixelHeight);
+    ctx.strokeStyle = "#cbd5e1";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(labelWidth, labelHeight);
+    ctx.lineTo(labelWidth, canvas.height);
+    ctx.stroke();
+
+    ctx.fillStyle = "#475569";
+    ctx.font = `${fontSize}px monospace`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    for (let y = 0; y < pattern.height; y++) {
+      const cy = labelHeight + y * cell + cell / 2;
+      ctx.fillText(String(y + 1), labelWidth / 2, cy);
+    }
   }
-
-  // 绘制左侧行号（1 ~ height）
-  ctx.fillStyle = "#f1f5f9";
-  ctx.fillRect(0, labelHeight, labelWidth, gridPixelHeight);
-  ctx.strokeStyle = "#cbd5e1";
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(labelWidth, labelHeight);
-  ctx.lineTo(labelWidth, canvas.height);
-  ctx.stroke();
-
-  ctx.fillStyle = "#475569";
-  ctx.font = `${fontSize}px monospace`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  for (let y = 0; y < pattern.height; y++) {
-    const cy = labelHeight + y * cell + cell / 2;
-    ctx.fillText(String(y + 1), labelWidth / 2, cy);
-  }
-}
 
 /** 在 canvas 上绘制拼豆网格（不带行列号），用于导出或场景预览参考图 */
 export function renderPatternToCanvasClean(
@@ -364,7 +495,8 @@ export function renderPatternToCanvasClean(
 ): void {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
-  const cell = Math.max(8, Math.floor(640 / Math.max(pattern.width, pattern.height)));
+  // 同样提高分辨率以确保场景预览参考图清晰
+  const cell = Math.max(12, Math.floor(2000 / Math.max(pattern.width, pattern.height)));
   canvas.width = pattern.width * cell;
   canvas.height = pattern.height * cell;
   ctx.clearRect(0, 0, canvas.width, canvas.height);

@@ -199,3 +199,13 @@ export function deleteProjectRecord(id: string): void {
     localStorage.setItem(PROJECT_HISTORY_KEY, JSON.stringify(list));
   } catch { /* ignore */ }
 }
+
+/** 批量删除项目记录 */
+export function deleteProjectRecords(ids: string[]): void {
+  if (!isAvailable() || ids.length === 0) return;
+  try {
+    const idSet = new Set(ids);
+    const list = loadProjectHistory().filter((p) => !idSet.has(p.id));
+    localStorage.setItem(PROJECT_HISTORY_KEY, JSON.stringify(list));
+  } catch { /* ignore */ }
+}

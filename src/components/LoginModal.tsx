@@ -9,16 +9,19 @@ import {
   SYSTEM_AVATARS,
   type StoredUser,
 } from "@/utils/profileStorage";
+import AvatarCropper from "@/components/AvatarCropper";
 
 type ModalStep = "login" | "register";
 
 type Props = {
   onClose: () => void;
   onLoggedIn: (user: StoredUser) => void;
+  initialStep?: ModalStep;
+  onRegisterSuccess?: (username: string) => void;
 };
 
-export default function LoginModal({ onClose, onLoggedIn }: Props) {
-  const [step, setStep] = useState<ModalStep>("login");
+export default function LoginModal({ onClose, onLoggedIn, initialStep, onRegisterSuccess }: Props) {
+  const [step, setStep] = useState<ModalStep>(initialStep ?? "login");
   const [username, setUsername] = useState("");
   const [nickname, setNickname] = useState(generateRandomNickname());
   const [avatarEmoji, setAvatarEmoji] = useState(SYSTEM_AVATARS[Math.floor(Math.random() * SYSTEM_AVATARS.length)]);
@@ -27,6 +30,7 @@ export default function LoginModal({ onClose, onLoggedIn }: Props) {
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const usernameInputRef = useRef<HTMLInputElement>(null);
+  const [cropperFile, setCropperFile] = useState<File | null>(null);
 
   const avatarUrl = uploadedAvatar || `emoji:${avatarEmoji}`;
 
@@ -44,7 +48,8 @@ export default function LoginModal({ onClose, onLoggedIn }: Props) {
       onLoggedIn(user);
       onClose();
     } else {
-      // 用户不存在，进入注册步骤
+      // 用户不存在，进入注册步骤，昵称预填用户名
+      setNickname(trimmed);
       setStep("register");
       setLoading(false);
     }
@@ -66,13 +71,14 @@ export default function LoginModal({ onClose, onLoggedIn }: Props) {
     registerUser(trimmed, { nickname: nickname.trim(), avatarUrl });
     const user = loadCurrentUserProfile();
     if (user) {
+      onRegisterSuccess?.(trimmed);
       onLoggedIn(user);
       onClose();
     } else {
       setError("注册失败，请重试");
       setLoading(false);
     }
-  }, [username, nickname, avatarUrl, onLoggedIn, onClose]);
+  }, [username, nickname, avatarUrl, onLoggedIn, onClose, onRegisterSuccess]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -92,9 +98,13 @@ export default function LoginModal({ onClose, onLoggedIn }: Props) {
   const handleAvatarUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setUploadedAvatar(String(reader.result));
-    reader.readAsDataURL(file);
+    setCropperFile(file);
+    e.target.value = "";
+  }, []);
+
+  const handleCropperSave = useCallback((dataUrl: string) => {
+    setUploadedAvatar(dataUrl);
+    setCropperFile(null);
   }, []);
 
   return (
@@ -153,6 +163,13 @@ export default function LoginModal({ onClose, onLoggedIn }: Props) {
                 {loading ? "验证中..." : "下一步"}
               </button>
             </div>
+
+            <p className="mt-4 text-center text-sm text-stone-500">
+              还没有账号？
+              <button type="button" onClick={() => { setNickname(username.trim() || generateRandomNickname()); setStep("register"); setError(""); }} className="ml-1 font-medium text-[#8f1d21] hover:underline">
+                立即注册
+              </button>
+            </p>
           </>
         )}
 
@@ -262,6 +279,15 @@ export default function LoginModal({ onClose, onLoggedIn }: Props) {
           </>
         )}
       </div>
+
+      {/* 头像裁剪弹窗 */}
+      {cropperFile && (
+        <AvatarCropper
+          file={cropperFile}
+          onSave={handleCropperSave}
+          onCancel={() => setCropperFile(null)}
+        />
+      )}
     </div>
   );
 }

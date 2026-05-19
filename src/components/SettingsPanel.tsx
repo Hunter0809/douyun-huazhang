@@ -1,4 +1,4 @@
-﻿import React from 'react';
+﻿import React, { useState } from 'react';
 
 interface SettingsPanelProps {
   guidanceMode: 'nearest' | 'largest' | 'edge-first';
@@ -12,6 +12,8 @@ interface SettingsPanelProps {
   enableCelebration: boolean;
   onEnableCelebrationChange: (enable: boolean) => void;
   onClose: () => void;
+  /** 重置所有进度回调 */
+  onResetProgress?: () => void;
 }
 
 const SettingsPanel: React.FC<SettingsPanelProps> = ({
@@ -25,8 +27,11 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   onSectionLineColorChange,
   enableCelebration,
   onEnableCelebrationChange,
-  onClose
+  onClose,
+  onResetProgress,
 }) => {
+  const [resetConfirm, setResetConfirm] = useState(false);
+
   // 分割线颜色选项
   const sectionLineColors = [
     { color: '#007acc', name: '蓝色' },
@@ -195,10 +200,37 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
               <button className="w-full py-2 px-4 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-colors text-sm">
                 导出进度数据
               </button>
-              
-              <button className="w-full py-2 px-4 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors text-sm">
-                重置所有进度
-              </button>
+
+              {resetConfirm ? (
+                <div className="space-y-2">
+                  <p className="text-sm text-red-600 font-medium">确定要重置所有进度吗？此操作不可撤销。</p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        onResetProgress?.();
+                        setResetConfirm(false);
+                        onClose();
+                      }}
+                      className="flex-1 py-2 px-4 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+                    >
+                      确认重置
+                    </button>
+                    <button
+                      onClick={() => setResetConfirm(false)}
+                      className="flex-1 py-2 px-4 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
+                    >
+                      取消
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setResetConfirm(true)}
+                  className="w-full py-2 px-4 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors text-sm"
+                >
+                  重置所有进度
+                </button>
+              )}
             </div>
           </div>
 

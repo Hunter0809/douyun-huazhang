@@ -571,6 +571,28 @@ export default function FocusMode() {
           enableCelebration={focusState.enableCelebration}
           onEnableCelebrationChange={(enable: boolean) => setFocusState(prev => ({ ...prev, enableCelebration: enable }))}
           onClose={() => setFocusState(prev => ({ ...prev, showSettingsPanel: false }))}
+          onResetProgress={() => {
+            // 清空所有已完成的格子
+            setFocusState(prev => ({
+              ...prev,
+              completedCells: new Set<string>(),
+              colorProgress: Object.fromEntries(
+                Object.entries(prev.colorProgress).map(([color, cp]) => [color, { ...cp, completed: 0 }])
+              ),
+              totalElapsedTime: 0,
+              startTime: Date.now(),
+              lastResumeTime: Date.now(),
+              isPaused: false,
+              showCelebration: false,
+              showCompletionCard: false,
+              selectedCell: null,
+            }));
+            // 更新可用颜色的完成数
+            setAvailableColors(prev => prev.map(color => ({
+              ...color,
+              completed: 0
+            })));
+          }}
         />
       )}
 

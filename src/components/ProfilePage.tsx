@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ProjectRecord } from "@/types/projectTypes";
 import { TEXT_MODEL_OPTIONS, IMAGE_MODEL_OPTIONS } from "@/types/projectTypes";
 import {
@@ -8,11 +8,13 @@ import {
   saveApiConfig,
   loadProjectHistory,
   deleteProjectRecord,
+  deleteProjectRecords,
   loadCurrentUserProfile,
   updateCurrentUserProfile,
   logoutUser,
   type StoredUser,
 } from "@/utils/profileStorage";
+import AvatarCropper from "@/components/AvatarCropper";
 
 type Props = {
   onBack: () => void;
@@ -27,11 +29,58 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Prop
   const [saved, setSaved] = useState(false);
   const [showTextKey, setShowTextKey] = useState(false);
   const [showImageKey, setShowImageKey] = useState(false);
+  const [envConfig, setEnvConfig] = useState<{ configured: boolean; baseUrl: string; defaultImageModel: string; defaultTextModel: string } | null>(null);
+  const [envLoading, setEnvLoading] = useState(false);
   const [profile, setProfile] = useState<StoredUser>(() => loadCurrentUserProfile() ?? { nickname: "豆韵用户", avatarUrl: "", createdAt: Date.now() });
   const [nicknameEditing, setNicknameEditing] = useState(false);
   const [nicknameDraft, setNicknameDraft] = useState(profile.nickname);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const history = useMemo(() => loadProjectHistory(), []);
+  const [cropperFile, setCropperFile] = useState<File | null>(null);
+  const [history, setHistory] = useState(() => loadProjectHistory());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchMode, setBatchMode] = useState(false);
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    if (selectedIds.size === history.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(history.map(r => r.id)));
+    }
+  }, [history, selectedIds.size]);
+
+  const batchDelete = useCallback(() => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    if (!confirm(`确定删除选中的 ${ids.length} 条作品记录？此操作不可撤销。`)) return;
+    deleteProjectRecords(ids);
+    setHistory(loadProjectHistory());
+    setSelectedIds(new Set());
+  }, [selectedIds]);
+
+  const batchExport = useCallback(() => {
+    const records = history.filter(r => selectedIds.has(r.id));
+    if (records.length === 0) return;
+    // 默认导出图纸 PNG（带序号前缀避免覆盖）
+    records.forEach((record, i) => {
+      const url = record.patternUrl || record.cleanPatternUrl || record.mockupUrl;
+      if (url) {
+        const a = document.createElement("a");
+        a.href = url;
+        const prefix = String(i + 1).padStart(2, "0");
+        a.download = `${prefix}-${record.title || record.theme || "作品"}.png`;
+        a.click();
+      }
+    });
+  }, [history, selectedIds]);
 
   const saveProfile = useCallback((p: StoredUser) => {
     setProfile(p);
@@ -41,11 +90,14 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Prop
   const handleAvatarChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      saveProfile({ ...profile, avatarUrl: String(reader.result) });
-    };
-    reader.readAsDataURL(file);
+    setCropperFile(file);
+    // 重置 input，使得再次选择同一文件也能触发
+    e.target.value = "";
+  }, []);
+
+  const handleCropperSave = useCallback((dataUrl: string) => {
+    saveProfile({ ...profile, avatarUrl: dataUrl });
+    setCropperFile(null);
   }, [profile, saveProfile]);
 
   const removeAvatar = useCallback(() => {
@@ -59,6 +111,28 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Prop
     }
     setNicknameEditing(false);
   }, [nicknameDraft, profile, saveProfile]);
+
+  // 当勾选"使用默认模型"时，获取环境变量配置信息
+  useEffect(() => {
+    if (!apiConfig.useDefaultModel) {
+      setEnvConfig(null);
+      return;
+    }
+    setEnvLoading(true);
+    fetch("/api/env-config")
+      .then(res => res.json())
+      .then(data => {
+        setEnvConfig(data);
+        // 自动填充模型名（密钥由服务端环境变量接管）
+        setApiConfig(prev => ({
+          ...prev,
+          textModelName: data.defaultTextModel || prev.textModelName,
+          imageModelName: data.defaultImageModel || prev.imageModelName,
+        }));
+      })
+      .catch(() => setEnvConfig(null))
+      .finally(() => setEnvLoading(false));
+  }, [apiConfig.useDefaultModel]);
 
   const handleSaveApi = useCallback(() => { saveApiConfig(apiConfig); setSaved(true); setTimeout(() => setSaved(false), 2000); }, [apiConfig]);
 
@@ -148,34 +222,89 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Prop
         <section className="rounded-lg border border-stone-200 bg-white p-6">
           <h2 className="text-xl font-semibold">API 配置</h2>
           <p className="mt-1 text-sm text-stone-500">填写模型 API 密钥以启用 AI 生成功能，密钥仅存储在本地浏览器中。</p>
+          
+          {/* 使用默认模型开关 */}
+          <div className="mt-4 flex items-center justify-between rounded-md border border-stone-200 bg-stone-50 px-4 py-3">
+            <div>
+              <div className="text-sm font-medium text-stone-800">使用系统默认模型</div>
+              <div className="text-xs text-stone-500">
+                {apiConfig.useDefaultModel
+                  ? envLoading
+                    ? "正在读取环境配置…"
+                    : envConfig?.configured
+                      ? "已检测到服务端 API 密钥，无需手动填写"
+                      : "服务端未配置环境变量密钥"
+                  : "手动填写 API Key"}
+              </div>
+            </div>
+            <label className="relative inline-flex cursor-pointer items-center">
+              <input
+                type="checkbox"
+                checked={apiConfig.useDefaultModel ?? false}
+                onChange={(e) => setApiConfig(p => ({ ...p, useDefaultModel: e.target.checked }))}
+                className="peer sr-only"
+              />
+              <div className="h-6 w-11 rounded-full bg-stone-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-stone-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-emerald-500 peer-checked:after:translate-x-full peer-checked:after:border-white" />
+            </label>
+          </div>
+
+          {apiConfig.useDefaultModel && envConfig?.configured ? (
+            <div className="mt-4 rounded-md border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-800">
+              <p className="font-medium">✓ 已使用服务端默认配置</p>
+              <ul className="mt-1 space-y-1 text-xs text-emerald-700">
+                {envConfig.baseUrl && <li>接口地址：<code className="rounded bg-emerald-100 px-1">{envConfig.baseUrl}</code></li>}
+                {envConfig.defaultTextModel && <li>默认文本模型：<code className="rounded bg-emerald-100 px-1">{envConfig.defaultTextModel}</code></li>}
+                {envConfig.defaultImageModel && <li>默认图片模型：<code className="rounded bg-emerald-100 px-1">{envConfig.defaultImageModel}</code></li>}
+              </ul>
+            </div>
+          ) : apiConfig.useDefaultModel && !envLoading ? (
+            <div className="mt-4 rounded-md border border-amber-100 bg-amber-50 p-3 text-sm text-amber-800">
+              ⚠️ 服务端未配置环境变量密钥（AI_API_KEY / ARK_API_KEY / OPENAI_API_KEY），请手动填写下方的 API Key。
+            </div>
+          ) : null}
+
           <div className="mt-6 grid gap-6 md:grid-cols-2">
             {/* 文本模型 */}
             <div>
               <label className="text-sm font-medium">文本模型</label>
               <div className="relative mt-1">
-                <select value={apiConfig.textModelName} onChange={(e) => setApiConfig(p => ({ ...p, textModelName: e.target.value }))} className="w-full appearance-none rounded-md border border-stone-300 py-2 pl-9 pr-8 text-sm">
+                <select
+                  value={apiConfig.textModelName}
+                  onChange={(e) => setApiConfig(p => ({ ...p, textModelName: e.target.value }))}
+                  className={`w-full appearance-none rounded-md border py-2 pl-9 pr-8 text-sm ${apiConfig.useDefaultModel ? 'border-emerald-200 bg-emerald-50/50 text-stone-500' : 'border-stone-300'}`}
+                  disabled={apiConfig.useDefaultModel}
+                >
                   {TEXT_MODEL_OPTIONS.map(m => <option key={m.name} value={m.name}>{m.icon} {m.name}</option>)}
                 </select>
                 <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-base">{TEXT_MODEL_OPTIONS.find(m => m.name === apiConfig.textModelName)?.icon ?? "🤖"}</span>
               </div>
-              <div className="relative mt-2">
-                <input type={showTextKey ? "text" : "password"} placeholder="API Key" value={apiConfig.textModelApiKey} onChange={(e) => setApiConfig(p => ({ ...p, textModelApiKey: e.target.value }))} className="w-full rounded-md border border-stone-300 py-2 pl-3 pr-9 text-sm" />
-                <button type="button" onClick={() => setShowTextKey(v => !v)} className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-stone-400 hover:text-stone-700">{showTextKey ? "🙈" : "👁️"}</button>
-              </div>
+              {!apiConfig.useDefaultModel && (
+                <div className="relative mt-2">
+                  <input type={showTextKey ? "text" : "password"} placeholder="API Key" value={apiConfig.textModelApiKey} onChange={(e) => setApiConfig(p => ({ ...p, textModelApiKey: e.target.value }))} className="w-full rounded-md border border-stone-300 py-2 pl-3 pr-9 text-sm" />
+                  <button type="button" onClick={() => setShowTextKey(v => !v)} className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-stone-400 hover:text-stone-700">{showTextKey ? "🙈" : "👁️"}</button>
+                </div>
+              )}
             </div>
             {/* 生图模型 */}
             <div>
               <label className="text-sm font-medium">生图模型</label>
               <div className="relative mt-1">
-                <select value={apiConfig.imageModelName} onChange={(e) => setApiConfig(p => ({ ...p, imageModelName: e.target.value }))} className="w-full appearance-none rounded-md border border-stone-300 py-2 pl-9 pr-8 text-sm">
+                <select
+                  value={apiConfig.imageModelName}
+                  onChange={(e) => setApiConfig(p => ({ ...p, imageModelName: e.target.value }))}
+                  className={`w-full appearance-none rounded-md border py-2 pl-9 pr-8 text-sm ${apiConfig.useDefaultModel ? 'border-emerald-200 bg-emerald-50/50 text-stone-500' : 'border-stone-300'}`}
+                  disabled={apiConfig.useDefaultModel}
+                >
                   {IMAGE_MODEL_OPTIONS.map(m => <option key={m.name} value={m.name}>{m.icon} {m.name}</option>)}
                 </select>
                 <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-base">{IMAGE_MODEL_OPTIONS.find(m => m.name === apiConfig.imageModelName)?.icon ?? "🎨"}</span>
               </div>
-              <div className="relative mt-2">
-                <input type={showImageKey ? "text" : "password"} placeholder="API Key" value={apiConfig.imageModelApiKey} onChange={(e) => setApiConfig(p => ({ ...p, imageModelApiKey: e.target.value }))} className="w-full rounded-md border border-stone-300 py-2 pl-3 pr-9 text-sm" />
-                <button type="button" onClick={() => setShowImageKey(v => !v)} className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-stone-400 hover:text-stone-700">{showImageKey ? "🙈" : "👁️"}</button>
-              </div>
+              {!apiConfig.useDefaultModel && (
+                <div className="relative mt-2">
+                  <input type={showImageKey ? "text" : "password"} placeholder="API Key" value={apiConfig.imageModelApiKey} onChange={(e) => setApiConfig(p => ({ ...p, imageModelApiKey: e.target.value }))} className="w-full rounded-md border border-stone-300 py-2 pl-3 pr-9 text-sm" />
+                  <button type="button" onClick={() => setShowImageKey(v => !v)} className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-stone-400 hover:text-stone-700">{showImageKey ? "🙈" : "👁️"}</button>
+                </div>
+              )}
             </div>
           </div>
           <div className="mt-4 flex items-center gap-3">
@@ -186,16 +315,73 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Prop
 
         {/* 历史作品 */}
         <section className="rounded-lg border border-stone-200 bg-white p-6">
-          <h2 className="text-xl font-semibold">历史作品</h2>
-          <p className="mt-1 text-sm text-stone-500">点击作品可恢复进度继续编辑，已完成的作品支持导出。</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold">历史作品</h2>
+              <p className="mt-1 text-sm text-stone-500">点击作品可恢复进度继续编辑，已完成的作品支持导出。</p>
+            </div>
+            {history.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setBatchMode(v => !v)}
+                className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                  batchMode
+                    ? "bg-stone-200 text-stone-700"
+                    : "border border-stone-300 bg-white text-stone-600 hover:bg-stone-100"
+                }`}
+              >
+                {batchMode ? "退出多选" : "多选"}
+              </button>
+            )}
+          </div>
+
           {history.length === 0 ? (
             <div className="mt-6 grid place-items-center rounded-lg border border-dashed border-stone-300 py-16 text-sm text-stone-400">暂无作品记录</div>
           ) : (
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {history.map(record => (
-                <ProjectCard key={record.id} record={record} onRestore={() => onRestoreProject(record)} onExport={(f) => handleExport(record, f)} onDelete={() => { deleteProjectRecord(record.id); window.location.reload(); }} />
-              ))}
-            </div>
+            <>
+              {/* 批量操作工具栏 */}
+              {batchMode && (
+                <div className="mt-4 flex flex-wrap items-center gap-3 rounded-md bg-stone-50 px-4 py-3">
+                  <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-stone-700">
+                    <input type="checkbox" checked={selectedIds.size === history.length} onChange={toggleSelectAll} className="h-4 w-4 rounded border-stone-300" />
+                    全选
+                  </label>
+                  <span className="text-xs text-stone-400">已选 {selectedIds.size} / {history.length}</span>
+                  <div className="ml-auto flex gap-2">
+                    <button
+                      type="button"
+                      onClick={batchExport}
+                      disabled={selectedIds.size === 0}
+                      className="rounded-md bg-[#8f1d21] px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
+                    >
+                      📦 批量导出图纸
+                    </button>
+                    <button
+                      type="button"
+                      onClick={batchDelete}
+                      disabled={selectedIds.size === 0}
+                      className="rounded-md border border-red-300 bg-red-50 px-3 py-1.5 text-sm font-semibold text-red-700 disabled:opacity-50"
+                    >
+                      🗑️ 批量删除
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {history.map(record => (
+                  <ProjectCard
+                    key={record.id}
+                    record={record}
+                    selected={batchMode ? selectedIds.has(record.id) : undefined}
+                    onToggleSelect={batchMode ? () => toggleSelect(record.id) : undefined}
+                    onRestore={() => { if (!batchMode) onRestoreProject(record); }}
+                    onExport={(f) => handleExport(record, f)}
+                    onDelete={() => { deleteProjectRecord(record.id); setHistory(loadProjectHistory()); }}
+                  />
+                ))}
+              </div>
+            </>
           )}
         </section>
 
@@ -215,16 +401,43 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Prop
           </button>
         </section>
       </div>
+
+      {/* 头像裁剪弹窗 */}
+      {cropperFile && (
+        <AvatarCropper
+          file={cropperFile}
+          onSave={handleCropperSave}
+          onCancel={() => setCropperFile(null)}
+        />
+      )}
     </main>
   );
 }
 
-function ProjectCard({ record, onRestore, onExport, onDelete }: { record: ProjectRecord; onRestore: () => void; onExport: (f: "png" | "preview" | "csv" | "pdf") => void; onDelete: () => void }) {
+function ProjectCard({ record, selected, onToggleSelect, onRestore, onExport, onDelete }: {
+  record: ProjectRecord;
+  selected?: boolean;
+  onToggleSelect?: () => void;
+  onRestore: () => void;
+  onExport: (f: "png" | "preview" | "csv" | "pdf") => void;
+  onDelete: () => void;
+}) {
   const [showMenu, setShowMenu] = useState(false);
   const previewUrl = record.mockupUrl || record.patternUrl || record.cleanPatternUrl;
   return (
-    <div className="group relative rounded-lg border border-stone-200 bg-stone-50 p-3 transition hover:border-stone-400">
-      <div className="aspect-video cursor-pointer overflow-hidden rounded-md border border-stone-200 bg-white" onClick={onRestore}>
+    <div className={`group relative rounded-lg border p-3 transition ${
+      selected ? "border-[#8f1d21] ring-2 ring-[#8f1d21]/30 bg-[#8f1d21]/5" : "border-stone-200 bg-stone-50 hover:border-stone-400"
+    }`}>
+      {onToggleSelect && (
+        <div
+          className="absolute left-2 top-2 z-10 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border-2 bg-white"
+          style={{ borderColor: selected ? '#8f1d21' : '#d6d3d1' }}
+          onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
+        >
+          {selected && <svg className="h-3 w-3 text-[#8f1d21]" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>}
+        </div>
+      )}
+      <div className="aspect-video overflow-hidden rounded-md border border-stone-200 bg-white" onClick={onToggleSelect || onRestore}>
         {previewUrl ? <img src={previewUrl} alt={record.title} className="h-full w-full object-contain" /> : <div className="grid h-full place-items-center text-xs text-stone-400">无预览</div>}
       </div>
       <div className="mt-2 flex items-start justify-between gap-2">

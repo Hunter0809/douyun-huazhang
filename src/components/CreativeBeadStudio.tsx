@@ -28,6 +28,7 @@ import {
   sortColorsByHue,
   filterColorsByFamily,
   COLOR_FAMILIES,
+  IMAGE_FILTER_OPTIONS,
   type ColorFamily,
   type ImageFilter,
 } from "@/utils/colorSystemUtils";
@@ -35,17 +36,17 @@ import {
 type SiteView = "home" | "start" | "faq" | "profile";
 type StudioStep = "config" | "extract" | "pattern" | "preview";
 
-const navItems: { id: SiteView; label: string; icon: string }[] = [
-  { id: "home", label: "首页", icon: "🏠" },
-  { id: "start", label: "快速开始", icon: "🚀" },
-  { id: "faq", label: "帮助", icon: "💡" },
+  const navItems: { id: SiteView; label: string }[] = [
+  { id: "home", label: "首页" },
+  { id: "start", label: "开始创作" },
+  { id: "faq", label: "帮助" },
 ];
 
 const studioSteps: { id: StudioStep; label: string; desc: string; icon: string }[] = [
   { id: "config", label: "配置", desc: "选择传统主题、作品形式、网格尺寸、颜色数量和可用色", icon: "⚙️" },
-  { id: "extract", label: "主体提取", desc: "AI 生成或上传图片，查看原图与主体提取结果", icon: "✂️" },
-  { id: "pattern", label: "拼豆图纸", desc: "生成带色号网格、统计颜色用量并导出图纸", icon: "🧩" },
-  { id: "preview", label: "场景预览", desc: "查看成品效果、文化说明并导出完整制作资料", icon: "🖼️" },
+  { id: "extract", label: "主体提取", desc: "提取图片核心主体意象，结合中华文化进行艺术再创作（支持重新提取）", icon: "✂️" },
+  { id: "pattern", label: "拼豆图纸", desc: "像素化处理、自动移除轮廓外浅色杂块以节省拼豆用量、生成带色号网格并统计用量", icon: "🧩" },
+  { id: "preview", label: "场景预览", desc: "基于拼豆图纸生成真实拼豆成品场景预览、查看文化说明并导出完整制作资料", icon: "🖼️" },
 ];
 
 const formLabels = [
@@ -76,22 +77,22 @@ const scrollingPatterns = [
 const craftSteps = [
   {
     anchor: "guide-theme",
-    title: "选择传统主题",
+    title: "主题选择",
     text: "从青花瓷、敦煌纹样、京剧脸谱、山海经、二十四节气等主题出发，确定适合拼豆表达的主体、纹样和色彩气质。",
   },
   {
     anchor: "guide-upload",
-    title: "AI 生成或上传素材",
-    text: "可让 AI 生成传统文化图案，也可上传手绘稿、照片或参考图，系统会提取主体并转为可编辑的拼豆网格。",
+    title: "素材与提取",
+    text: "AI 生成或上传本地图片素材，提取核心主体意象进行艺术再创作，支持交互式抠图精细调整边界区域。",
   },
   {
     anchor: "guide-mapping",
-    title: "映射传统配色",
-    text: "以开源色表进行近似色映射，支持指定已有颜色、限制颜色数量、保留网格线，便于实际摆豆和核对。",
+    title: "配色与调色板",
+    text: "以开源色表进行近似色映射，支持指定已有颜色并限制颜色数量、开启网格辅助线，便于实际摆豆时精准核对。",
   },
   {
     anchor: "guide-export",
-    title: "导出制作资料",
+    title: "导出与预览",
     text: "导出带色号图纸、预览图、文化说明和用量统计 CSV，用于个人创作、课堂活动、社群分享或开源二次开发。",
   },
 ];
@@ -102,6 +103,38 @@ type HelpSection = {
   icon: string;
   subs: { title: string; content: string | string[] }[];
 };
+
+const helpSidebarNav = [
+  {
+    id: "purpose",
+    label: "设计目的",
+    icon: "🎯",
+    subs: [] as { label: string; anchor: string }[],
+  },
+  {
+    id: "guide",
+    label: "操作指南",
+    icon: "📖",
+    subs: [
+      { label: "主题选择", anchor: "guide-theme" },
+      { label: "素材与提取", anchor: "guide-upload" },
+      { label: "配色与调色板", anchor: "guide-mapping" },
+      { label: "导出与预览", anchor: "guide-export" },
+    ],
+  },
+  {
+    id: "common-issues",
+    label: "常见问题",
+    icon: "❓",
+    subs: [] as { label: string; anchor: string }[],
+  },
+  {
+    id: "tech-details",
+    label: "技术详解",
+    icon: "🔧",
+    subs: [] as { label: string; anchor: string }[],
+  },
+];
 
 const helpData: HelpSection[] = [
   {
@@ -132,7 +165,7 @@ const helpData: HelpSection[] = [
   },
   {
     id: "guide-theme",
-    title: "操作指南 · 主题选择",
+    title: "主题选择",
     icon: "🏛️",
     subs: [
       {
@@ -159,30 +192,30 @@ const helpData: HelpSection[] = [
   },
   {
     id: "guide-upload",
-    title: "操作指南 · 素材与提取",
+    title: "素材与提取",
     icon: "✂️",
     subs: [
       {
-        title: "AI 生成图案",
+        title: "使用 AI 生成图案",
         content: "点击「AI 生成图案」按钮，系统会根据你选择的主题、核心元素、作品形式等参数，调用AI生成一幅传统文化风格的图案。生成后会自动进入「主体提取」步骤。",
       },
       {
         title: "上传自己的图片",
-        content: "支持上传JPG/PNG格式图片。上传后会先进行主体提取（自动识别和分离主要元素），再结合当前主题生成适合拼豆化的图像。传统纹样、书法字形、器物纹饰和简洁插画效果最佳。复杂照片或多人物场景可能提取效果不理想。",
+        content: "支持上传JPG/PNG格式图片。上传后会先进行主体提取（自动识别和分离主要主题意象），再结合当前主题进行传统文化艺术再创作。传统纹样、书法字形、器物纹饰和简洁插画效果最佳。复杂照片或多人物场景可能提取效果不理想。",
       },
       {
         title: "使用内置样例",
         content: "点击「使用内置样例」快速生成一个示例拼豆图纸，无需等待AI生成，适合快速体验流程或测试参数调整效果。",
       },
       {
-        title: "交互式抠图",
+        title: "使用交互式抠图",
         content: "在「主体提取」步骤中，点击「打开交互式抠图」可手动调整抠图区域。通过调整前景/背景笔刷和阈值，精细控制提取结果，适合对AI自动提取不满意的场景。",
       },
     ],
   },
   {
     id: "guide-mapping",
-    title: "操作指南 · 配色与调色板",
+    title: "配色与调色板",
     icon: "🎨",
     subs: [
       {
@@ -198,14 +231,14 @@ const helpData: HelpSection[] = [
         content: "颜色上限滑块控制最终图纸使用的颜色数量，取值范围从 2 色到 128 色。这个参数直接影响拼豆图纸的视觉效果和制作难度：颜色上限越低，画面越简洁、色块越大，适合入门或制作大型拼豆作品；颜色上限越高，画面越丰富细腻，但对应的拼豆采购种类也越多、摆豆时对照色号的工作量也越大。对于大多数传统文化主题拼豆作品，建议将颜色上限设置在 8 到 16 色之间，这个范围既能保证图案有足够的色彩层次和辨识度，又不会让材料采购变得过于繁琐。如果你通过调色板手动指定了「已选颜色」，且这些颜色的数量超过颜色上限设定值，超出部分的颜色将不会被系统纳入映射目标，系统会在界面上给出警告提醒。合理搭配颜色上限和已选颜色列表，可以非常灵活地控制最终图纸的色彩方案。",
       },
       {
-        title: "颜色合并与平滑",
+        title: "了解颜色合并与平滑",
         content: "「平滑杂点」选项是一个像素画后处理优化开关，默认处于开启状态。当它开启时，系统会在初始颜色映射完成后，对相邻且颜色相似的像素区域进行合并处理。具体来说，算法采用广度优先搜索（BFS），遍历整个像素网格，识别出颜色差异（基于 RGB 欧氏距离）小于预设阈值的连通区域，然后将每个区域内的所有像素统一设置为该区域内出现次数最多的色号。这一步骤可以有效消除小面积的杂色块，让画面看起来更加整洁干净，特别适合处理照片或复杂图片转换后产生的琐碎颜色点。如果你处理的是插画或已经比较简洁的图形，杂色问题不严重，也可以关闭此选项以保留原始的细节和边缘过渡。建议在大多数情况下保持开启，仅在需要保留精细纹理或渐变效果时关闭。",
       },
     ],
   },
   {
     id: "guide-export",
-    title: "操作指南 · 导出与预览",
+    title: "导出与预览",
     icon: "📤",
     subs: [
       {
@@ -379,6 +412,89 @@ function PatternMiniature({ colors }: { colors: string[] }) {
   );
 }
 
+function CraftSection({ setView }: { setView: (v: SiteView) => void }) {
+  const sectionRef = useRef<HTMLElement>(null);
+  const [visible, setVisible] = useState(false);
+  const subtitleText = "从文化意象到拼豆底稿";
+  const [typedSub, setTypedSub] = useState("");
+
+  // IntersectionObserver — 每次滚动进/出视口都重新触发
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true);
+        } else {
+          // 离开视口时重置，下次进入重新播放
+          setVisible(false);
+          setTypedSub("");
+        }
+      },
+      { threshold: 0.15 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  // 打字副标题 — visible 从 false→true 时重新播放
+  useEffect(() => {
+    if (!visible) return;
+    setTypedSub("");
+    let index = 0;
+    const t = setInterval(() => {
+      index++;
+      setTypedSub(subtitleText.slice(0, index));
+      if (index >= subtitleText.length) clearInterval(t);
+    }, 60);
+    return () => clearInterval(t);
+  }, [visible]);
+
+  return (
+    <section ref={sectionRef} className="bg-[#fffdf7] py-20">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <p className="text-sm font-semibold text-[#8f1d21]">制作流程</p>
+        <h2 className="mt-2 min-h-[1.2em] text-3xl font-semibold tracking-tight">
+          {typedSub}
+          {visible && typedSub.length < subtitleText.length && (
+            <span className="inline-block w-[2px] h-[0.9em] bg-[#8f1d21] ml-0.5 animate-pulse align-middle" />
+          )}
+        </h2>
+        <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          {craftSteps.map((item, i) => (
+            <button
+              key={item.title}
+              type="button"
+              onClick={() => {
+                setView("faq");
+                setTimeout(() => {
+                  document.getElementById(item.anchor)?.scrollIntoView({ behavior: "smooth" });
+                }, 150);
+              }}
+              className={`flex h-full flex-col rounded-lg border border-stone-200 bg-[#fbf7ed] p-5 text-left transition-all duration-700 ease-out hover:border-[#8f1d21]/40 hover:shadow-sm ${
+                visible
+                  ? "opacity-100 translate-y-0"
+                  : "opacity-0 translate-y-8"
+              }`}
+              style={{
+                transitionDelay: visible ? `${i * 250 + 500}ms` : "0ms",
+              }}
+            >
+              <PatternMiniature colors={["#FFFFFF", "#1557A8", "#943630", "#EDB045"]} />
+              <p className="mt-3 text-xs font-bold tracking-wider text-[#8f1d21] uppercase">
+                Step {i + 1}
+              </p>
+              <h3 className="mt-1 text-lg font-semibold">{item.title}</h3>
+              <p className="mt-2 flex-1 text-sm leading-6 text-stone-600 text-justify">{item.text}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function ScrollingPatternBand() {
   const patternSet = [...scrollingPatterns, ...scrollingPatterns.slice(0, 2)];
 
@@ -482,13 +598,68 @@ export default function CreativeBeadStudio() {
   const [confirmNew, setConfirmNew] = useState<"ai" | "sample" | "upload" | null>(null);
   const pendingUploadRef = useRef<File | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [loginModalStep, setLoginModalStep] = useState<"login" | "register">("login");
   const [currentUser, setCurrentUser] = useState<StoredUser | null>(() => loadCurrentUserProfile());
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<"warning" | "success">("warning");
+
+  // 首页打字机动画状态
+  const homeTypingLine1 = "方寸之间，粒粒皆可触摸的东方诗篇";
+  const homeTypingLine2 = "从传统纹样中拾取一片色彩，让古老的审美以新的温度落回掌心。豆韵以AI为笔，将文化意象织入像素网格——选题、生成、映射、成稿，每一步皆是对传统的再创作，也是献给手作时光的一封情书。";
+  const [typedLine1, setTypedLine1] = useState("");
+  const [typedLine2, setTypedLine2] = useState("");
+  const [typingDone, setTypingDone] = useState(false);
+
+  // 打字机动画
+  useEffect(() => {
+    // 只在主页视图时触发
+    if (view !== "home") return;
+    
+    setTypedLine1("");
+    setTypedLine2("");
+    setTypingDone(false);
+
+    let line1Index = 0;
+    let line2Index = 0;
+    let timer: ReturnType<typeof setInterval>;
+
+    // 先打字第一行（标题）
+    const startLine2 = () => {
+      timer = setInterval(() => {
+        if (line2Index < homeTypingLine2.length) {
+          line2Index++;
+          setTypedLine2(homeTypingLine2.slice(0, line2Index));
+        } else {
+          clearInterval(timer);
+          // 全部打完，延迟一点再浮现内容
+          setTimeout(() => setTypingDone(true), 400);
+        }
+      }, 40); // 放慢至 40ms
+    };
+
+    // 开始打第一行
+    timer = setInterval(() => {
+      if (line1Index < homeTypingLine1.length) {
+        line1Index++;
+        setTypedLine1(homeTypingLine1.slice(0, line1Index));
+      } else {
+        clearInterval(timer);
+        // 延迟 200ms 开始打第二行
+        setTimeout(startLine2, 200);
+      }
+    }, 80);
+
+    return () => clearInterval(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view]);
 
   // Toast 自动消失
   useEffect(() => {
     if (!toastMsg) return;
-    const t = setTimeout(() => setToastMsg(null), 3000);
+    const t = setTimeout(() => {
+      setToastMsg(null);
+      setToastType("warning");
+    }, 3000);
     return () => clearTimeout(t);
   }, [toastMsg]);
 
@@ -497,12 +668,14 @@ export default function CreativeBeadStudio() {
 
   const doUseSample = useCallback(() => {
     abortScene();
-    // 只替换源头图像和提取图像，不动之前生成的 pattern/scene
+    clearPatternArtifacts();
     const original = renderSampleDesignOriginal(options);
     setSourceImageUrl(original);
     setExtractedImageUrl(original);
+    setShowMatting(false);
     setError(null);
     setConfirmNew(null);
+    setStep("extract");
   }, [abortScene, options]);
 
   const doUpload = async (file: File) => {
@@ -539,10 +712,10 @@ export default function CreativeBeadStudio() {
   useEffect(() => {
     if (!pattern) return;
     if (canvasRef.current) {
-      renderPatternToCanvas(canvasRef.current, pattern, true);
+      renderPatternToCanvas(canvasRef.current, pattern, showGrid);
     }
     const patternCanvas = document.createElement("canvas");
-    renderPatternToCanvas(patternCanvas, pattern, true);
+    renderPatternToCanvas(patternCanvas, pattern, showGrid);
     setPatternUrl(patternCanvas.toDataURL("image/png"));
 
     const cleanCanvas = document.createElement("canvas");
@@ -569,6 +742,7 @@ export default function CreativeBeadStudio() {
   const buildPatternFromExtracted = async () => {
     if (!extractedImageUrl) {
     setError(null);
+    setToastType("warning");
     setToastMsg("请先完成主题提取，再生成拼豆图纸。");
     setStep("extract");
       return;
@@ -811,11 +985,11 @@ export default function CreativeBeadStudio() {
                   <input type="range" min={16} max={128} step={8} value={gridSize} onChange={(event) => setGridSize(Number(event.target.value))} className="mt-3 w-full" />
                 </label>
                 <label className="text-sm font-medium">
-                  🎨 颜色上限：{colorCount} 色
+                  颜色上限：{colorCount} 色
                   <input type="range" min={2} max={128} step={2} value={colorCount} onChange={(event) => setColorCount(Number(event.target.value))} className="mt-3 w-full" />
                 </label>
               </div>
-              <div className="grid gap-3 md:grid-cols-3">
+              <div className="grid gap-3 md:grid-cols-2">
                 <label className="flex items-center justify-between rounded-md border border-stone-200 bg-stone-50 px-3 py-2 text-sm font-medium">
                   显示网格
                   <input type="checkbox" checked={showGrid} onChange={(event) => setShowGrid(event.target.checked)} />
@@ -824,10 +998,6 @@ export default function CreativeBeadStudio() {
                   平滑杂点
                   <input type="checkbox" checked={antiAlias} onChange={(event) => setAntiAlias(event.target.checked)} />
                 </label>
-                <div className="flex items-center justify-between rounded-md border border-stone-200 bg-stone-50 px-3 py-2 text-sm font-medium">
-                  <span>🌈 滤镜</span>
-                  <FilterDropdown value={selectedFilter} onChange={(value) => setSelectedFilter(value)} />
-                </div>
               </div>
               <div className="flex flex-wrap gap-3">
                 <button
@@ -940,6 +1110,18 @@ export default function CreativeBeadStudio() {
                 );
               })}
             </div>
+            {/* 滤镜区域 */}
+            <div className="mt-3 rounded-md border border-stone-200 bg-stone-50 p-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">滤镜</span>
+                <FilterDropdown value={selectedFilter} onChange={(value) => setSelectedFilter(value)} />
+              </div>
+              {selectedFilter !== "none" && (
+                <div className="mt-2 text-xs text-stone-500 leading-relaxed">
+                  {IMAGE_FILTER_OPTIONS.find((f) => f.key === selectedFilter)?.desc ?? "保持原始色彩"}
+                </div>
+              )}
+            </div>
           </section>
         </div>
       );
@@ -968,7 +1150,7 @@ export default function CreativeBeadStudio() {
           </section>
           <section className="rounded-lg border border-stone-200 bg-white p-5">
             <h2 className="text-xl font-semibold">✂️ 主体提取结果</h2>
-            <p className="mt-1 text-sm text-stone-500">上传图片会先提取主要元素，并结合当前主题生成传统文创图案；这里不进行拼豆化，拼豆网格会在第三阶段生成。</p>
+            <p className="mt-1 text-sm text-stone-500">上传图片会先提取主要主题意象，并结合当前主题进行传统文化艺术再创作；接下来在第三阶段（拼豆图纸）进行像素化处理。</p>
             <div className="mt-4">{renderImageBox(extractedImageUrl, "主体素材")}</div>
             <div className="mt-4 flex flex-wrap gap-3">
               {sourceImageUrl && (
@@ -1104,10 +1286,10 @@ export default function CreativeBeadStudio() {
                 <input type="range" min={16} max={128} step={8} value={gridSize} onChange={(event) => setGridSize(Number(event.target.value))} className="mt-2 w-full" />
               </label>
               <label className="text-sm font-medium">
-                🎨 颜色上限：{colorCount} 色
+                颜色上限：{colorCount} 色
                 <input type="range" min={2} max={128} step={2} value={colorCount} onChange={(event) => setColorCount(Number(event.target.value))} className="mt-2 w-full" />
               </label>
-              <div className="grid gap-2 md:grid-cols-3">
+              <div className="grid gap-2 md:grid-cols-2">
                 <label className="flex items-center justify-between rounded-md border border-stone-200 bg-stone-50 px-3 py-2 text-sm font-medium">
                   显示网格
                   <input type="checkbox" checked={showGrid} onChange={(event) => setShowGrid(event.target.checked)} />
@@ -1116,10 +1298,17 @@ export default function CreativeBeadStudio() {
                   平滑杂点
                   <input type="checkbox" checked={antiAlias} onChange={(event) => setAntiAlias(event.target.checked)} />
                 </label>
-                <div className="flex items-center justify-between rounded-md border border-stone-200 bg-stone-50 px-3 py-2 text-sm font-medium">
-                  <span>🌈 滤镜</span>
+              </div>
+              <div className="rounded-md border border-stone-200 bg-stone-50 p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">滤镜</span>
                   <FilterDropdown value={selectedFilter} onChange={(value) => setSelectedFilter(value)} />
                 </div>
+                {selectedFilter !== "none" && (
+                  <div className="mt-2 text-xs text-stone-500 leading-relaxed">
+                    {IMAGE_FILTER_OPTIONS.find((f) => f.key === selectedFilter)?.desc ?? "保持原始色彩"}
+                  </div>
+                )}
               </div>
             </div>
           </section>
@@ -1233,27 +1422,58 @@ export default function CreativeBeadStudio() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, step, pattern, patternUrl, cleanPatternUrl, productSceneUrl, sourceImageUrl]);
 
+  // 帮助页面：当 details 离开视口时自动收起
+  useEffect(() => {
+    if (view !== "faq") return;
+    let observer: IntersectionObserver | null = null;
+    const timer = setTimeout(() => {
+      const detailsList = document.querySelectorAll<HTMLDetailsElement>(
+        ".min-w-0.flex-1 details"
+      );
+      if (!detailsList.length) return;
+      observer = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (entry.target instanceof HTMLDetailsElement && !entry.isIntersecting) {
+              entry.target.removeAttribute("open");
+            }
+          }
+        },
+        { threshold: 0 }
+      );
+      detailsList.forEach((d) => observer!.observe(d));
+    }, 100);
+    return () => {
+      clearTimeout(timer);
+      observer?.disconnect();
+    };
+  }, [view]);
+
   return (
     <main className="min-h-screen bg-[#f8f5ef] text-stone-950">
       <header className="sticky top-0 z-50 border-b border-stone-200/80 bg-[#fffdf7]/95 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          {/* 左侧 Logo */}
+        <div className="relative mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+          {/* 左侧 Logo + 品牌文字 */}
           <button type="button" onClick={() => setView("home")} className="flex shrink-0 items-center gap-2">
             <span className="grid h-8 w-8 place-items-center rounded-md bg-[#8f1d21] text-xs font-bold text-white">韵</span>
+            <span className="hidden text-sm font-semibold text-stone-800 sm:inline">豆韵 | 传统纹样拼豆设计工具</span>
           </button>
 
-          {/* 中间导航 */}
-          <nav className="flex items-center gap-1 rounded-md bg-stone-100 p-1">
+          {/* 中间导航 - 绝对居中 */}
+          <nav className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-lg bg-stone-100 p-1.5">
               {navItems.map((item) => (
               <button
                 key={item.id}
                 type="button"
-            onClick={() => setView(item.id)}
-                className={`rounded px-4 py-2 text-sm font-medium transition ${
+            onClick={() => {
+                  setView(item.id);
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className={`rounded-md px-5 py-2.5 text-base font-semibold transition ${
                   view === item.id ? "bg-white text-stone-950 shadow-sm" : "text-stone-600 hover:text-stone-950"
                 }`}
               >
-                <span className="mr-1">{item.icon}</span>{item.label}
+                {item.label}
               </button>
             ))}
           </nav>
@@ -1283,18 +1503,33 @@ export default function CreativeBeadStudio() {
               <span className="hidden sm:inline">{currentUser.nickname}</span>
             </button>
           ) : (
-            <button
-              type="button"
-              onClick={() => setShowLoginModal(true)}
-              className="flex shrink-0 items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium text-stone-600 transition hover:bg-stone-100 hover:text-stone-950"
-            >
-              <span className="grid h-7 w-7 place-items-center overflow-hidden rounded-full bg-stone-300 text-xs font-semibold text-white">
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-                </svg>
-              </span>
-              <span className="hidden sm:inline">登录</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginModalStep("login");
+                  setShowLoginModal(true);
+                }}
+                className="flex shrink-0 items-center gap-2 rounded-md bg-[#8f1d21] px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-[#a82428]"
+              >
+                <span className="grid h-7 w-7 place-items-center overflow-hidden rounded-full bg-[#a82428] text-xs font-semibold text-white">
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                  </svg>
+                </span>
+                <span className="hidden sm:inline">登录</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginModalStep("register");
+                  setShowLoginModal(true);
+                }}
+                className="flex shrink-0 items-center gap-2 rounded-md border border-[#8f1d21] px-4 py-1.5 text-sm font-semibold text-[#8f1d21] transition hover:bg-[#8f1d21] hover:text-white"
+              >
+                <span className="hidden sm:inline">注册</span>
+              </button>
+            </div>
           )}
         </div>
       </header>
@@ -1313,19 +1548,36 @@ export default function CreativeBeadStudio() {
           <section className="relative overflow-hidden bg-[#2b2118] text-white">
             <div className="mx-auto max-w-7xl px-4 pb-8 pt-14 sm:px-6 lg:px-8">
               <p className="text-sm font-semibold text-[#f2c46d]">千年纹样 × 掌间拼豆</p>
-              <h1 className="mt-3 max-w-4xl whitespace-nowrap text-2xl font-semibold leading-tight tracking-tight sm:text-4xl md:text-5xl lg:text-6xl">
-                方寸之间，粒粒皆可触摸的东方诗篇
+
+              {/* 打字机标题 */}
+              <h1 className="mt-3 min-h-[1em] max-w-4xl whitespace-nowrap text-2xl font-semibold leading-tight tracking-tight sm:text-4xl md:text-5xl lg:text-6xl">
+                {typedLine1}
+                {typedLine1.length > 0 && typedLine1.length < homeTypingLine1.length && (
+                  <span className="inline-block w-[2px] h-[0.8em] bg-[#f2c46d] ml-0.5 animate-pulse align-middle" />
+                )}
               </h1>
-              <p className="mt-5 max-w-2xl text-base leading-7 text-stone-200">
-                从传统纹样中拾取一片色彩，让古老的审美以新的温度落回掌心。豆韵以AI为笔，将文化意象织入像素网格——选题、生成、映射、成稿，每一步皆是对传统的再创作，也是献给手作时光的一封情书。
+
+              {/* 打字机描述 */}
+              <p className="mt-5 min-h-[1.5em] max-w-2xl text-base leading-7 text-stone-200">
+                {typedLine2}
+                {typedLine2.length > 0 && typedLine2.length < homeTypingLine2.length && (
+                  <span className="inline-block w-[2px] h-[1em] bg-[#f2c46d] ml-0.5 animate-pulse align-middle" />
+                )}
               </p>
-              <div className="mt-7 flex flex-wrap gap-4">
-                <button type="button" onClick={() => setView("start")} className="rounded-md bg-[#f2c46d] px-8 py-4 text-base font-bold text-stone-950 shadow-lg transition hover:bg-[#f4d07a] hover:shadow-xl">
-                  🚀 快速开始
-                </button>
+
+              {/* 打字完成后浮现快速开始按钮 */}
+              <div className={`transition-all duration-700 ${typingDone ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6 pointer-events-none"}`}>
+                <div className="mt-7 flex flex-wrap gap-4">
+                  <button type="button" onClick={() => setView("start")} className="rounded-md bg-[#f2c46d] px-8 py-4 text-base font-bold text-stone-950 shadow-lg transition hover:bg-[#f4d07a] hover:shadow-xl">
+                    🚀 快速开始
+                  </button>
+                </div>
               </div>
+              {/* 纹样滚动带 — 始终展示 */}
               <ScrollingPatternBand />
             </div>
+
+            {/* 精选主题 — 始终展示 */}
             <div className="mx-auto grid max-w-7xl gap-5 px-4 pb-12 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
               {showcase.map((item) => (
                 <button
@@ -1338,6 +1590,9 @@ export default function CreativeBeadStudio() {
                       setElement(themeData.elements[0] ?? "");
                       setMeaning(themeData.meaning);
                     }
+                    // 预设该模板的推荐配色到调色板
+                    setForcedColors(item.colors);
+                    setColorCount(Math.max(8, item.colors.length + 4));
                     clearPatternArtifacts();
                     setSourceImageUrl(null);
                     setExtractedImageUrl(null);
@@ -1354,71 +1609,118 @@ export default function CreativeBeadStudio() {
             </div>
           </section>
 
-          <section className="bg-[#fffdf7] py-20">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-              <p className="text-sm font-semibold text-[#8f1d21]">制作流程</p>
-              <h2 className="mt-2 text-3xl font-semibold tracking-tight">从文化意象到拼豆底稿</h2>
-              <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-                {craftSteps.map((item) => (
-                  <button
-                    key={item.title}
-                    type="button"
-                    onClick={() => {
-                      setView("faq");
-                      // 延迟滚动以等待 DOM 渲染
-                      setTimeout(() => {
-                        document.getElementById(item.anchor)?.scrollIntoView({ behavior: "smooth" });
-                      }, 150);
-                    }}
-                    className="w-full rounded-lg border border-stone-200 bg-[#fbf7ed] p-5 text-left transition hover:border-[#8f1d21]/40 hover:shadow-sm"
-                  >
-                    <PatternMiniature colors={["#FFFFFF", "#1557A8", "#943630", "#EDB045"]} />
-                    <h3 className="mt-4 text-lg font-semibold">{item.title}</h3>
-                    <p className="mt-2 text-sm leading-6 text-stone-600">{item.text}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </section>
+          <CraftSection setView={setView} />
         </>
       )}
 
       {view === "faq" && (
-        <section className="mx-auto max-w-5xl px-4 py-14 sm:px-6 lg:px-8">
-          <p className="text-sm font-semibold text-[#8f1d21]">创作指南</p>
-          <h1 className="mt-2 text-4xl font-semibold tracking-tight">豆韵 · 帮助</h1>
-          <div className="mt-8 space-y-6">
-            {helpData.map((section) => (
-              <div key={section.id} id={section.id} className="scroll-mt-20 rounded-lg border border-stone-200 bg-white">
-                <div className="border-b border-stone-100 px-5 py-4">
-                  <h2 className="flex items-center gap-2 text-xl font-semibold">
+        <div className="mx-auto flex max-w-6xl gap-0 px-4 py-14 sm:px-6 lg:px-8">
+          {/* 左侧目录导航栏 */}
+          <aside className="sticky top-20 hidden h-[calc(100vh-6rem)] w-56 shrink-0 overflow-y-auto lg:block">
+            <nav className="space-y-1">
+              {helpSidebarNav.map((section) => (
+                <div key={section.id}>
+                  <a
+                    href={`#${section.id}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      document.getElementById(section.id)?.scrollIntoView({ behavior: "smooth" });
+                    }}
+                    className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100 hover:text-stone-950"
+                  >
                     <span>{section.icon}</span>
-                    <span>{section.title}</span>
-                  </h2>
+                    <span>{section.label}</span>
+                  </a>
+                  {section.subs.length > 0 && (
+                    <div className="ml-5 space-y-0.5 border-l border-stone-200 pl-2">
+                      {section.subs.map((sub) => (
+                        <a
+                          key={sub.anchor}
+                          href={`#${sub.anchor}`}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            document.getElementById(sub.anchor)?.scrollIntoView({ behavior: "smooth" });
+                          }}
+                          className="block rounded-md px-3 py-1.5 text-xs text-stone-500 transition hover:bg-stone-100 hover:text-stone-800"
+                        >
+                          {sub.label}
+                        </a>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div className="divide-y divide-stone-100">
-                  {section.subs.map((sub, subIndex) => (
-                    <details key={subIndex} className="group p-5" open={subIndex === 0}>
-                      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-medium text-stone-800">
-                        {sub.title}
-                        <span className="text-xl text-stone-400 group-open:rotate-45 transition-transform">+</span>
-                      </summary>
-                      <div className="mt-3 space-y-2 text-sm leading-6 text-stone-600">
-                        {Array.isArray(sub.content) ? (
-                          sub.content.map((line, lineIndex) => (
-                            <p key={lineIndex}>{line}</p>
-                          ))
-                        ) : (
-                          <p>{sub.content}</p>
-                        )}
-                      </div>
-                    </details>
-                  ))}
+              ))}
+            </nav>
+          </aside>
+
+          {/* 右侧内容区域 */}
+          <div className="min-w-0 flex-1 lg:pl-8">
+            <p className="text-sm font-semibold text-[#8f1d21]">创作指南</p>
+            <h1 className="mt-2 text-4xl font-semibold tracking-tight">豆韵 · 帮助</h1>
+
+            {/* 移动端顶部快速导航 */}
+            <div className="mt-4 flex flex-wrap gap-2 lg:hidden">
+              {helpSidebarNav.map((section) => (
+                <a
+                  key={section.id}
+                  href={`#${section.id}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    document.getElementById(section.id)?.scrollIntoView({ behavior: "smooth" });
+                  }}
+                  className="rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-stone-600 transition hover:border-stone-400 hover:text-stone-900"
+                >
+                  {section.icon} {section.label}
+                </a>
+              ))}
+            </div>
+
+            <div className="mt-8 space-y-6">
+              {helpData.map((section) => {
+                // 为操作指南子章节标注 Step 1~4
+                const stepMap: Record<string, string> = {
+                  "guide-theme": "Step 1",
+                  "guide-upload": "Step 2",
+                  "guide-mapping": "Step 3",
+                  "guide-export": "Step 4",
+                };
+                const stepLabel = stepMap[section.id];
+                return (
+                <div key={section.id} id={section.id} className="scroll-mt-20 rounded-lg border border-stone-200 bg-white">
+                  <div className="border-b border-stone-100 px-5 py-4">
+                    <h2 className="flex items-center gap-2 text-xl font-semibold">
+                      <span>{section.icon}</span>
+                      {stepLabel && (
+                        <span className="text-sm font-bold tracking-wider text-[#8f1d21] uppercase">{stepLabel}</span>
+                      )}
+                      <span>{section.title}</span>
+                    </h2>
+                  </div>
+                  <div className="divide-y divide-stone-100">
+                    {section.subs.map((sub, subIndex) => (
+                      <details key={subIndex} className="group p-5">
+                        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-medium text-stone-800">
+                          {sub.title}
+                          <span className="text-xl text-stone-400 group-open:rotate-45 transition-transform">+</span>
+                        </summary>
+                        <div className="mt-3 space-y-2 text-sm leading-6 text-stone-600">
+                          {Array.isArray(sub.content) ? (
+                            sub.content.map((line, lineIndex) => (
+                              <p key={lineIndex}>{line}</p>
+                            ))
+                          ) : (
+                            <p>{sub.content}</p>
+                          )}
+                        </div>
+                      </details>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+              })}
+            </div>
           </div>
-        </section>
+        </div>
       )}
 
       {view === "start" && (
@@ -1439,10 +1741,13 @@ export default function CreativeBeadStudio() {
                   onClick={() => {
                     if (!canAccess) {
                       if (index === 1 && !sourceImageUrl && !extractedImageUrl) {
+                        setToastType("warning");
                         setToastMsg("请先生成或上传素材，再进入主体提取步骤。");
                       } else if (index === 2 && !extractedImageUrl) {
+                        setToastType("warning");
                         setToastMsg("请先完成主体提取，再生成拼豆图纸。");
                       } else if (index === 3 && !pattern) {
+                        setToastType("warning");
                         setToastMsg("请先生成拼豆图纸，再进入场景预览。");
                       }
                       return;
@@ -1516,7 +1821,9 @@ export default function CreativeBeadStudio() {
 
       {/* Toast 警告弹窗 - 移动弹跳 */}
       {toastMsg && (
-        <div className="fixed left-1/2 top-20 z-[200] -translate-x-1/2 animate-bounce rounded-lg bg-red-600 px-5 py-3 text-sm font-medium text-white shadow-lg">
+        <div className={`fixed left-1/2 top-20 z-[200] -translate-x-1/2 animate-bounce rounded-lg px-5 py-3 text-sm font-medium text-white shadow-lg ${
+          toastType === "success" ? "bg-emerald-600" : "bg-[#6b1a20]"
+        }`}>
           {toastMsg}
         </div>
       )}
@@ -1524,13 +1831,33 @@ export default function CreativeBeadStudio() {
       {/* 登录/注册弹窗 */}
       {showLoginModal && (
         <LoginModal
+          initialStep={loginModalStep}
           onClose={() => setShowLoginModal(false)}
           onLoggedIn={(user) => {
             setCurrentUser(user);
             setShowLoginModal(false);
           }}
+          onRegisterSuccess={(username) => {
+            setToastType("success");
+            setToastMsg(`用户 ${username} 账号注册成功！`);
+          }}
         />
       )}
+
+      {/* 页脚 - 产权标语 */}
+      <footer className="border-t border-stone-200 bg-[#fffdf7]">
+        <div className="mx-auto flex max-w-7xl flex-col items-center gap-1 px-4 py-6 text-center sm:px-6 lg:px-8">
+          <p className="text-xs text-stone-400">
+            &copy; {new Date().getFullYear()} 豆韵 DouYun — 拼豆图纸生成工具
+          </p>
+          <p className="text-xs text-stone-400">
+            基于 Apache 2.0 开源协议 · 以 AI 为笔，让千年纹样织入像素网格
+          </p>
+          <p className="mt-1 text-[11px] text-stone-300">
+            All Rights Reserved.
+          </p>
+        </div>
+      </footer>
     </main>
   );
 }

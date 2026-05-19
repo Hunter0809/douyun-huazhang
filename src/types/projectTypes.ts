@@ -4,6 +4,8 @@ export interface ApiConfig {
   textModelName: string;
   imageModelApiKey: string;
   imageModelName: string;
+  /** 是否使用系统环境变量中的默认模型，为 true 时隐藏 apikey 输入 */
+  useDefaultModel?: boolean;
 }
 
 /** 可选的文本模型 */
