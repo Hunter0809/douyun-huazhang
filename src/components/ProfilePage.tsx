@@ -69,7 +69,6 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Prop
   const batchExport = useCallback(() => {
     const records = history.filter(r => selectedIds.has(r.id));
     if (records.length === 0) return;
-    // 默认导出图纸 PNG（带序号前缀避免覆盖）
     records.forEach((record, i) => {
       const url = record.patternUrl || record.cleanPatternUrl || record.mockupUrl;
       if (url) {
@@ -91,7 +90,6 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Prop
     const file = e.target.files?.[0];
     if (!file) return;
     setCropperFile(file);
-    // 重置 input，使得再次选择同一文件也能触发
     e.target.value = "";
   }, []);
 
@@ -112,7 +110,6 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Prop
     setNicknameEditing(false);
   }, [nicknameDraft, profile, saveProfile]);
 
-  // 当勾选"使用默认模型"时，获取环境变量配置信息
   useEffect(() => {
     if (!apiConfig.useDefaultModel) {
       setEnvConfig(null);
@@ -123,7 +120,6 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Prop
       .then(res => res.json())
       .then(data => {
         setEnvConfig(data);
-        // 自动填充模型名（密钥由服务端环境变量接管）
         setApiConfig(prev => ({
           ...prev,
           textModelName: data.defaultTextModel || prev.textModelName,
@@ -146,6 +142,9 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Prop
     }
   }, []);
 
+  const currentTextOption = TEXT_MODEL_OPTIONS.find(m => m.name === apiConfig.textModelName);
+  const currentImageOption = IMAGE_MODEL_OPTIONS.find(m => m.name === apiConfig.imageModelName);
+
   return (
     <main className="min-h-screen bg-[#f8f5ef] text-stone-950">
       <header className="sticky top-0 z-50 border-b border-stone-200/80 bg-[#fffdf7]/95 backdrop-blur">
@@ -165,7 +164,6 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Prop
           <h2 className="text-xl font-semibold">个人资料</h2>
           <p className="mt-1 text-sm text-stone-500">设置头像和昵称，信息仅存储在本地浏览器中。</p>
           <div className="mt-5 flex items-center gap-5">
-            {/* 头像 */}
             <div className="relative shrink-0">
               <div className="h-20 w-20 overflow-hidden rounded-full border-2 border-stone-200 bg-stone-100">
                 {profile.avatarUrl ? (
@@ -193,7 +191,6 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Prop
               </div>
             </div>
 
-            {/* 昵称 */}
             <div className="flex-1">
               {nicknameEditing ? (
                 <div className="flex items-center gap-2">
@@ -222,7 +219,7 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Prop
         <section className="rounded-lg border border-stone-200 bg-white p-6">
           <h2 className="text-xl font-semibold">API 配置</h2>
           <p className="mt-1 text-sm text-stone-500">填写模型 API 密钥以启用 AI 生成功能，密钥仅存储在本地浏览器中。</p>
-          
+
           {/* 使用默认模型开关 */}
           <div className="mt-4 flex items-center justify-between rounded-md border border-stone-200 bg-stone-50 px-4 py-3">
             <div>
@@ -276,13 +273,21 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Prop
                 >
                   {TEXT_MODEL_OPTIONS.map(m => <option key={m.name} value={m.name}>{m.icon} {m.name}</option>)}
                 </select>
-                <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-base">{TEXT_MODEL_OPTIONS.find(m => m.name === apiConfig.textModelName)?.icon ?? "🤖"}</span>
+                <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-base">{currentTextOption?.icon ?? "🤖"}</span>
               </div>
               {!apiConfig.useDefaultModel && (
-                <div className="relative mt-2">
-                  <input type={showTextKey ? "text" : "password"} placeholder="API Key" value={apiConfig.textModelApiKey} onChange={(e) => setApiConfig(p => ({ ...p, textModelApiKey: e.target.value }))} className="w-full rounded-md border border-stone-300 py-2 pl-3 pr-9 text-sm" />
-                  <button type="button" onClick={() => setShowTextKey(v => !v)} className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-stone-400 hover:text-stone-700">{showTextKey ? "🙈" : "👁️"}</button>
-                </div>
+                <>
+                  <div className="relative mt-2">
+                    <input type={showTextKey ? "text" : "password"} placeholder="API Key" value={apiConfig.textModelApiKey} onChange={(e) => setApiConfig(p => ({ ...p, textModelApiKey: e.target.value }))} className="w-full rounded-md border border-stone-300 py-2 pl-3 pr-9 text-sm" />
+                    <button type="button" onClick={() => setShowTextKey(v => !v)} className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-stone-400 hover:text-stone-700">{showTextKey ? "🙈" : "👁️"}</button>
+                  </div>
+                  {!apiConfig.textModelApiKey && currentTextOption?.purchaseUrl && (
+                    <p className="mt-1.5 text-xs text-stone-400">
+                      还没有 API Key？前往
+                      <a href={currentTextOption.purchaseUrl} target="_blank" rel="noopener noreferrer" className="mx-1 font-medium text-[#8f1d21] underline hover:text-[#a52327]">官方网站购买</a>
+                    </p>
+                  )}
+                </>
               )}
             </div>
             {/* 生图模型 */}
@@ -297,13 +302,21 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Prop
                 >
                   {IMAGE_MODEL_OPTIONS.map(m => <option key={m.name} value={m.name}>{m.icon} {m.name}</option>)}
                 </select>
-                <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-base">{IMAGE_MODEL_OPTIONS.find(m => m.name === apiConfig.imageModelName)?.icon ?? "🎨"}</span>
+                <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-base">{currentImageOption?.icon ?? "🎨"}</span>
               </div>
               {!apiConfig.useDefaultModel && (
-                <div className="relative mt-2">
-                  <input type={showImageKey ? "text" : "password"} placeholder="API Key" value={apiConfig.imageModelApiKey} onChange={(e) => setApiConfig(p => ({ ...p, imageModelApiKey: e.target.value }))} className="w-full rounded-md border border-stone-300 py-2 pl-3 pr-9 text-sm" />
-                  <button type="button" onClick={() => setShowImageKey(v => !v)} className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-stone-400 hover:text-stone-700">{showImageKey ? "🙈" : "👁️"}</button>
-                </div>
+                <>
+                  <div className="relative mt-2">
+                    <input type={showImageKey ? "text" : "password"} placeholder="API Key" value={apiConfig.imageModelApiKey} onChange={(e) => setApiConfig(p => ({ ...p, imageModelApiKey: e.target.value }))} className="w-full rounded-md border border-stone-300 py-2 pl-3 pr-9 text-sm" />
+                    <button type="button" onClick={() => setShowImageKey(v => !v)} className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-stone-400 hover:text-stone-700">{showImageKey ? "🙈" : "👁️"}</button>
+                  </div>
+                  {!apiConfig.imageModelApiKey && currentImageOption?.purchaseUrl && (
+                    <p className="mt-1.5 text-xs text-stone-400">
+                      还没有 API Key？前往
+                      <a href={currentImageOption.purchaseUrl} target="_blank" rel="noopener noreferrer" className="mx-1 font-medium text-[#8f1d21] underline hover:text-[#a52327]">官方网站购买</a>
+                    </p>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -339,7 +352,6 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Prop
             <div className="mt-6 grid place-items-center rounded-lg border border-dashed border-stone-300 py-16 text-sm text-stone-400">暂无作品记录</div>
           ) : (
             <>
-              {/* 批量操作工具栏 */}
               {batchMode && (
                 <div className="mt-4 flex flex-wrap items-center gap-3 rounded-md bg-stone-50 px-4 py-3">
                   <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-stone-700">
@@ -348,22 +360,8 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Prop
                   </label>
                   <span className="text-xs text-stone-400">已选 {selectedIds.size} / {history.length}</span>
                   <div className="ml-auto flex gap-2">
-                    <button
-                      type="button"
-                      onClick={batchExport}
-                      disabled={selectedIds.size === 0}
-                      className="rounded-md bg-[#8f1d21] px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
-                    >
-                      📦 批量导出图纸
-                    </button>
-                    <button
-                      type="button"
-                      onClick={batchDelete}
-                      disabled={selectedIds.size === 0}
-                      className="rounded-md border border-red-300 bg-red-50 px-3 py-1.5 text-sm font-semibold text-red-700 disabled:opacity-50"
-                    >
-                      🗑️ 批量删除
-                    </button>
+                    <button type="button" onClick={batchExport} disabled={selectedIds.size === 0} className="rounded-md bg-[#8f1d21] px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50">📦 批量导出图纸</button>
+                    <button type="button" onClick={batchDelete} disabled={selectedIds.size === 0} className="rounded-md border border-red-300 bg-red-50 px-3 py-1.5 text-sm font-semibold text-red-700 disabled:opacity-50">🗑️ 批量删除</button>
                   </div>
                 </div>
               )}
@@ -402,7 +400,6 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Prop
         </section>
       </div>
 
-      {/* 头像裁剪弹窗 */}
       {cropperFile && (
         <AvatarCropper
           file={cropperFile}

@@ -8,27 +8,27 @@ export interface ApiConfig {
   useDefaultModel?: boolean;
 }
 
-/** 可选的文本模型 */
-export const TEXT_MODEL_OPTIONS: { name: string; icon: string }[] = [
-  { name: "GPT-4o", icon: "🤖" },
-  { name: "GPT-4o-mini", icon: "🤖" },
-  { name: "Claude 3.5 Sonnet", icon: "🧠" },
-  { name: "Claude 3 Haiku", icon: "🧠" },
-  { name: "Gemini 1.5 Pro", icon: "✨" },
-  { name: "DeepSeek-V3", icon: "🦈" },
-  { name: "Qwen2.5-72B", icon: "🐉" },
-  { name: "GLM-4-Plus", icon: "📐" },
+/** 文本模型选项，附带购买链接 */
+export const TEXT_MODEL_OPTIONS: { name: string; icon: string; purchaseUrl: string }[] = [
+  { name: "GPT-4o", icon: "🤖", purchaseUrl: "https://platform.openai.com/api-keys" },
+  { name: "GPT-4o-mini", icon: "🤖", purchaseUrl: "https://platform.openai.com/api-keys" },
+  { name: "Claude 3.5 Sonnet", icon: "🧠", purchaseUrl: "https://console.anthropic.com/" },
+  { name: "Claude 3 Haiku", icon: "🧠", purchaseUrl: "https://console.anthropic.com/" },
+  { name: "Gemini 1.5 Pro", icon: "✨", purchaseUrl: "https://aistudio.google.com/apikey" },
+  { name: "DeepSeek-V3", icon: "🦈", purchaseUrl: "https://platform.deepseek.com/api_keys" },
+  { name: "Qwen2.5-72B", icon: "🐉", purchaseUrl: "https://help.aliyun.com/document_detail/2712195.html" },
+  { name: "GLM-4-Plus", icon: "📐", purchaseUrl: "https://open.bigmodel.cn/" },
 ];
 
-/** 可选的图片生成模型 */
-export const IMAGE_MODEL_OPTIONS: { name: string; icon: string }[] = [
-  { name: "DALL·E 3", icon: "🎨" },
-  { name: "Stable Diffusion 3", icon: "🌟" },
-  { name: "Midjourney", icon: "🌈" },
-  { name: "FLUX.1 Pro", icon: "🔥" },
-  { name: "CogView-4", icon: "🖌️" },
-  { name: "Minimax", icon: "🎭" },
-  { name: "Seedance", icon: "🌱" },
+/** 图片生成模型选项，附带购买链接 */
+export const IMAGE_MODEL_OPTIONS: { name: string; icon: string; purchaseUrl: string }[] = [
+  { name: "DALL·E 3", icon: "🎨", purchaseUrl: "https://platform.openai.com/api-keys" },
+  { name: "Stable Diffusion 3", icon: "🌟", purchaseUrl: "https://platform.stability.ai/api-keys" },
+  { name: "Midjourney", icon: "🌈", purchaseUrl: "https://www.midjourney.com/account" },
+  { name: "FLUX.1 Pro", icon: "🔥", purchaseUrl: "https://bfl.ml/" },
+  { name: "CogView-4", icon: "🖌️", purchaseUrl: "https://platform.volces.com/" },
+  { name: "Minimax", icon: "🎭", purchaseUrl: "https://www.minimaxi.com/" },
+  { name: "Seedance", icon: "🌱", purchaseUrl: "https://console.volcengine.com/" },
 ];
 
 /** 项目历史记录 */
