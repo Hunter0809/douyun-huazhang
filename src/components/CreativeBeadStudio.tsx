@@ -21,6 +21,7 @@ import {
   renderSampleDesignOriginal,
   type BeadPattern,
 } from "@/utils/culturePattern";
+import { hexToRgb, findClosestPaletteColor } from "@/utils/pixelation";
 import { generateCultureCopy } from "@/utils/cultureTextGenerator";
 import {
   getAllHexValues,
@@ -545,6 +546,10 @@ export default function CreativeBeadStudio() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  // 拼豆图纸步骤：点击编辑颜色
+  const [isPainting, setIsPainting] = useState(false);
+  const [paintColor, setPaintColor] = useState<string>('#000000');
+  const [paintColorKey, setPaintColorKey] = useState<string>('');
   const sceneAbortRef = useRef<AbortController | null>(null);
 
   const product = getProductTemplate(productId);
@@ -1178,6 +1183,63 @@ export default function CreativeBeadStudio() {
 
     if (step === "pattern") {
       const total = beadCounts.reduce((sum, item) => sum + item.count, 0);
+      
+      // 处理画布点击：拼豆图纸上点击网格修改颜色
+      const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+        if (!pattern || !canvasRef.current || !isPainting) return;
+        const canvas = canvasRef.current;
+        const rect = canvas.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const clickY = e.clientY - rect.top;
+        
+        // 计算缩放比例（canvas 内部像素 / CSS 显示尺寸）
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        
+        // renderPatternToCanvas 内部参数
+        const cell = Math.max(12, Math.floor(2000 / Math.max(pattern.width, pattern.height)));
+        const labelWidth = 32;
+        const labelHeight = 20;
+        
+        // 转换到 canvas 像素坐标
+        const canvasX = clickX * scaleX;
+        const canvasY = clickY * scaleY;
+        
+        // 减去标签边距，得到网格坐标
+        const gridCol = Math.floor((canvasX - labelWidth) / cell);
+        const gridRow = Math.floor((canvasY - labelHeight) / cell);
+        
+        // 检查是否在网格范围内
+        if (gridCol < 0 || gridCol >= pattern.width || gridRow < 0 || gridRow >= pattern.height) return;
+        
+        const cellData = pattern.grid[gridRow]?.[gridCol];
+        if (!cellData || cellData.isExternal) return;
+        
+        // 更新该像素的颜色
+        const newGrid = pattern.grid.map((row, y) =>
+          row.map((pixel, x) => {
+            if (x === gridCol && y === gridRow && !pixel.isExternal) {
+              return { ...pixel, color: paintColor, key: paintColorKey };
+            }
+            return pixel;
+          })
+        );
+        
+        const updatedPattern: BeadPattern = {
+          ...pattern,
+          grid: newGrid,
+          palette: Array.from(new Set(newGrid.flat().filter(c => !c.isExternal).map(c => c.color))),
+        };
+        
+        setPattern(updatedPattern);
+      };
+      
+      // 获取当前图纸中使用的颜色列表（用于颜色选择器）
+      const patternColors = pattern
+        ? Array.from(new Set(pattern.grid.flat().filter(c => !c.isExternal).map(c => c.color)))
+            .map(hex => ({ hex, key: getDisplayColorKey(hex) }))
+        : [];
+      
       return (
         <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
           <section className="rounded-lg border border-stone-200 bg-white p-5">
@@ -1197,9 +1259,65 @@ export default function CreativeBeadStudio() {
                 </button>
               </div>
               </div>
-              <div className="mt-5 overflow-auto rounded-md border border-stone-200 bg-stone-50 p-4">
+              {pattern && (
+                <div className="mt-3 flex flex-wrap items-center gap-2 rounded-md border border-stone-200 bg-stone-50 p-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsPainting(!isPainting)}
+                    className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                      isPainting
+                        ? 'bg-[#8f1d21] text-white shadow-sm'
+                        : 'bg-white text-stone-700 border border-stone-300 hover:bg-stone-100'
+                    }`}
+                  >
+                    {isPainting ? '🎨 编辑中' : '✏️ 点击编辑'}
+                  </button>
+                  {isPainting && (
+                    <span className="text-xs text-stone-500 ml-1">
+                      在图纸上点击格子修改颜色 | 当前颜色：
+                    </span>
+                  )}
+                  {isPainting && (
+                    <span
+                      className="inline-block h-5 w-5 rounded border border-stone-400"
+                      style={{ backgroundColor: paintColor }}
+                      title={`${paintColorKey} ${paintColor}`}
+                    />
+                  )}
+                  {isPainting && paintColorKey && (
+                    <span className="text-xs font-mono text-stone-600">{paintColorKey}</span>
+                  )}
+                  {/* 颜色选择器 */}
+                  {isPainting && patternColors.length > 0 && (
+                    <div className="flex flex-wrap gap-1 ml-2 border-l border-stone-300 pl-2">
+                      {patternColors.map(({ hex, key }) => (
+                        <button
+                          key={hex}
+                          type="button"
+                          onClick={() => {
+                            setPaintColor(hex);
+                            setPaintColorKey(key);
+                          }}
+                          className={`h-6 w-6 rounded border transition hover:scale-110 ${
+                            paintColor === hex
+                              ? 'border-stone-950 ring-2 ring-[#8f1d21] scale-110'
+                              : 'border-stone-400'
+                          }`}
+                          style={{ backgroundColor: hex }}
+                          title={`${key} ${hex}`}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              <div className="mt-3 overflow-auto rounded-md border border-stone-200 bg-stone-50 p-4">
                 {pattern ? (
-                  <canvas ref={canvasRef} className="mx-auto max-w-full" />
+                  <canvas
+                    ref={canvasRef}
+                    onClick={handleCanvasClick}
+                    className={`mx-auto max-w-full ${isPainting ? 'cursor-crosshair' : ''}`}
+                  />
                 ) : (
                   <div className="grid min-h-64 place-items-center text-center">
                     <div>
