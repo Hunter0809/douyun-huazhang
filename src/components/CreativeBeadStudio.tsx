@@ -61,10 +61,34 @@ const formLabels = [
 ];
 
 const showcase = [
-  { title: "青花莲纹", theme: "青花瓷", colors: ["#FFFFFF", "#1557A8", "#3677D2", "#CDE8FF"] },
-  { title: "敦煌飞天", theme: "敦煌文化", colors: ["#FCF9E0", "#EDB045", "#943630", "#0B3C43"] },
-  { title: "京剧脸谱", theme: "京剧脸谱", colors: ["#FFFFFF", "#E7002F", "#000000", "#FFDA45"] },
-  { title: "山海瑞兽", theme: "山海经", colors: ["#1D1414", "#D30022", "#166F41", "#FFC830"] },
+  {
+    title: "青花莲纹",
+    theme: "青花瓷",
+    element: "莲花",
+    meaning: "以青花瓷蓝白配色表现莲花的清雅与洁净，适合转译为轮廓简洁、留白明确的杯垫底稿。",
+    colors: ["#FFFFFF", "#1557A8", "#3677D2", "#CDE8FF"],
+  },
+  {
+    title: "敦煌飞天",
+    theme: "敦煌文化",
+    element: "飞天",
+    meaning: "提取敦煌飞天的飘带、乐舞和壁画色彩，以土黄、赭红与青绿构成具有丝路气息的装饰图案。",
+    colors: ["#FCF9E0", "#EDB045", "#943630", "#0B3C43"],
+  },
+  {
+    title: "京剧脸谱",
+    theme: "京剧脸谱",
+    element: "对称脸谱",
+    meaning: "以京剧脸谱的对称结构和红、黑、白高对比色表达戏曲人物符号，适合做识别度强的拼豆图纸。",
+    colors: ["#FFFFFF", "#E7002F", "#000000", "#FFDA45"],
+  },
+  {
+    title: "山海瑞兽",
+    theme: "山海经",
+    element: "瑞兽",
+    meaning: "围绕山海经瑞兽意象组织羽翼、山纹与日月符号，用墨黑、朱红、青绿和金黄形成神话感轮廓。",
+    colors: ["#1D1414", "#D30022", "#166F41", "#FFC830"],
+  },
 ];
 
 const scrollingPatterns = [
@@ -610,6 +634,8 @@ export default function CreativeBeadStudio() {
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [toastType, setToastType] = useState<"warning" | "success">("warning");
   const [showAiChat, setShowAiChat] = useState(false);
+  const [extractPrompt, setExtractPrompt] = useState<string | null>(null);
+  const [scenePrompt, setScenePrompt] = useState<string | null>(null);
 
   // 首页打字机动画状态
   const homeTypingLine1 = "方寸之间，粒粒皆可触摸的东方诗篇";
@@ -658,7 +684,6 @@ export default function CreativeBeadStudio() {
     }, 80);
 
     return () => clearInterval(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view]);
 
   // Toast 自动消失
@@ -702,11 +727,12 @@ export default function CreativeBeadStudio() {
       const response = await fetch("/api/extract-theme-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageUrl, isUpload: true }),
+        body: JSON.stringify({ imageUrl, isUpload: true, ...options }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result?.error ?? "主体提取失败");
       setExtractedImageUrl(result.imageUrl);
+      setExtractPrompt(result.prompt);
       setShowMatting(true);
       setStep("extract");
     } catch (err) {
@@ -799,7 +825,7 @@ export default function CreativeBeadStudio() {
       if (configRegenTimerRef.current) clearTimeout(configRegenTimerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, extractedImageUrl, options, antiAlias, forcedColors, selectedFilter]);
+  }, [step, extractedImageUrl, options, antiAlias, connectIslands, forcedColors, selectedFilter]);
 
   const handleGenerateAI = async () => {
     abortScene();
@@ -815,6 +841,7 @@ export default function CreativeBeadStudio() {
       if (!response.ok) throw new Error(result?.error ?? "AI 图案生成失败");
       setSourceImageUrl(result.imageUrl);
       setExtractedImageUrl(result.imageUrl);
+      setExtractPrompt(result.prompt);
       clearPatternArtifacts();
       setShowMatting(false);
       setStep("extract");
@@ -837,20 +864,21 @@ export default function CreativeBeadStudio() {
         const response = await fetch("/api/extract-theme-image", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ imageUrl, isUpload: true }),
+          body: JSON.stringify({ imageUrl, isUpload: true, ...options }),
         });
         const result = await response.json();
         if (!response.ok) throw new Error(result?.error ?? "主体提取失败");
-        setExtractedImageUrl(result.imageUrl);
-        clearPatternArtifacts();
-        setShowMatting(true);
-        setStep("extract");
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "图片处理失败");
-      } finally {
-        setLoading(false);
-      }
-    };
+      setExtractedImageUrl(result.imageUrl);
+      setExtractPrompt(result.prompt);
+      clearPatternArtifacts();
+      setShowMatting(true);
+      setStep("extract");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "图片处理失败");
+    } finally {
+      setLoading(false);
+    }
+  };
     reader.readAsDataURL(file);
   };
 
@@ -861,11 +889,12 @@ export default function CreativeBeadStudio() {
       const response = await fetch("/api/extract-theme-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageUrl: resultImageUrl, isUpload: true }),
+        body: JSON.stringify({ imageUrl: resultImageUrl, isUpload: true, ...options }),
       });
       const result = await response.json();
-      if (!response.ok) throw new Error(result?.error ?? "主题图案生成失败");
+      if (!response.ok) throw new Error(result?.error ?? "主体提取失败");
       setExtractedImageUrl(result.imageUrl);
+      setExtractPrompt(result.prompt);
       clearPatternArtifacts();
     } catch (err) {
       setError(err instanceof Error ? err.message : "抠图结果转传统文创图案失败");
@@ -893,6 +922,7 @@ export default function CreativeBeadStudio() {
       if (!response.ok) throw new Error(result?.error ?? "场景预览生成失败");
       setProductSceneUrl(result.imageUrl);
       setMockupUrl(result.imageUrl);
+      setScenePrompt(result.prompt);
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") return;
       setError(err instanceof Error ? err.message : "场景预览生成失败");
@@ -1161,6 +1191,16 @@ export default function CreativeBeadStudio() {
             </div>
           </section>
           <div className="space-y-5">
+            {extractedImageUrl && (
+              <section className="rounded-lg border border-stone-200 bg-white p-5">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-semibold">🤖 当前 AI 提示词</h2>
+                </div>
+                <div className="mt-3 max-h-40 overflow-y-auto rounded-md bg-stone-50 p-3 text-xs leading-relaxed text-stone-600 font-mono whitespace-pre-wrap">
+                  {extractPrompt || "无"}
+                </div>
+              </section>
+            )}
             <section className="rounded-lg border border-stone-200 bg-white p-5">
               <h2 className="text-xl font-semibold">✂️ 主体提取与再创作</h2>
               <p className="mt-1 text-sm text-stone-500">提取图片核心主体意象后，分析其颜色组成和比例，严格按照原配色进行传统文化风格再创作；接下来在第三阶段（拼豆图纸）进行像素化处理。</p>
@@ -1176,12 +1216,6 @@ export default function CreativeBeadStudio() {
                 </button>
               </div>
             </section>
-            {extractedImageUrl && (
-              <section className="rounded-lg border border-stone-200 bg-white p-5">
-                <h2 className="mb-3 text-xl font-semibold">📖 AI 文化说明</h2>
-                <CultureExplanation copy={copy} />
-              </section>
-            )}
           </div>
           {showMatting && sourceImageUrl && (
             <div className="lg:col-span-2">
@@ -1475,6 +1509,14 @@ export default function CreativeBeadStudio() {
 
         <section className="space-y-5">
           <div className="rounded-lg border border-stone-200 bg-white p-5">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold">🤖 当前 AI 提示词</h2>
+            </div>
+            <div className="mt-3 max-h-40 overflow-y-auto rounded-md bg-stone-50 p-3 text-xs leading-relaxed text-stone-600 font-mono whitespace-pre-wrap">
+              {scenePrompt || "无"}
+            </div>
+          </div>
+          <div className="rounded-lg border border-stone-200 bg-white p-5">
             <h2 className="mb-3 text-xl font-semibold">📤 导出作品资料</h2>
             <ExportPanel title={copy.title} patternUrl={patternUrl} mockupUrl={mockupUrl} copy={copy} beadCounts={beadCounts} />
           </div>
@@ -1492,6 +1534,7 @@ export default function CreativeBeadStudio() {
     // 恢复所有状态
     setTheme(record.theme);
     setElement(record.element);
+    setMeaning(record.meaning ?? cultureThemes.find((item) => item.name === record.theme)?.meaning ?? "");
     setProductId(record.productId);
     setGridSize(record.gridSize);
     setColorCount(record.colorCount);
@@ -1537,6 +1580,7 @@ export default function CreativeBeadStudio() {
       completed: step === "preview" && !!productSceneUrl,
       theme,
       element,
+      meaning,
       productId,
       gridSize,
       colorCount,
@@ -1552,8 +1596,7 @@ export default function CreativeBeadStudio() {
       productSceneUrl,
     };
     saveProjectRecord(record);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view, step, pattern, patternUrl, cleanPatternUrl, productSceneUrl, sourceImageUrl]);
+  }, [view, step, theme, element, meaning, productId, gridSize, colorCount, aspectRatio, showGrid, antiAlias, pattern, patternUrl, cleanPatternUrl, productSceneUrl, sourceImageUrl, extractedImageUrl, mockupUrl]);
 
   // 帮助页面：当 details 离开视口时自动收起
   useEffect(() => {
@@ -1720,12 +1763,9 @@ export default function CreativeBeadStudio() {
                   key={item.title}
                   type="button"
                   onClick={() => {
-                    const themeData = cultureThemes.find((t) => t.name === item.theme);
-                    if (themeData) {
-                      setTheme(themeData.name);
-                      setElement(themeData.elements[0] ?? "");
-                      setMeaning(themeData.meaning);
-                    }
+                    setTheme(item.theme);
+                    setElement(item.element);
+                    setMeaning(item.meaning);
                     // 预设该模板的推荐配色到调色板
                     setForcedColors(item.colors);
                     setColorCount(Math.max(8, item.colors.length + 4));

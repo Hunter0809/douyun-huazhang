@@ -40,6 +40,7 @@ export interface ProjectRecord {
   completed: boolean;
   theme: string;
   element: string;
+  meaning?: string;
   productId: string;
   gridSize: number;
   colorCount: number;

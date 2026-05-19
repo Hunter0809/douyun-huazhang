@@ -208,6 +208,103 @@ function markExternalBackground(
   return result;
 }
 
+const ORTHOGONAL_DIRECTIONS = [[-1, 0], [1, 0], [0, -1], [0, 1]] as const;
+const ALL_DIRECTIONS = [
+  [-1, -1], [-1, 0], [-1, 1],
+  [0, -1], [0, 1],
+  [1, -1], [1, 0], [1, 1],
+] as const;
+
+function cloneGrid(grid: MappedPixel[][]): MappedPixel[][] {
+  return grid.map((row) => row.map((cell) => ({ ...cell })));
+}
+
+function findNearestForegroundCell(
+  grid: MappedPixel[][],
+  row: number,
+  col: number,
+): MappedPixel | null {
+  const height = grid.length;
+  const width = grid[0]?.length ?? 0;
+  const visited = new Set<string>([`${row},${col}`]);
+  const queue: { row: number; col: number }[] = [{ row, col }];
+  let head = 0;
+
+  while (head < queue.length) {
+    const current = queue[head++];
+    for (const [dr, dc] of ALL_DIRECTIONS) {
+      const nr = current.row + dr;
+      const nc = current.col + dc;
+      if (nr < 0 || nr >= height || nc < 0 || nc >= width) continue;
+      const key = `${nr},${nc}`;
+      if (visited.has(key)) continue;
+      visited.add(key);
+
+      const cell = grid[nr][nc];
+      if (cell && !cell.isExternal) return cell;
+      queue.push({ row: nr, col: nc });
+    }
+  }
+
+  return null;
+}
+
+function closeNarrowForegroundGaps(grid: MappedPixel[][]): MappedPixel[][] {
+  const height = grid.length;
+  if (height === 0) return grid;
+  const width = grid[0].length;
+  const foreground = grid.map((row) => row.map((cell) => Boolean(cell && !cell.isExternal)));
+
+  const dilated: boolean[][] = Array.from({ length: height }, () => Array.from({ length: width }, () => false));
+  for (let row = 0; row < height; row++) {
+    for (let col = 0; col < width; col++) {
+      if (!foreground[row][col]) continue;
+      dilated[row][col] = true;
+      for (const [dr, dc] of ALL_DIRECTIONS) {
+        const nr = row + dr;
+        const nc = col + dc;
+        if (nr >= 0 && nr < height && nc >= 0 && nc < width) {
+          dilated[nr][nc] = true;
+        }
+      }
+    }
+  }
+
+  const closed: boolean[][] = Array.from({ length: height }, () => Array.from({ length: width }, () => false));
+  for (let row = 0; row < height; row++) {
+    for (let col = 0; col < width; col++) {
+      if (foreground[row][col]) {
+        closed[row][col] = true;
+        continue;
+      }
+
+      let keep = true;
+      for (const [dr, dc] of ALL_DIRECTIONS) {
+        const nr = row + dr;
+        const nc = col + dc;
+        if (nr < 0 || nr >= height || nc < 0 || nc >= width || !dilated[nr][nc]) {
+          keep = false;
+          break;
+        }
+      }
+      closed[row][col] = keep;
+    }
+  }
+
+  const result = cloneGrid(grid);
+  for (let row = 0; row < height; row++) {
+    for (let col = 0; col < width; col++) {
+      if (foreground[row][col] || !closed[row][col]) continue;
+      const nearest = findNearestForegroundCell(grid, row, col);
+      if (nearest) {
+        result[row][col] = { ...nearest, isExternal: false };
+      }
+    }
+  }
+
+  return result;
+}
+
 /**
  * 连接孤立色块到主体。
  * 找出所有非外部背景的连通区域，将面积小于 `minArea` 的孤立区域
@@ -219,14 +316,10 @@ export function connectIslands(
   grid: MappedPixel[][],
   minArea = 8,
 ): MappedPixel[][] {
-  const M = grid.length;
-  if (M === 0) return grid;
-  const N = grid[0].length;
-
-  // 深拷贝
-  const result: MappedPixel[][] = grid.map((row) =>
-    row.map((cell) => ({ ...cell })),
-  );
+  const result = closeNarrowForegroundGaps(grid);
+  const M = result.length;
+  if (M === 0) return result;
+  const N = result[0].length;
 
   // 1. 找出所有非外部单元格的连通区域
   const visited: boolean[][] = Array.from({ length: M }, () =>
@@ -236,9 +329,8 @@ export function connectIslands(
   const components: {
     cells: { row: number; col: number }[];
     edgeCells: { row: number; col: number }[];
+    dominantCell?: MappedPixel;
   }[] = [];
-
-  const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
 
   for (let r = 0; r < M; r++) {
     for (let c = 0; c < N; c++) {
@@ -248,19 +340,30 @@ export function connectIslands(
       // BFS 找连通区域
       const componentCells: { row: number; col: number }[] = [];
       const edgeCells: { row: number; col: number }[] = [];
+      const colorCount = new Map<string, { count: number; cell: MappedPixel }>();
       const queue: { row: number; col: number }[] = [{ row: r, col: c }];
       visited[r][c] = true;
+      let head = 0;
 
-      while (queue.length > 0) {
-        const curr = queue.shift()!;
+      while (head < queue.length) {
+        const curr = queue[head++];
         componentCells.push(curr);
+        const currCell = result[curr.row][curr.col];
+        const currentCount = colorCount.get(currCell.color);
+        colorCount.set(currCell.color, {
+          count: (currentCount?.count ?? 0) + 1,
+          cell: currCell,
+        });
 
         // 检查是否有外部背景相邻（边缘像素）
         let isEdge = false;
-        for (const [dr, dc] of directions) {
+        for (const [dr, dc] of ORTHOGONAL_DIRECTIONS) {
           const nr = curr.row + dr;
           const nc = curr.col + dc;
-          if (nr < 0 || nr >= M || nc < 0 || nc >= N) continue;
+          if (nr < 0 || nr >= M || nc < 0 || nc >= N) {
+            isEdge = true;
+            continue;
+          }
           const neighbor = result[nr][nc];
           if (neighbor && neighbor.isExternal) {
             isEdge = true;
@@ -275,123 +378,62 @@ export function connectIslands(
         }
       }
 
-      components.push({ cells: componentCells, edgeCells });
+      const dominantCell = Array.from(colorCount.values()).sort((a, b) => b.count - a.count)[0]?.cell;
+      components.push({ cells: componentCells, edgeCells, dominantCell });
     }
   }
 
   // 如果没有组件或只有 1 个组件，无需连接
   if (components.length <= 1) return result;
 
-  // 2. 找最大组件（主体）
+  // 2. 按面积排序，面积足够的区域都可以作为连接目标。
   components.sort((a, b) => b.cells.length - a.cells.length);
-  const mainComponent = components[0];
-  const mainCellSet = new Set(
-    mainComponent.cells.map((c) => `${c.row},${c.col}`),
-  );
+  const stableComponents = components.filter((component) => component.cells.length >= minArea);
+  if (stableComponents.length === 0) return result;
 
-  // 3. 从每个孤立组件出发，BFS 寻找到主体最近的外部格子路径
-  for (let i = 1; i < components.length; i++) {
+  // 3. 将小孤岛连接到最近的稳定组件，保持局部轮廓而不是全部拉向最大组件。
+  for (let i = 0; i < components.length; i++) {
     const island = components[i];
     if (island.cells.length >= minArea) continue; // 大区域不处理
 
-    // 从该组件的边缘像素出发，在外部区域中 BFS 寻找到主体的路径
-    let bestPath: { row: number; col: number }[] | null = null;
-    const externalVisited = new Set<string>();
+    let nearestPair: {
+      from: { row: number; col: number };
+      to: { row: number; col: number };
+      distance: number;
+    } | null = null;
 
-    // 把该孤岛的所有边缘像素作为 BFS 起点
-    const bfsQueue: {
-      row: number;
-      col: number;
-      path: { row: number; col: number }[];
-    }[] = [];
-
-    for (const edge of island.edgeCells) {
-      // 检查边缘像素的 8 个邻居（包括对角线）中有没有外部格子
-      for (let dr = -1; dr <= 1; dr++) {
-        for (let dc = -1; dc <= 1; dc++) {
-          if (dr === 0 && dc === 0) continue;
-          const nr = edge.row + dr;
-          const nc = edge.col + dc;
-          if (nr < 0 || nr >= M || nc < 0 || nc >= N) continue;
-          const key = `${nr},${nc}`;
-          if (externalVisited.has(key)) continue;
-
-          const neighbor = result[nr][nc];
-          if (neighbor && neighbor.isExternal) {
-            externalVisited.add(key);
-            bfsQueue.push({ row: nr, col: nc, path: [{ row: nr, col: nc }] });
+    for (const target of stableComponents) {
+      if (target === island) continue;
+      for (const from of island.edgeCells.length ? island.edgeCells : island.cells) {
+        for (const to of target.edgeCells.length ? target.edgeCells : target.cells) {
+          const distance = Math.abs(from.row - to.row) + Math.abs(from.col - to.col);
+          if (!nearestPair || distance < nearestPair.distance) {
+            nearestPair = { from, to, distance };
           }
         }
       }
     }
 
-    // BFS 在外部区域中寻找
-    while (bfsQueue.length > 0) {
-      const current = bfsQueue.shift()!;
+    if (!nearestPair || nearestPair.distance <= 1) continue;
+    const fillColor = island.dominantCell ?? result[nearestPair.from.row][nearestPair.from.col];
+    const path: { row: number; col: number }[] = [];
+    let row = nearestPair.from.row;
+    let col = nearestPair.from.col;
 
-      // 检查当前格的 4 方向邻居是否到达主体
-      for (const [dr, dc] of directions) {
-        const nr = current.row + dr;
-        const nc = current.col + dc;
-        if (nr < 0 || nr >= M || nc < 0 || nc >= N) continue;
-        if (mainCellSet.has(`${nr},${nc}`)) {
-          // 找到了通往主体的路径！
-          bestPath = current.path;
-          break;
-        }
-      }
-      if (bestPath) break;
-
-      // 继续向外扩展（只走外部格子）
-      for (const [dr, dc] of directions) {
-        const nr = current.row + dr;
-        const nc = current.col + dc;
-        if (nr < 0 || nr >= M || nc < 0 || nc >= N) continue;
-        const key = `${nr},${nc}`;
-        if (externalVisited.has(key)) continue;
-
-        const neighbor = result[nr][nc];
-        if (neighbor && neighbor.isExternal) {
-          externalVisited.add(key);
-          bfsQueue.push({
-            row: nr,
-            col: nc,
-            path: [...current.path, { row: nr, col: nc }],
-          });
-        }
-      }
+    while (col !== nearestPair.to.col) {
+      col += col < nearestPair.to.col ? 1 : -1;
+      path.push({ row, col });
+    }
+    while (row !== nearestPair.to.row) {
+      row += row < nearestPair.to.row ? 1 : -1;
+      path.push({ row, col });
     }
 
-    // 4. 如果有路径，用孤岛中占主导的边缘颜色填充路径上的外部格子
-    if (bestPath && bestPath.length > 0) {
-      // 找出孤岛边缘最常见的颜色
-      const colorCount = new Map<string, { count: number; cell: MappedPixel }>();
-      for (const edge of island.edgeCells) {
-        const cell = result[edge.row][edge.col];
-        if (!cell || cell.isExternal) continue;
-        const existing = colorCount.get(cell.color);
-        colorCount.set(cell.color, {
-          count: (existing?.count ?? 0) + 1,
-          cell,
-        });
-      }
-      
-      // 选择最常见的颜色作为填充色
-      let fillColor: MappedPixel = { key: '#000000', color: '#000000' };
-      let maxCount = 0;
-      colorCount.forEach((data) => {
-        if (data.count > maxCount) {
-          maxCount = data.count;
-          fillColor = data.cell;
-        }
-      });
-
-      // 填充路径上的外部格子，将其变为内部格子
-      for (const p of bestPath) {
+    for (const p of path.slice(0, -1)) {
+      if (result[p.row][p.col]?.isExternal) {
         result[p.row][p.col] = { ...fillColor, isExternal: false };
       }
     }
-    // 如果没有路径（理论上不应该），保持原样
   }
 
   return result;
