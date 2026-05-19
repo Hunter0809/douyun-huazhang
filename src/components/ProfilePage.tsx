@@ -31,7 +31,7 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Prop
   const [showImageKey, setShowImageKey] = useState(false);
   const [envConfig, setEnvConfig] = useState<{ configured: boolean; baseUrl: string; defaultImageModel: string; defaultTextModel: string } | null>(null);
   const [envLoading, setEnvLoading] = useState(false);
-  const [profile, setProfile] = useState<StoredUser>(() => loadCurrentUserProfile() ?? { nickname: "豆韵用户", avatarUrl: "", createdAt: Date.now() });
+  const [profile, setProfile] = useState<StoredUser>(() => loadCurrentUserProfile() ?? { nickname: "", avatarUrl: "", createdAt: Date.now() });
   const [nicknameEditing, setNicknameEditing] = useState(false);
   const [nicknameDraft, setNicknameDraft] = useState(profile.nickname);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -390,6 +390,7 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Prop
             type="button"
             onClick={() => {
               logoutUser();
+              saveApiConfig({ textModelApiKey: "", textModelName: "", imageModelApiKey: "", imageModelName: "" });
               setProfile({ nickname: "", avatarUrl: "", createdAt: Date.now() });
               setApiConfig({ textModelApiKey: "", textModelName: "", imageModelApiKey: "", imageModelName: "" });
               onLogout?.();
