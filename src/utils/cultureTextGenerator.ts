@@ -20,9 +20,9 @@ export type CultureCopy = {
 };
 
 export function generateCultureCopy(options: CultureTextOptions): CultureCopy {
-  const primary = options.beadCounts[0]?.colorName ?? "主题色";
-  const secondary = options.beadCounts[1]?.colorName ?? "辅助色";
-  const third = options.beadCounts[2]?.colorName ?? "点缀色";
+  const primary = options.beadCounts[0]?.brandCode ?? options.beadCounts[0]?.colorName ?? "主题色";
+  const secondary = options.beadCounts[1]?.brandCode ?? options.beadCounts[1]?.colorName ?? "辅助色";
+  const third = options.beadCounts[2]?.brandCode ?? options.beadCounts[2]?.colorName ?? "点缀色";
 
   // 自动生成寓意说明：基于元素、主题和颜色生成更丰富的文化寓意
   const autoMeaning = options.meaning

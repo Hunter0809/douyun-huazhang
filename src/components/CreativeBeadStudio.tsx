@@ -488,8 +488,12 @@ function downloadTextFile(content: string, filename: string): void {
 
 function estimateBeadingMinutes(totalBeads: number, colorKinds: number): number {
   if (totalBeads <= 0) return 0;
-  return Math.max(20, Math.round(totalBeads * 0.22 + colorKinds * 4));
+  return Math.round(totalBeads * 0.25 + colorKinds * 4 + 10);
 }
+
+const BEAD_TIME_PER_PIECE = 0.25;
+const IRONING_TIME = 10;
+
 
 function formatDuration(minutes: number): string {
   if (minutes <= 0) return "-";
@@ -844,6 +848,18 @@ export default function CreativeBeadStudio() {
   const [resultMaskSnapshot, setResultMaskSnapshot] = useState<SubjectMask | null>(null);
   const [costDropdownOpen, setCostDropdownOpen] = useState(false);
   const [timeDropdownOpen, setTimeDropdownOpen] = useState(false);
+  const [planPrompt, setPlanPrompt] = useState<string | null>(null);
+  const [aiPlanText, setAiPlanText] = useState<string | null>(null);
+  const [planLoading, setPlanLoading] = useState(false);
+  const [culturePrompt, setCulturePrompt] = useState<string | null>(null);
+  const [cultureTextLoading, setCultureTextLoading] = useState(false);
+  const [aiCultureCopy, setAiCultureCopy] = useState<{
+    title: string;
+    source: string;
+    meaning: string;
+    design: string;
+  } | null>(null);
+
 
   // 首页打字机动画状态
   const homeTypingLine1 = "方寸之间，粒粒皆可触摸的东方诗篇";
@@ -938,6 +954,81 @@ export default function CreativeBeadStudio() {
     setResultMaskMode("select");
   }, []);
 
+  const generatePlanText = useCallback(async () => {
+    if (!pattern || beadCounts.length === 0) {
+      setToastType("warning");
+      setToastMsg("请先生成拼豆图纸。");
+      return;
+    }
+    setPlanLoading(true);
+    try {
+      const response = await fetch("/api/generate-plan-text", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          theme,
+          element,
+          meaning,
+          product: formLabel,
+          gridWidth: pattern.width,
+          gridHeight: pattern.height,
+          gridSize,
+          colorCount,
+          beadCounts,
+          imageUrl: patternUrl,
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result?.error ?? "制作方案生成失败");
+      setAiPlanText(result.planText);
+      setPlanPrompt(result.prompt);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "制作方案生成失败");
+    } finally {
+      setPlanLoading(false);
+    }
+  }, [pattern, beadCounts, theme, element, meaning, formLabel, gridSize, colorCount, patternUrl]);
+
+  const generateCultureText = useCallback(async () => {
+    if (!pattern || beadCounts.length === 0) {
+      setToastType("warning");
+      setToastMsg("请先生成拼豆图纸。");
+      return;
+    }
+    setCultureTextLoading(true);
+    try {
+      const response = await fetch("/api/generate-culture-text", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          theme,
+          element,
+          meaning,
+          product: formLabel,
+          gridWidth: pattern.width,
+          gridHeight: pattern.height,
+          gridSize,
+          colorCount,
+          beadCounts,
+          imageUrl: extractedImageUrl,
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result?.error ?? "文化文案生成失败");
+      if (result.copy) {
+        setAiCultureCopy(result.copy);
+      }
+      if (result.prompt) {
+        setCulturePrompt(result.prompt);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "文化文案生成失败");
+    } finally {
+      setCultureTextLoading(false);
+    }
+  }, [pattern, beadCounts, theme, element, meaning, formLabel, gridSize, colorCount, extractedImageUrl]);
+
+
   const clearCurrentProgress = useCallback(() => {
     directOutputRef.current = false;
     clearPatternArtifacts();
@@ -984,8 +1075,8 @@ export default function CreativeBeadStudio() {
       setSubjectMaskSnapshot(null);
       setSubjectDirty(false);
       setSourceImageUrl(imageUrl);
-      setExtractedImageUrl(null);
-      clearResultSubjectSelection();
+    setExtractedImageUrl(null);
+    clearResultSubjectSelection();
       setExtractPrompt(null);
       clearPatternArtifacts();
       setStep("extract");
@@ -1761,7 +1852,7 @@ export default function CreativeBeadStudio() {
     const total = beadCounts.reduce((sum, item) => sum + item.count, 0);
     const beadingMinutes = estimateBeadingMinutes(total, beadCounts.length);
     const cost = estimateMaterialCost(total, beadCounts.length);
-    const planText = [
+    const planText = aiPlanText || [
       `${copy.title} 拼豆制作方案`,
       "",
       `作品形式：${formLabel}`,
@@ -1793,13 +1884,34 @@ export default function CreativeBeadStudio() {
       "4. 熨完后用平整重物压 2-3 分钟，冷却后再从模板上取下。",
     ].join("\n");
 
+    const parsedPlan = aiPlanText
+      ? (() => {
+          const sections = aiPlanText.split(/【(.+?)】/).filter(Boolean);
+          const result: Record<string, string> = {};
+          for (let i = 0; i < sections.length - 1; i += 2) {
+            result[sections[i]] = (sections[i + 1] || '').trim();
+          }
+          return result;
+        })()
+      : null;
+
+    const renderPlanSection = (title: string, content: string) => (
+      <div className="rounded-lg border border-stone-200 bg-white p-5">
+        <h3 className="text-lg font-semibold">{title}</h3>
+        <div className="mt-3 whitespace-pre-wrap text-sm leading-6 text-stone-600">{content}</div>
+      </div>
+    );
+
     return (
       <div className="grid gap-6 xl:grid-cols-[1fr_0.9fr]">
         <section className="space-y-5">
           <div className="rounded-lg border border-stone-200 bg-white p-5">
-            <h2 className="text-xl font-semibold">制作方案</h2>
-            <p className="mt-1 text-sm leading-6 text-stone-500">根据当前图纸用量生成材料、工具、拼豆和熨烫流程。</p>
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold">制作方案</h2>
+            </div>
+            <p className="mt-1 text-sm leading-6 text-stone-500">根据当前图纸用量，提供材料、工具、拼豆和熨烫流程参考。</p>
             <div className="mt-4 grid gap-3 md:grid-cols-3">
+
               <div className="relative rounded-md bg-stone-100 p-3">
                 <p className="text-xs text-stone-500">预估成本</p>
                 <button type="button" onClick={() => setCostDropdownOpen(!costDropdownOpen)} className="w-full text-left text-lg font-bold hover:text-stone-700">约 {cost.min}-{cost.max} 元</button>
@@ -1823,10 +1935,11 @@ export default function CreativeBeadStudio() {
                   <div className="absolute left-0 right-0 top-full z-10 mt-1 rounded-md border border-stone-200 bg-white p-3 shadow-lg">
                     <p className="text-xs font-medium text-stone-500">用时组成</p>
                     <ul className="mt-2 space-y-1 text-xs text-stone-600">
-                      <li className="flex justify-between"><span>摆豆（{total} 颗 × {0.22}秒/颗）</span><span>{Math.round(total * 0.22)} 秒 ≈ {Math.round(total * 0.22 / 60)} 分钟</span></li>
-                      <li className="flex justify-between"><span>换色（{beadCounts.length} 色 × {4}秒/色）</span><span>{beadCounts.length * 4} 秒</span></li>
-                      <li className="flex justify-between"><span>基础用时</span><span>20 分钟</span></li>
-                      <li className="mt-1 border-t border-stone-100 pt-1 font-medium">合计：约 {beadingMinutes} 分钟</li>
+                      <li className="flex justify-between"><span>摆豆（{total} 颗 × {BEAD_TIME_PER_PIECE} 分钟/颗）</span><span>≈{Math.round(total * BEAD_TIME_PER_PIECE)} 分钟</span></li>
+                      <li className="flex justify-between"><span>换色（{beadCounts.length} 色 × 4 分钟/色）</span><span>{beadCounts.length * 4} 分钟</span></li>
+                      <li className="flex justify-between"><span>熨烫（含预热、熨烫、冷却）</span><span>{IRONING_TIME} 分钟</span></li>
+                      <li className="mt-1 border-t border-stone-100 pt-1 font-medium"><span>合计</span><span>约 {beadingMinutes} 分钟</span></li>
+
                     </ul>
                   </div>
                 )}
@@ -1838,42 +1951,45 @@ export default function CreativeBeadStudio() {
             </div>
           </div>
 
-          <div className="rounded-lg border border-stone-200 bg-white p-5">
-            <h3 className="text-lg font-semibold">材料选择</h3>
-            <ul className="mt-3 space-y-2 text-sm leading-6 text-stone-600">
-              <li>按用量统计准备对应色号拼豆，建议每种颜色多备 10%-15%，防止丢豆和色差补充。</li>
-              <li>优先使用同规格拼豆；同一作品不要混用高度差异明显的材料。</li>
-              <li>大色块颜色按整包准备，点缀色可按最小包装购买。</li>
-            </ul>
-          </div>
+            <>
+              <div className="rounded-lg border border-stone-200 bg-white p-5">
+                <h3 className="text-lg font-semibold">材料选择</h3>
+                <ul className="mt-3 space-y-2 text-sm leading-6 text-stone-600">
+                  <li>按用量统计准备对应色号拼豆，建议每种颜色多备 10%-15%，防止丢豆和色差补充。</li>
+                  <li>优先使用同规格拼豆；同一作品不要混用高度差异明显的材料。</li>
+                  <li>大色块颜色按整包准备，点缀色可按最小包装购买。</li>
+                </ul>
+              </div>
 
-          <div className="rounded-lg border border-stone-200 bg-white p-5">
-            <h3 className="text-lg font-semibold">工具选择</h3>
-            <ul className="mt-3 space-y-2 text-sm leading-6 text-stone-600">
-              <li>模板板：透明方形板更适合对照网格，尺寸需覆盖完整图纸。</li>
-              <li>定位工具：尖头镊子适合调整边缘和孤立小色块，取豆笔适合大面积铺色。</li>
-              <li>熨烫工具：熨斗、熨烫纸、平整压板；熨斗需关闭蒸汽。</li>
-            </ul>
-          </div>
+              <div className="rounded-lg border border-stone-200 bg-white p-5">
+                <h3 className="text-lg font-semibold">工具选择</h3>
+                <ul className="mt-3 space-y-2 text-sm leading-6 text-stone-600">
+                  <li>模板板：透明方形板更适合对照网格，尺寸需覆盖完整图纸。</li>
+                  <li>定位工具：尖头镊子适合调整边缘和孤立小色块，取豆笔适合大面积铺色。</li>
+                  <li>熨烫工具：熨斗、熨烫纸、平整压板；熨斗需关闭蒸汽。</li>
+                </ul>
+              </div>
 
-          <div className="rounded-lg border border-stone-200 bg-white p-5">
-            <h3 className="text-lg font-semibold">拼豆</h3>
-            <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-6 text-stone-600">
-              <li>先摆放外轮廓或最大色块，建立边界后再填内部细节。</li>
-              <li>按颜色逐项完成，每完成一种颜色就对照用量统计检查遗漏。</li>
-              <li>细小点缀色最后补齐，避免在大面积移动时被碰偏。</li>
-            </ol>
-          </div>
+              <div className="rounded-lg border border-stone-200 bg-white p-5">
+                <h3 className="text-lg font-semibold">拼豆</h3>
+                <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-6 text-stone-600">
+                  <li>先摆放外轮廓或最大色块，建立边界后再填内部细节。</li>
+                  <li>按颜色逐项完成，每完成一种颜色就对照用量统计检查遗漏。</li>
+                  <li>细小点缀色最后补齐，避免在大面积移动时被碰偏。</li>
+                </ol>
+              </div>
 
-          <div className="rounded-lg border border-stone-200 bg-white p-5">
-            <h3 className="text-lg font-semibold">熨烫</h3>
-            <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-6 text-stone-600">
-              <li>覆盖熨烫纸后使用中低温，先轻压并小范围圆周移动。</li>
-              <li>首次熨烫 10-15 秒后检查豆粒连接状态，再分段补熨。</li>
-              <li>豆孔略收缩且相邻豆粒已连接即可停止，避免过熨导致图案变形。</li>
-              <li>熨完用平整重物压 2-3 分钟，完全冷却后再脱板。</li>
-            </ol>
-          </div>
+              <div className="rounded-lg border border-stone-200 bg-white p-5">
+                <h3 className="text-lg font-semibold">熨烫</h3>
+                <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-6 text-stone-600">
+                  <li>覆盖熨烫纸后使用中低温，先轻压并小范围圆周移动。</li>
+                  <li>首次熨烫 10-15 秒后检查豆粒连接状态，再分段补熨。</li>
+                  <li>豆孔略收缩且相邻豆粒已连接即可停止，避免过熨导致图案变形。</li>
+                  <li>熨完用平整重物压 2-3 分钟，完全冷却后再脱板。</li>
+                </ol>
+              </div>
+            </>
+
         </section>
 
         <section className="space-y-5">
@@ -1895,10 +2011,35 @@ export default function CreativeBeadStudio() {
               <button type="button" disabled={!pattern} onClick={() => downloadTextFile(planText, `${copy.title}-制作方案.txt`)} className="rounded-md bg-[#8f1d21] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">导出制作方案</button>
             </div>
           </div>
+          {culturePrompt && (
+            <div className="rounded-lg border border-stone-200 bg-white p-5">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold">AI 文化文案提示词</h2>
+              </div>
+              <div className="mt-3 max-h-48 overflow-y-auto rounded-md bg-stone-50 p-3 text-xs leading-relaxed text-stone-600 font-mono whitespace-pre-wrap">
+                {culturePrompt}
+              </div>
+            </div>
+          )}
           <div className="rounded-lg border border-stone-200 bg-white p-5">
-            <h2 className="mb-3 text-xl font-semibold">文化说明</h2>
-            <CultureExplanation copy={copy} />
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-xl font-semibold">文化说明</h2>
+              <button
+                type="button"
+                onClick={generateCultureText}
+                disabled={cultureTextLoading}
+                className="rounded-md bg-[#8f1d21] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+              >
+                {cultureTextLoading ? "AI 生成中..." : "AI 生成文化说明"}
+              </button>
+            </div>
+            {aiCultureCopy ? (
+              <CultureExplanation copy={aiCultureCopy} />
+            ) : (
+              <CultureExplanation copy={copy} />
+            )}
           </div>
+
         </section>
       </div>
     );

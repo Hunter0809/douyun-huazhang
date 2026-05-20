@@ -122,7 +122,7 @@ export async function POST(req: Request) {
       meaning: String(parsed.meaning ?? ""),
       design: String(parsed.design ?? ""),
     };
-    return NextResponse.json({ copy });
+    return NextResponse.json({ copy, prompt });
   } catch {
     return NextResponse.json(
       { error: "AI 文案接口返回内容不是可解析的 JSON。", text },
