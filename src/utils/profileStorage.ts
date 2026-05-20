@@ -177,11 +177,13 @@ export function loadProjectHistory(): ProjectRecord[] {
   if (!key) return [];
   try {
     let raw = localStorage.getItem(key);
-    if (!raw) {
-      const legacyRaw = localStorage.getItem(PROJECT_HISTORY_KEY);
-      if (legacyRaw) {
-        localStorage.setItem(key, legacyRaw);
+    const legacyRaw = localStorage.getItem(PROJECT_HISTORY_KEY);
+    if (legacyRaw) {
+      const currentList = raw ? JSON.parse(raw) as ProjectRecord[] : [];
+      const legacyList = JSON.parse(legacyRaw) as ProjectRecord[];
+      if (currentList.length === 0 && legacyList.length > 0) {
         raw = legacyRaw;
+        localStorage.setItem(key, legacyRaw);
       }
     }
     return raw ? JSON.parse(raw) : [];
