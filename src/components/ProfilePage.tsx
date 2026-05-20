@@ -520,7 +520,7 @@ function ProjectCard({ record, selected, onToggleSelect, onRestore, onExport, on
                 <MenuItem onClick={() => { onExport("pdf"); setShowMenu(false); }}>📝 导出 PDF</MenuItem>
                 <hr className="my-1 border-stone-200" />
                 <MenuItem onClick={() => { onRestore(); setShowMenu(false); }}>📂 恢复进度</MenuItem>
-                <MenuItem onClick={() => { onPublish(); setShowMenu(false); }}>发布到社区</MenuItem>
+                <MenuItem onClick={() => { onPublish(); setShowMenu(false); }}>🌐 发布到社区</MenuItem>
                 <MenuItem onClick={() => { if (confirm("确定删除？")) { onDelete(); setShowMenu(false); } }} className="text-red-600">🗑️ 删除记录</MenuItem>
               </div>
             </>

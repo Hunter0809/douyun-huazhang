@@ -2202,7 +2202,7 @@ export default function CreativeBeadStudio() {
               disabled={!sourceImageUrl && !pattern && !patternUrl}
               className="rounded-md bg-stone-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-45"
             >
-              发布当前作品
+              🌐 发布当前作品
             </button>
           </div>
 
