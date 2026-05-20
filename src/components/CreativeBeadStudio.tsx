@@ -831,11 +831,14 @@ export default function CreativeBeadStudio() {
   const [loginModalStep, setLoginModalStep] = useState<"login" | "register">("login");
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [toastType, setToastType] = useState<"warning" | "success">("warning");
+  const [aiCopy, setAiCopy] = useState<string | null>(null);
   const [showAiChat, setShowAiChat] = useState(false);
   const [aiChatResetToken, setAiChatResetToken] = useState(0);
   const [extractPrompt, setExtractPrompt] = useState<string | null>(null);
   const [subjectAnalysis, setSubjectAnalysis] = useState<SubjectAnalysis | null>(null);
   const [subjectDirty, setSubjectDirty] = useState(false);
+  const [costDropdownOpen, setCostDropdownOpen] = useState(false);
+  const [timeDropdownOpen, setTimeDropdownOpen] = useState(false);
 
   // 首页打字机动画状态
   const homeTypingLine1 = "方寸之间，粒粒皆可触摸的东方诗篇";
@@ -956,6 +959,20 @@ export default function CreativeBeadStudio() {
       setExtractPrompt(null);
       clearPatternArtifacts();
       setStep("extract");
+      // 上传时自动生成AI文化描述
+      try {
+        const res = await fetch("/api/generate-culture-text", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ theme, element, meaning, product: formLabel }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.text) setAiCopy(data.text);
+        }
+      } catch {
+        // AI 文化描述生成失败不影响主流程
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "图片处理失败");
     } finally {
@@ -1578,7 +1595,7 @@ export default function CreativeBeadStudio() {
               </div>
               <div className="rounded-md bg-stone-100 p-3">
                 <p className="text-xs text-stone-500">预估用时</p>
-                <p className="text-lg font-bold">{formatDuration(beadingMinutes)}</p>
+                <p className="text-lg font-bold">{beadingMinutes} 分钟</p>
               </div>
             </div>
             <div className="mt-4 max-h-[480px] overflow-auto rounded-md border border-stone-200">
@@ -1719,13 +1736,36 @@ export default function CreativeBeadStudio() {
             <h2 className="text-xl font-semibold">制作方案</h2>
             <p className="mt-1 text-sm leading-6 text-stone-500">根据当前图纸用量生成材料、工具、拼豆和熨烫流程。</p>
             <div className="mt-4 grid gap-3 md:grid-cols-3">
-              <div className="rounded-md bg-stone-100 p-3">
+              <div className="relative rounded-md bg-stone-100 p-3">
                 <p className="text-xs text-stone-500">预估成本</p>
-                <p className="text-lg font-bold">约 {cost.min}-{cost.max} 元</p>
+                <button type="button" onClick={() => setCostDropdownOpen(!costDropdownOpen)} className="w-full text-left text-lg font-bold hover:text-stone-700">约 {cost.min}-{cost.max} 元</button>
+                {costDropdownOpen && (
+                  <div className="absolute left-0 right-0 top-full z-10 mt-1 rounded-md border border-stone-200 bg-white p-3 shadow-lg">
+                    <p className="text-xs font-medium text-stone-500">成本组成</p>
+                    <ul className="mt-2 space-y-1 text-xs text-stone-600">
+                      <li className="flex justify-between"><span>拼豆包数</span><span>{Math.max(beadCounts.length, Math.ceil((total * 1.15) / 1000))} 包</span></li>
+                      <li className="flex justify-between"><span>拼豆单价</span><span>3~7 元/包</span></li>
+                      <li className="flex justify-between"><span>模板板</span><span>5~10 元</span></li>
+                      <li className="flex justify-between"><span>熨烫纸</span><span>3~10 元</span></li>
+                      <li className="mt-1 border-t border-stone-100 pt-1 font-medium">合计：{cost.min}~{cost.max} 元</li>
+                    </ul>
+                  </div>
+                )}
               </div>
-              <div className="rounded-md bg-stone-100 p-3">
+              <div className="relative rounded-md bg-stone-100 p-3">
                 <p className="text-xs text-stone-500">拼豆用时</p>
-                <p className="text-lg font-bold">{formatDuration(beadingMinutes)}</p>
+                <button type="button" onClick={() => setTimeDropdownOpen(!timeDropdownOpen)} className="w-full text-left text-lg font-bold hover:text-stone-700">{beadingMinutes} 分钟</button>
+                {timeDropdownOpen && (
+                  <div className="absolute left-0 right-0 top-full z-10 mt-1 rounded-md border border-stone-200 bg-white p-3 shadow-lg">
+                    <p className="text-xs font-medium text-stone-500">用时组成</p>
+                    <ul className="mt-2 space-y-1 text-xs text-stone-600">
+                      <li className="flex justify-between"><span>摆豆（{total} 颗 × {0.22}秒/颗）</span><span>{Math.round(total * 0.22)} 秒 ≈ {Math.round(total * 0.22 / 60)} 分钟</span></li>
+                      <li className="flex justify-between"><span>换色（{beadCounts.length} 色 × {4}秒/色）</span><span>{beadCounts.length * 4} 秒</span></li>
+                      <li className="flex justify-between"><span>基础用时</span><span>20 分钟</span></li>
+                      <li className="mt-1 border-t border-stone-100 pt-1 font-medium">合计：约 {beadingMinutes} 分钟</li>
+                    </ul>
+                  </div>
+                )}
               </div>
               <div className="rounded-md bg-stone-100 p-3">
                 <p className="text-xs text-stone-500">图纸规模</p>
@@ -1785,10 +1825,10 @@ export default function CreativeBeadStudio() {
           <div className="rounded-lg border border-stone-200 bg-white p-5">
             <h2 className="mb-3 text-xl font-semibold">方案导出</h2>
             <div className="grid gap-2 sm:grid-cols-2">
-              <button type="button" disabled={!patternUrl} onClick={() => patternUrl && downloadUrl(patternUrl, `${copy.title}-拼豆图纸.png`)} className="rounded-md bg-stone-900 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">下载图纸 PNG</button>
-              <button type="button" disabled={!cleanPatternUrl} onClick={() => cleanPatternUrl && downloadUrl(cleanPatternUrl, `${copy.title}-无标注图纸.png`)} className="rounded-md bg-stone-900 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">下载无标注 PNG</button>
-              <button type="button" disabled={beadCounts.length === 0} onClick={() => downloadBeadCsv(beadCounts, `${copy.title}-材料清单.csv`)} className="rounded-md bg-stone-900 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">导出材料 CSV</button>
-              <button type="button" disabled={!pattern} onClick={() => downloadTextFile(planText, `${copy.title}-制作方案.txt`)} className="rounded-md bg-stone-900 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">导出制作方案</button>
+              <button type="button" disabled={!patternUrl} onClick={() => patternUrl && downloadUrl(patternUrl, `${copy.title}-拼豆图纸.png`)} className="rounded-md bg-[#8f1d21] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">下载图纸 PNG</button>
+              <button type="button" disabled={!cleanPatternUrl} onClick={() => cleanPatternUrl && downloadUrl(cleanPatternUrl, `${copy.title}-无标注图纸.png`)} className="rounded-md bg-[#8f1d21] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">下载无标注 PNG</button>
+              <button type="button" disabled={beadCounts.length === 0} onClick={() => downloadBeadCsv(beadCounts, `${copy.title}-材料清单.csv`)} className="rounded-md bg-[#8f1d21] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">导出材料 CSV</button>
+              <button type="button" disabled={!pattern} onClick={() => downloadTextFile(planText, `${copy.title}-制作方案.txt`)} className="rounded-md bg-[#8f1d21] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">导出制作方案</button>
             </div>
           </div>
           <div className="rounded-lg border border-stone-200 bg-white p-5">

@@ -1,7 +1,17 @@
-# Task Progress
+# 当前任务进度
 
-- [x] Analyze the publish flow code in both CreativeBeadStudio.tsx and ProfilePage.tsx
-- [x] Identify the root cause: ProfilePage uses separate `publishMessage` state rendered as green div, NOT the wine-red bouncing toast
-- [x] Fix ProfilePage.tsx `handlePublish` - add `publishMessageType` to distinguish success/error
-- [x] Fix ProfilePage.tsx render - change error display to wine-red bounce toast matching CreativeBeadStudio
-- [ ] Verify final review
+## 检查历史作品发布到论坛失败原因 - 已完成
+
+- [x] 分析 ProfilePage.tsx 发布流程代码
+- [x] 定位问题：ProfilePage 使用独立的 `publishMessage` 状态，渲染在绿色 div 中，不是酒红色弹跳弹窗
+- [x] 修复：新增 `publishMessageType` 状态，失败消息改用 `bg-[#6b1a20]` 酒红色 + `animate-bounce`
+- [x] 推送到 GitHub
+
+## 新需求
+
+- [ ] 1. 用量统计"预估用时"显示分钟数（而非格式化的小时+分钟）
+- [ ] 2. 制作方案"预估成本"显示确切值，点击下拉框查看成本组成
+- [ ] 3. 制作方案"拼豆用时"显示确切值，点击下拉框查看时长组成
+- [ ] 4. 方案导出按钮改为红色（bg-[#8f1d21]），与其他模块一致
+- [ ] 5. 用户上传图片时，文化说明用AI生成的再创作图像生成
+- [ ] 推送到 GitHub
