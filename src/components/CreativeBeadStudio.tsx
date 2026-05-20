@@ -938,6 +938,21 @@ export default function CreativeBeadStudio() {
     setResultMaskMode("select");
   }, []);
 
+  const clearCurrentProgress = useCallback(() => {
+    directOutputRef.current = false;
+    clearPatternArtifacts();
+    clearResultSubjectSelection();
+    setSourceImageUrl(null);
+    setExtractedImageUrl(null);
+    setSubjectAnalysis(null);
+    setSubjectMaskSnapshot(null);
+    setSubjectDirty(false);
+    setExtractPrompt(null);
+    setError(null);
+    setConfirmNew(null);
+    setStep("config");
+  }, [clearPatternArtifacts, clearResultSubjectSelection]);
+
   const doUseSample = useCallback(() => {
     clearPatternArtifacts();
     const original = renderSampleDesignOriginal(options);
@@ -2200,6 +2215,7 @@ export default function CreativeBeadStudio() {
             clearAiChatHistory();
             setAiChatResetToken((value) => value + 1);
             setShowAiChat(false);
+            clearCurrentProgress();
             setCurrentUser(null);
           }}
         />

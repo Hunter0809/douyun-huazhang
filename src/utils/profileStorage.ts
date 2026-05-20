@@ -166,10 +166,24 @@ export function saveApiConfig(config: ApiConfig): void {
 
 /* ──────── 项目历史 ──────── */
 
+function getProjectHistoryKey(): string | null {
+  const username = loadCurrentUser();
+  return username ? `${PROJECT_HISTORY_KEY}:${username}` : null;
+}
+
 export function loadProjectHistory(): ProjectRecord[] {
   if (!isAvailable()) return [];
+  const key = getProjectHistoryKey();
+  if (!key) return [];
   try {
-    const raw = localStorage.getItem(PROJECT_HISTORY_KEY);
+    let raw = localStorage.getItem(key);
+    if (!raw) {
+      const legacyRaw = localStorage.getItem(PROJECT_HISTORY_KEY);
+      if (legacyRaw) {
+        localStorage.setItem(key, legacyRaw);
+        raw = legacyRaw;
+      }
+    }
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
@@ -178,6 +192,8 @@ export function loadProjectHistory(): ProjectRecord[] {
 
 export function saveProjectRecord(record: ProjectRecord): void {
   if (!isAvailable()) return;
+  const key = getProjectHistoryKey();
+  if (!key) return;
   try {
     const list = loadProjectHistory();
     const idx = list.findIndex((p) => p.id === record.id);
@@ -186,7 +202,7 @@ export function saveProjectRecord(record: ProjectRecord): void {
     } else {
       list.unshift(record);
     }
-    localStorage.setItem(PROJECT_HISTORY_KEY, JSON.stringify(list.slice(0, 100)));
+    localStorage.setItem(key, JSON.stringify(list.slice(0, 100)));
   } catch (e) {
     console.error("保存项目记录失败:", e);
   }
@@ -194,18 +210,22 @@ export function saveProjectRecord(record: ProjectRecord): void {
 
 export function deleteProjectRecord(id: string): void {
   if (!isAvailable()) return;
+  const key = getProjectHistoryKey();
+  if (!key) return;
   try {
     const list = loadProjectHistory().filter((p) => p.id !== id);
-    localStorage.setItem(PROJECT_HISTORY_KEY, JSON.stringify(list));
+    localStorage.setItem(key, JSON.stringify(list));
   } catch { /* ignore */ }
 }
 
 /** 批量删除项目记录 */
 export function deleteProjectRecords(ids: string[]): void {
   if (!isAvailable() || ids.length === 0) return;
+  const key = getProjectHistoryKey();
+  if (!key) return;
   try {
     const idSet = new Set(ids);
     const list = loadProjectHistory().filter((p) => !idSet.has(p.id));
-    localStorage.setItem(PROJECT_HISTORY_KEY, JSON.stringify(list));
+    localStorage.setItem(key, JSON.stringify(list));
   } catch { /* ignore */ }
 }

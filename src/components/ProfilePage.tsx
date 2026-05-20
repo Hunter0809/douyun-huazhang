@@ -43,6 +43,7 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Prop
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [batchMode, setBatchMode] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [publishMessage, setPublishMessage] = useState<string | null>(null);
   const [publishMessageType, setPublishMessageType] = useState<"success" | "error">("success");
 
@@ -175,8 +176,21 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Prop
 
   const handleLoggedIn = useCallback((user: StoredUser) => {
     setProfile(user);
+    setHistory(loadProjectHistory());
     setShowLoginModal(false);
   }, []);
+
+  const confirmLogout = useCallback(() => {
+    logoutUser();
+    saveApiConfig({ textModelApiKey: "", textModelName: "", imageModelApiKey: "", imageModelName: "" });
+    setProfile({ nickname: "豆韵用户", avatarUrl: "", createdAt: Date.now() });
+    setApiConfig({ textModelApiKey: "", textModelName: "", imageModelApiKey: "", imageModelName: "" });
+    setHistory(loadProjectHistory());
+    setSelectedIds(new Set());
+    setBatchMode(false);
+    setShowLogoutConfirm(false);
+    onLogout?.();
+  }, [onLogout]);
 
   return (
     <main className="min-h-screen bg-[#f8f5ef] text-stone-950">
@@ -431,13 +445,7 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Prop
               <p className="mt-1 text-sm text-stone-500">登出后将不再显示与该账号有关的信息，本地未保存的作品不会被删除。</p>
               <button
                 type="button"
-                onClick={() => {
-                  logoutUser();
-                  saveApiConfig({ textModelApiKey: "", textModelName: "", imageModelApiKey: "", imageModelName: "" });
-                  setProfile({ nickname: "豆韵用户", avatarUrl: "", createdAt: Date.now() });
-                  setApiConfig({ textModelApiKey: "", textModelName: "", imageModelApiKey: "", imageModelName: "" });
-                  onLogout?.();
-                }}
+                onClick={() => setShowLogoutConfirm(true)}
                 className="mt-4 rounded-md border border-red-300 bg-red-50 px-5 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100"
               >
                 退出登录
@@ -459,6 +467,33 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Prop
           )}
         </section>
       </div>
+
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/45 px-4">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-2xl">
+            <h2 className="text-xl font-semibold text-stone-950">确认退出登录</h2>
+            <p className="mt-3 text-sm leading-6 text-stone-600">
+              退出后将无法看到当前账号的历史作品，并会清空当前创作进度。重新登录该账号后，可以恢复该账号保存的历史作品。
+            </p>
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={confirmLogout}
+                className="rounded-md bg-[#8f1d21] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#a82428]"
+              >
+                确认退出
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowLogoutConfirm(false)}
+                className="rounded-md border border-stone-300 bg-white px-4 py-3 text-sm font-semibold text-stone-700 transition hover:bg-stone-50"
+              >
+                放弃退出
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {cropperFile && (
         <AvatarCropper
