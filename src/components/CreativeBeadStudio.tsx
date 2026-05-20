@@ -39,6 +39,11 @@ import {
 
 type SiteView = "home" | "start" | "faq" | "profile";
 type StudioStep = "config" | "extract" | "pattern" | "preview";
+type ProductConfigDefault = {
+  aspectRatio: AspectRatioId;
+  gridSize: number;
+  colorCount: number;
+};
 
   const navItems: { id: SiteView; label: string }[] = [
   { id: "home", label: "首页" },
@@ -62,6 +67,19 @@ const formLabels = [
   { id: "bag_charm", label: "随身牌底稿" },
 ];
 
+const productConfigDefaults: Record<string, ProductConfigDefault> = {
+  coaster: { aspectRatio: "1:1", gridSize: 48, colorCount: 12 },
+  keychain: { aspectRatio: "1:1", gridSize: 32, colorCount: 8 },
+  magnet: { aspectRatio: "1:1", gridSize: 40, colorCount: 10 },
+  brooch: { aspectRatio: "1:1", gridSize: 32, colorCount: 8 },
+  pendant: { aspectRatio: "3:4", gridSize: 48, colorCount: 12 },
+  bag_charm: { aspectRatio: "1:1", gridSize: 40, colorCount: 10 },
+};
+
+function getProductConfigDefault(productId: string): ProductConfigDefault {
+  return productConfigDefaults[productId] ?? productConfigDefaults.coaster;
+}
+
 const showcase = [
   {
     title: "青花莲纹",
@@ -72,15 +90,15 @@ const showcase = [
   },
   {
     title: "敦煌飞天",
-    theme: "敦煌文化",
+    theme: "敦煌",
     element: "飞天",
     meaning: "提取敦煌飞天的飘带、乐舞和壁画色彩，以土黄、赭红与青绿构成具有丝路气息的装饰图案。",
     colors: ["#FCF9E0", "#EDB045", "#943630", "#0B3C43"],
   },
   {
     title: "京剧脸谱",
-    theme: "京剧脸谱",
-    element: "对称脸谱",
+    theme: "京剧",
+    element: "脸谱",
     meaning: "以京剧脸谱的对称结构和红、黑、白高对比色表达戏曲人物符号，适合做识别度强的拼豆图纸。",
     colors: ["#FFFFFF", "#E7002F", "#000000", "#FFDA45"],
   },
@@ -111,7 +129,7 @@ const craftSteps = [
   {
     anchor: "guide-upload",
     title: "素材与提取",
-    text: "AI 生成图像直接进入输出端；上传本地图片时先提取核心主体意象，再进行艺术再创作。两种来源都支持交互式画笔标记主体区域并查看颜色占比。",
+    text: "AI 生成图像直接进入输出端；上传本地图片时先用交互式画笔确认核心主体，再由 AI 结合传统文化配置进行再创作。",
   },
   {
     anchor: "guide-mapping",
@@ -225,11 +243,11 @@ const helpData: HelpSection[] = [
     subs: [
       {
         title: "使用 AI 生成图案",
-        content: "点击「AI 生成图案」按钮，系统会根据你选择的主题、核心元素、作品形式等参数，调用 AI 生成一幅传统文化风格的图案。生成后会自动进入「主体提取与再创作」步骤，但不会再对 AI 图像执行自动主体识别或二次再创作，右侧输出端直接使用这张 AI 生成图像。左侧交互式主体识别默认没有绿色蒙版，用户可用「鼠标 / 增加 / 减少」和画笔大小手动标记主体区域，颜色占比会按手动蒙版实时计算。",
+        content: "点击「AI 生成图案」按钮，系统会根据你选择的主题、核心元素、作品形式等参数，调用 AI 生成一幅传统文化风格的图案。生成后会自动进入「主体提取与再创作」步骤，但不会再对 AI 图像执行自动主体识别或二次再创作，右侧输出端直接使用这张 AI 生成图像。左侧交互式主体识别默认没有绿色蒙版，用户可用「鼠标 / 增加 / 减少」和画笔大小手动标记主体区域用于查看主体范围。",
       },
       {
         title: "上传自己的图片",
-        content: "支持上传 JPG/PNG 格式图片。上传后会先在原图上自动生成绿色主体蒙版，并基于蒙版计算主体颜色占比；用户可以继续用「鼠标」点选同色连通区域，或用「增加 / 减少」画笔精修主体范围。系统不会自动触发再创作，确认主体区域后需要点击右侧「AI 再创作」，主体图和颜色比例才会作为输入生成传统文化艺术图像。传统纹样、书法字形、器物纹饰和简洁插画效果最佳。",
+        content: "支持上传 JPG/PNG 格式图片。上传后会先在原图上自动生成绿色主体蒙版；用户可以继续用「鼠标」点选同色连通区域，或用「增加 / 减少」画笔精修主体范围。系统不会自动触发再创作，确认主体区域后需要点击右侧「AI 再创作」，AI 会识别蒙版裁出的主体并结合传统文化配置生成传统文化艺术图像。传统纹样、书法字形、器物纹饰和简洁插画效果最佳。",
       },
       {
         title: "使用内置样例",
@@ -298,7 +316,7 @@ const helpData: HelpSection[] = [
       },
       {
         title: "上传的图片提取效果不理想",
-        content: "上传图的主体提取算法基于边界背景建模、连通区域分析和本地颜色统计，对轮廓清晰、背景简洁、主体突出的图片识别效果最好。若自动蒙版不理想，可在「主体提取与再创作」步骤直接使用画笔精修：用「增加」补齐缺失主体，用「减少」擦除误选背景，用「鼠标」点选同色连通区域快速扩展边缘。AI 生成图不会自动生成蒙版，需要用户手动添加主体区域；该蒙版只用于颜色占比分析，不会触发二次 AI 再创作。",
+        content: "上传图的主体提取算法基于边界背景建模和连通区域分析，对轮廓清晰、背景简洁、主体突出的图片识别效果最好。若自动蒙版不理想，可在「主体提取与再创作」步骤直接使用画笔精修：用「增加」补齐缺失主体，用「减少」擦除误选背景；鼠标点击非蒙版像素会增加同色连通主体，点击绿色蒙版像素会删除该连通蒙版区域。AI 生成图不会自动生成蒙版，需要用户手动添加主体区域；该蒙版不会触发二次 AI 再创作。",
       },
       {
         title: "拼豆图纸颜色太多或太少怎么办？",
@@ -386,11 +404,11 @@ const helpData: HelpSection[] = [
         ],
       },
       {
-        title: "六、交互式主体识别与颜色占比",
+        title: "六、交互式主体识别",
         content: [
-          "上传图片时，系统会先基于边界背景色建立背景模型，并用洪水填充找出与边界连通的背景区域，再取最大的前景连通块作为初始绿色主体蒙版。该步骤只在浏览器本地更新蒙版、裁切主体和计算颜色占比，不会自动调用 AI。",
+          "上传图片时，系统会先基于边界背景色建立背景模型，并用洪水填充找出与边界连通的背景区域，再取最大的前景连通块作为初始绿色主体蒙版。该步骤只在浏览器本地更新蒙版并裁切主体，不会自动调用 AI。",
           "AI 生成图像和内置样例不会执行自动主体识别，初始蒙版为空。用户需要用「增加」画笔或「鼠标」同色连通选择手动添加主体区域；「减少」画笔用于从蒙版中擦除误选区域。",
-          "颜色占比完全由浏览器端代码计算，不交给 AI。算法只统计当前蒙版内的像素，使用 RGB 聚类得到主要颜色，并按像素数量计算百分比。上传图只有在用户点击右侧「AI 再创作」后，才会把主体裁切图、颜色列表和占比发送给再创作接口；AI 生成图直接复制到输出端，手动蒙版仅用于颜色占比展示。",
+          "上传图只有在用户点击右侧「AI 再创作」后，才会把主体裁切图发送给再创作接口。AI 负责识别蒙版裁出的物体主体，并结合传统主题、核心元素、文化叙述和作品形式生成输出图像；AI 生成图直接复制到输出端，手动蒙版只用于确认主体范围。",
         ],
       },
       {
@@ -561,9 +579,9 @@ export default function CreativeBeadStudio() {
   const [element, setElement] = useState(firstTheme.elements[0] ?? "传统纹样");
   const [meaning, setMeaning] = useState(firstTheme.meaning);
   const [productId, setProductId] = useState("coaster");
-  const [gridSize, setGridSize] = useState(32);
-  const [colorCount, setColorCount] = useState(8);
-  const [aspectRatio, setAspectRatio] = useState<AspectRatioId>("1:1");
+  const [gridSize, setGridSize] = useState(() => getProductConfigDefault("coaster").gridSize);
+  const [colorCount, setColorCount] = useState(() => getProductConfigDefault("coaster").colorCount);
+  const [aspectRatio, setAspectRatio] = useState<AspectRatioId>(() => getProductConfigDefault("coaster").aspectRatio);
   const [showGrid, setShowGrid] = useState(true);
   const [antiAlias, setAntiAlias] = useState(true);
   const [connectIslands, setConnectIslands] = useState(true);
@@ -776,12 +794,20 @@ export default function CreativeBeadStudio() {
     setCleanPatternUrl(cleanCanvas.toDataURL("image/png"));
   }, [pattern, showGrid, step]);
 
-  const handleThemeSelect = (themeId: string) => {
-    const next = cultureThemes.find((item) => item.id === themeId);
+  const handleThemeInput = (value: string) => {
+    setTheme(value);
+    const next = cultureThemes.find((item) => item.name === value || item.id === value);
     if (!next) return;
-    setTheme(next.name);
     setElement(next.elements[0] ?? "");
     setMeaning(next.meaning);
+  };
+
+  const applyProductConfigDefault = (nextProductId: string) => {
+    const defaults = getProductConfigDefault(nextProductId);
+    setProductId(nextProductId);
+    setAspectRatio(defaults.aspectRatio);
+    setGridSize(defaults.gridSize);
+    setColorCount(defaults.colorCount);
   };
 
   const buildPatternFromExtracted = async () => {
@@ -897,8 +923,6 @@ export default function CreativeBeadStudio() {
         body: JSON.stringify({
           imageUrl: subjectAnalysis.subjectImageUrl,
           isUpload: true,
-          colorSummary: subjectAnalysis.colorSummary,
-          colors: subjectAnalysis.colors,
           ...options,
         }),
       });
@@ -991,13 +1015,17 @@ export default function CreativeBeadStudio() {
             <div className="mt-5 grid gap-4">
               <label className="text-sm font-medium">
                 传统主题
-                <select onChange={(event) => handleThemeSelect(event.target.value)} className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2">
+                <input
+                  list="culture-theme-options"
+                  value={theme}
+                  onChange={(event) => handleThemeInput(event.target.value)}
+                  className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2"
+                />
+                <datalist id="culture-theme-options">
                   {cultureThemes.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
+                    <option key={item.id} value={item.name} />
                   ))}
-                </select>
+                </datalist>
               </label>
               <label className="text-sm font-medium">
                 核心元素
@@ -1010,7 +1038,7 @@ export default function CreativeBeadStudio() {
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="text-sm font-medium">
                   作品形式
-                  <select value={productId} onChange={(event) => setProductId(event.target.value)} className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2">
+                  <select value={productId} onChange={(event) => applyProductConfigDefault(event.target.value)} className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2">
                     {formLabels.map((item) => (
                       <option key={item.id} value={item.id}>
                         {item.label}
@@ -1206,7 +1234,7 @@ export default function CreativeBeadStudio() {
               <section className="rounded-lg border border-stone-200 bg-white p-5">
                 <h2 className="text-xl font-semibold">AI 再创作</h2>
                 <p className="mt-1 text-sm leading-6 text-stone-500">
-                  左侧主体识别只在本地计算蒙版和颜色占比。点击此按钮后，才会把主体裁切图与颜色占比发送给 AI 生成传统文化风格输出图像。
+                  左侧主体识别只在本地计算蒙版和裁切主体。点击此按钮后，才会把主体裁切图发送给 AI 生成传统文化风格输出图像。
                 </p>
                 {subjectDirty && extractedImageUrl && (
                   <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
@@ -1237,8 +1265,8 @@ export default function CreativeBeadStudio() {
               <h2 className="text-xl font-semibold">主体提取与再创作</h2>
               <p className="mt-1 text-sm text-stone-500">
                 {directGeneratedImage
-                  ? "AI 生成图像直接作为输出图像进入拼豆图纸阶段；左侧可手动画出主体区域用于查看颜色占比。"
-                  : "上传图由本地蒙版提取主体并计算主体颜色组成，AI 只根据计算结果进行传统文化风格再创作；接下来在第三阶段进行像素化处理。"}
+                  ? "AI 生成图像直接作为输出图像进入拼豆图纸阶段；左侧可手动画出主体区域用于确认主体范围。"
+                  : "上传图由本地蒙版抠出主体，AI 识别蒙版裁出的物体主体并结合传统文化配置进行创作；接下来在第三阶段进行像素化处理。"}
               </p>
               <div className="mt-4">{renderImageBox(extractedImageUrl, directGeneratedImage ? "AI 生成输出图像" : "AI 再创作图像")}</div>
               <div className="mt-4 flex flex-wrap gap-3">
@@ -1452,7 +1480,7 @@ export default function CreativeBeadStudio() {
             <div className="mt-3 grid gap-3">
               <label className="text-sm font-medium">
                 作品形式
-                <select value={productId} onChange={(event) => setProductId(event.target.value)} className="mt-1 w-full rounded-md border border-stone-300 px-3 py-2">
+                <select value={productId} onChange={(event) => applyProductConfigDefault(event.target.value)} className="mt-1 w-full rounded-md border border-stone-300 px-3 py-2">
                   {formLabels.map((item) => (
                     <option key={item.id} value={item.id}>
                       {item.label}
@@ -1794,12 +1822,15 @@ export default function CreativeBeadStudio() {
                     setTheme(item.theme);
                     setElement(item.element);
                     setMeaning(item.meaning);
+                    applyProductConfigDefault("coaster");
                     // 预设该模板的推荐配色到调色板
                     setForcedColors(item.colors);
-                    setColorCount(Math.max(8, item.colors.length + 4));
                     clearPatternArtifacts();
                     setSourceImageUrl(null);
                     setExtractedImageUrl(null);
+                    setSubjectAnalysis(null);
+                    setSubjectDirty(false);
+                    directOutputRef.current = false;
                     setView("start");
                     setStep("config");
                   }}

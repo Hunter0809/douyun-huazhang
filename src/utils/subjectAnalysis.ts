@@ -2,16 +2,8 @@
 
 import type { RgbColor } from "./pixelation";
 
-export type SubjectColor = {
-  hex: string;
-  ratio: number;
-  count: number;
-};
-
 export type SubjectAnalysis = {
   subjectImageUrl: string;
-  colors: SubjectColor[];
-  colorSummary: string;
   bounds: { x: number; y: number; width: number; height: number };
 };
 
@@ -311,52 +303,12 @@ function calculateBounds(mask: Uint8Array, width: number, height: number): Subje
   };
 }
 
-function summarizeColors(data: Uint8ClampedArray, mask: Uint8Array, width: number): SubjectColor[] {
-  const samples: RgbColor[] = [];
-  for (let index = 0; index < mask.length; index++) {
-    if (!mask[index]) continue;
-    const dataIndex = index * 4;
-    const alpha = data[dataIndex + 3] / 255;
-    if (alpha <= 0) continue;
-    samples.push({
-      r: data[dataIndex],
-      g: data[dataIndex + 1],
-      b: data[dataIndex + 2],
-    });
-  }
-
-  const centers = buildPalette(samples, 6);
-  const counts = centers.map((center) => ({ center, count: 0 }));
-  for (const sample of samples) {
-    let bestIndex = 0;
-    let bestDistance = Infinity;
-    centers.forEach((center, index) => {
-      const distance = colorDistance(sample, center);
-      if (distance < bestDistance) {
-        bestDistance = distance;
-        bestIndex = index;
-      }
-    });
-    counts[bestIndex].count += 1;
-  }
-
-  const total = samples.length || width;
-  return counts
-    .filter((item) => item.count > 0)
-    .map((item) => ({
-      hex: rgbToHex(item.center),
-      ratio: item.count / total,
-      count: item.count,
-    }))
-    .sort((a, b) => b.count - a.count);
-}
-
 export async function createSubjectMask(imageUrl: string, options: { autoDetect?: boolean } = {}): Promise<SubjectMask> {
   const image = new Image();
   image.crossOrigin = "anonymous";
   await new Promise<void>((resolve, reject) => {
     image.onload = () => resolve();
-    image.onerror = () => reject(new Error("图片加载失败，无法分析主体颜色。"));
+    image.onerror = () => reject(new Error("图片加载失败，无法识别主体。"));
     image.src = imageUrl;
   });
 
@@ -383,7 +335,6 @@ export async function createSubjectMask(imageUrl: string, options: { autoDetect?
 export function analyzeSubjectMask(input: SubjectMask): SubjectAnalysis {
   const { imageData, mask, width, height } = input;
   const bounds = calculateBounds(mask, width, height);
-  const colors = summarizeColors(imageData.data, mask, width);
 
   const outputCanvas = document.createElement("canvas");
   outputCanvas.width = bounds.width;
@@ -407,14 +358,8 @@ export function analyzeSubjectMask(input: SubjectMask): SubjectAnalysis {
   }
   outputCtx.putImageData(output, 0, 0);
 
-  const colorSummary = colors
-    .map((color, index) => `${index + 1}. ${color.hex} ${(color.ratio * 100).toFixed(1)}%`)
-    .join("\n");
-
   return {
     subjectImageUrl: outputCanvas.toDataURL("image/png"),
-    colors,
-    colorSummary,
     bounds,
   };
 }
