@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CultureExplanation from "@/components/CultureExplanation";
 import FilterDropdown from "@/components/FilterDropdown";
 import ProfilePage from "@/components/ProfilePage";
-import SubjectMaskEditor from "@/components/SubjectMaskEditor";
+import SubjectMaskEditor, { type MaskMode } from "@/components/SubjectMaskEditor";
 import LoginModal from "@/components/LoginModal";
 import AiChatPanel from "@/components/ai/AiChatPanel";
 import FloatingAiButton from "@/components/ai/FloatingAiButton";
@@ -25,7 +25,7 @@ import {
   type BeadPattern,
 } from "@/utils/culturePattern";
 import { generateCultureCopy } from "@/utils/cultureTextGenerator";
-import type { SubjectAnalysis } from "@/utils/subjectAnalysis";
+import type { SubjectAnalysis, SubjectMask } from "@/utils/subjectAnalysis";
 import {
   getAllHexValues,
   getDisplayColorKey,
@@ -831,12 +831,14 @@ export default function CreativeBeadStudio() {
   const [loginModalStep, setLoginModalStep] = useState<"login" | "register">("login");
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [toastType, setToastType] = useState<"warning" | "success">("warning");
-  const [aiCopy, setAiCopy] = useState<string | null>(null);
+  const [, setAiCopy] = useState<string | null>(null);
   const [showAiChat, setShowAiChat] = useState(false);
   const [aiChatResetToken, setAiChatResetToken] = useState(0);
   const [extractPrompt, setExtractPrompt] = useState<string | null>(null);
   const [subjectAnalysis, setSubjectAnalysis] = useState<SubjectAnalysis | null>(null);
   const [subjectDirty, setSubjectDirty] = useState(false);
+  const [subjectMaskMode, setSubjectMaskMode] = useState<MaskMode>("select");
+  const [subjectMaskSnapshot, setSubjectMaskSnapshot] = useState<SubjectMask | null>(null);
   const [costDropdownOpen, setCostDropdownOpen] = useState(false);
   const [timeDropdownOpen, setTimeDropdownOpen] = useState(false);
 
@@ -932,6 +934,7 @@ export default function CreativeBeadStudio() {
     const original = renderSampleDesignOriginal(options);
     directOutputRef.current = true;
     setSubjectAnalysis(null);
+    setSubjectMaskSnapshot(null);
     setSubjectDirty(false);
     setSourceImageUrl(original);
     setExtractedImageUrl(original);
@@ -953,6 +956,7 @@ export default function CreativeBeadStudio() {
       });
       directOutputRef.current = false;
       setSubjectAnalysis(null);
+      setSubjectMaskSnapshot(null);
       setSubjectDirty(false);
       setSourceImageUrl(imageUrl);
       setExtractedImageUrl(null);
@@ -1030,8 +1034,11 @@ export default function CreativeBeadStudio() {
     setLoading(true);
     setError(null);
     try {
+      const patternSourceImage = directOutputRef.current && subjectAnalysis?.subjectImageUrl
+        ? subjectAnalysis.subjectImageUrl
+        : extractedImageUrl;
       const next = await imageDataUrlToPattern(
-        extractedImageUrl,
+        patternSourceImage,
         { ...options, antiAlias, connectIslands, source: sourceImageUrl === extractedImageUrl ? "ai" : "upload", preserveSourceRatio: false },
         forcedColors,
         selectedFilter,
@@ -1083,6 +1090,7 @@ export default function CreativeBeadStudio() {
       if (!response.ok) throw new Error(result?.error ?? "AI 图案生成失败");
       directOutputRef.current = true;
       setSubjectAnalysis(null);
+      setSubjectMaskSnapshot(null);
       setSubjectDirty(false);
       setSourceImageUrl(result.imageUrl);
       setExtractedImageUrl(result.imageUrl);
@@ -1097,10 +1105,11 @@ export default function CreativeBeadStudio() {
   };
 
   const handleSubjectAnalysis = useCallback((analysis: SubjectAnalysis) => {
+    setSubjectAnalysis(analysis);
     if (directOutputRef.current) {
+      setSubjectDirty(false);
       return;
     }
-    setSubjectAnalysis(analysis);
     setSubjectDirty(true);
   }, []);
 
@@ -1360,7 +1369,16 @@ export default function CreativeBeadStudio() {
       return (
         <div className="grid gap-6 lg:grid-cols-2">
           <section className="rounded-lg border border-stone-200 bg-white p-5">
-            <SubjectMaskEditor imageUrl={sourceImageUrl} loading={loading} autoDetect={!directGeneratedImage} onSubjectChange={handleSubjectAnalysis} />
+            <SubjectMaskEditor
+              imageUrl={sourceImageUrl}
+              loading={loading}
+              autoDetect={!directGeneratedImage}
+              mode={subjectMaskMode}
+              savedMask={subjectMaskSnapshot}
+              onModeChange={setSubjectMaskMode}
+              onSubjectChange={handleSubjectAnalysis}
+              onMaskSnapshotChange={setSubjectMaskSnapshot}
+            />
             <div className="mt-4 flex flex-wrap gap-3">
               <button type="button" onClick={handleGenerateAI} disabled={loading} className="rounded-md bg-[#8f1d21] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
                 {loading ? "生成中..." : "重新 AI 生成"}
@@ -1408,11 +1426,31 @@ export default function CreativeBeadStudio() {
               </section>
             )}
             <section className="rounded-lg border border-stone-200 bg-white p-5">
-              <h2 className="text-xl font-semibold">主体提取与再创作</h2>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="text-xl font-semibold">创作结果</h2>
+                <div className="flex overflow-hidden rounded-md border border-stone-300">
+                  {[
+                    { id: "select", label: "鼠标" },
+                    { id: "add", label: "增加" },
+                    { id: "subtract", label: "减少" },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setSubjectMaskMode(item.id as MaskMode)}
+                      className={`px-3 py-1.5 text-xs font-semibold transition ${
+                        subjectMaskMode === item.id ? "bg-[#8f1d21] text-white" : "bg-white text-stone-600 hover:bg-stone-50"
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <p className="mt-1 text-sm text-stone-500">
                 {directGeneratedImage
-                  ? "AI 生成图像直接作为输出图像进入拼豆图纸阶段；左侧可手动画出主体区域用于确认主体范围。"
-                  : "上传图由本地蒙版抠出主体，AI 识别蒙版裁出的物体主体并结合传统文化配置进行创作；接下来在第三阶段进行像素化处理。"}
+                  ? "请在左侧点击主体，使用鼠标/增加/减少修正绿色蒙版。生成拼豆图纸时会优先根据你指定的主体蒙版进行拼豆化。"
+                  : "请在左侧点击主体并修正绿色蒙版，再进行创作或生成图纸。系统会根据你指定的主体蒙版确定要拼豆化的主体范围。"}
               </p>
               <div className="mt-4">{renderImageBox(extractedImageUrl, directGeneratedImage ? "AI 生成输出图像" : "AI 再创作图像")}</div>
               <div className="mt-4 flex flex-wrap gap-3">
@@ -1855,6 +1893,7 @@ export default function CreativeBeadStudio() {
     directOutputRef.current = !!record.sourceImageUrl && record.extractedImageUrl === record.sourceImageUrl;
     setSourceImageUrl(record.sourceImageUrl);
     setExtractedImageUrl(record.extractedImageUrl);
+    setSubjectMaskSnapshot(null);
     setPatternUrl(record.patternUrl);
     setCleanPatternUrl(record.cleanPatternUrl);
 
@@ -1981,6 +2020,7 @@ export default function CreativeBeadStudio() {
     setSourceImageUrl(null);
     setExtractedImageUrl(null);
     setSubjectAnalysis(null);
+    setSubjectMaskSnapshot(null);
     setSubjectDirty(false);
     setExtractPrompt(null);
     directOutputRef.current = false;
@@ -2206,6 +2246,7 @@ export default function CreativeBeadStudio() {
                     setSourceImageUrl(null);
                     setExtractedImageUrl(null);
                     setSubjectAnalysis(null);
+                    setSubjectMaskSnapshot(null);
                     setSubjectDirty(false);
                     directOutputRef.current = false;
                     setView("start");
@@ -2573,6 +2614,7 @@ export default function CreativeBeadStudio() {
                       setSourceImageUrl(null);
                       setExtractedImageUrl(null);
                       setSubjectAnalysis(null);
+                      setSubjectMaskSnapshot(null);
                       setSubjectDirty(false);
                       setConfirmNew(null);
                       if (action === "ai") {

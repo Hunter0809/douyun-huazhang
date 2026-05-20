@@ -8,13 +8,17 @@ import {
   type SubjectMask,
 } from "@/utils/subjectAnalysis";
 
-type MaskMode = "select" | "add" | "subtract";
+export type MaskMode = "select" | "add" | "subtract";
 
 type Props = {
   imageUrl: string | null;
   loading?: boolean;
   autoDetect?: boolean;
+  mode?: MaskMode;
+  savedMask?: SubjectMask | null;
   onSubjectChange: (analysis: SubjectAnalysis) => void;
+  onModeChange?: (mode: MaskMode) => void;
+  onMaskSnapshotChange?: (mask: SubjectMask | null) => void;
 };
 
 const BRUSH_SIZES = [8, 16, 24, 36, 48];
@@ -38,15 +42,31 @@ function cloneSubjectMask(mask: SubjectMask): SubjectMask {
   };
 }
 
-export default function SubjectMaskEditor({ imageUrl, loading, autoDetect = true, onSubjectChange }: Props) {
+export default function SubjectMaskEditor({
+  imageUrl,
+  loading,
+  autoDetect = true,
+  mode,
+  savedMask,
+  onSubjectChange,
+  onModeChange,
+  onMaskSnapshotChange,
+}: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const maskRef = useRef<SubjectMask | null>(null);
+  const savedMaskRef = useRef<SubjectMask | null>(savedMask ?? null);
   const isDrawingRef = useRef(false);
-  const [mode, setMode] = useState<MaskMode>("select");
+  const [internalMode, setInternalMode] = useState<MaskMode>("select");
   const [brushSize, setBrushSize] = useState(16);
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
   const [ready, setReady] = useState(false);
   const [analysis, setAnalysis] = useState<SubjectAnalysis | null>(null);
+  const activeMode = mode ?? internalMode;
+  const setActiveMode = onModeChange ?? setInternalMode;
+
+  useEffect(() => {
+    savedMaskRef.current = savedMask ?? null;
+  }, [savedMask]);
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -86,6 +106,10 @@ export default function SubjectMaskEditor({ imageUrl, loading, autoDetect = true
     onSubjectChange(next);
   }, [onSubjectChange]);
 
+  const saveSnapshot = useCallback(() => {
+    onMaskSnapshotChange?.(maskRef.current ? cloneSubjectMask(maskRef.current) : null);
+  }, [onMaskSnapshotChange]);
+
   useEffect(() => {
     let cancelled = false;
     setReady(false);
@@ -93,10 +117,20 @@ export default function SubjectMaskEditor({ imageUrl, loading, autoDetect = true
     maskRef.current = null;
     if (!imageUrl) return;
 
+    const initialSavedMask = savedMaskRef.current;
+    if (initialSavedMask) {
+      maskRef.current = cloneSubjectMask(initialSavedMask);
+      setReady(true);
+      draw();
+      setAnalysis(analyzeSubjectMask(initialSavedMask));
+      return;
+    }
+
     createSubjectMask(imageUrl, { autoDetect })
       .then((subject) => {
         if (cancelled) return;
         maskRef.current = subject;
+        saveSnapshot();
         setReady(true);
         draw();
         if (autoDetect) {
@@ -112,7 +146,7 @@ export default function SubjectMaskEditor({ imageUrl, loading, autoDetect = true
     return () => {
       cancelled = true;
     };
-  }, [autoDetect, draw, imageUrl, onSubjectChange]);
+  }, [autoDetect, draw, imageUrl, onSubjectChange, saveSnapshot]);
 
   const getCanvasPoint = useCallback((clientX: number, clientY: number) => {
     const canvas = canvasRef.current;
@@ -141,7 +175,8 @@ export default function SubjectMaskEditor({ imageUrl, loading, autoDetect = true
     }
 
     draw();
-  }, [brushSize, draw]);
+    saveSnapshot();
+  }, [brushSize, draw, saveSnapshot]);
 
   const selectConnectedSubject = useCallback((x: number, y: number) => {
     const subject = maskRef.current;
@@ -183,29 +218,30 @@ export default function SubjectMaskEditor({ imageUrl, loading, autoDetect = true
       subject.mask[index] = removingMask ? 0 : 1;
     }
     draw();
+    saveSnapshot();
     publish();
-  }, [draw, publish]);
+  }, [draw, publish, saveSnapshot]);
 
   const handlePointerDown = useCallback((event: React.PointerEvent<HTMLCanvasElement>) => {
     const point = getCanvasPoint(event.clientX, event.clientY);
     if (!point || !maskRef.current) return;
     event.currentTarget.setPointerCapture(event.pointerId);
 
-    if (mode === "select") {
+    if (activeMode === "select") {
       selectConnectedSubject(point.x, point.y);
       return;
     }
 
     isDrawingRef.current = true;
-    applyBrush(point.x, point.y, mode === "add" ? 1 : 0);
-  }, [applyBrush, getCanvasPoint, mode, selectConnectedSubject]);
+    applyBrush(point.x, point.y, activeMode === "add" ? 1 : 0);
+  }, [activeMode, applyBrush, getCanvasPoint, selectConnectedSubject]);
 
   const handlePointerMove = useCallback((event: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!isDrawingRef.current || mode === "select") return;
+    if (!isDrawingRef.current || activeMode === "select") return;
     const point = getCanvasPoint(event.clientX, event.clientY);
     if (!point) return;
-    applyBrush(point.x, point.y, mode === "add" ? 1 : 0);
-  }, [applyBrush, getCanvasPoint, mode]);
+    applyBrush(point.x, point.y, activeMode === "add" ? 1 : 0);
+  }, [activeMode, applyBrush, getCanvasPoint]);
 
   const handlePointerUp = useCallback(() => {
     if (!isDrawingRef.current) return;
@@ -217,6 +253,7 @@ export default function SubjectMaskEditor({ imageUrl, loading, autoDetect = true
     if (!imageUrl) return;
     createSubjectMask(imageUrl, { autoDetect }).then((subject) => {
       maskRef.current = cloneSubjectMask(subject);
+      saveSnapshot();
       draw();
       if (autoDetect) {
         publish();
@@ -224,7 +261,7 @@ export default function SubjectMaskEditor({ imageUrl, loading, autoDetect = true
         setAnalysis(null);
       }
     });
-  }, [autoDetect, draw, imageUrl, publish]);
+  }, [autoDetect, draw, imageUrl, publish, saveSnapshot]);
 
   return (
     <div>
@@ -232,9 +269,7 @@ export default function SubjectMaskEditor({ imageUrl, loading, autoDetect = true
         <div>
           <h2 className="text-xl font-semibold">交互式主体识别</h2>
           <p className="mt-1 text-sm text-stone-500">
-            {autoDetect
-              ? "绿色蒙版为当前识别主体。可点选主体自动扩展边缘，或用画笔增减主体区域。"
-              : "当前图像不自动生成主体蒙版。请用增加画笔添加主体区域，也可用鼠标点选扩展同色连通区域。"}
+            请点击图像中的主体。绿色蒙版表示将进入拼豆化的主体范围；识别不准时，可切换增加或减少并用画笔修正。
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -247,9 +282,9 @@ export default function SubjectMaskEditor({ imageUrl, loading, autoDetect = true
               <button
                 key={item.id}
                 type="button"
-                onClick={() => setMode(item.id as MaskMode)}
+                onClick={() => setActiveMode(item.id as MaskMode)}
                 className={`px-3 py-1.5 text-xs font-semibold transition ${
-                  mode === item.id ? "bg-[#8f1d21] text-white" : "bg-white text-stone-600 hover:bg-stone-50"
+                  activeMode === item.id ? "bg-[#8f1d21] text-white" : "bg-white text-stone-600 hover:bg-stone-50"
                 }`}
               >
                 {item.label}
@@ -265,7 +300,7 @@ export default function SubjectMaskEditor({ imageUrl, loading, autoDetect = true
               step={1}
               value={brushSize}
               onChange={(event) => setBrushSize(Number(event.target.value))}
-              disabled={mode === "select"}
+              disabled={activeMode === "select"}
               className="w-24 accent-[#8f1d21] disabled:opacity-50"
             />
             <span className="w-9 tabular-nums">{brushSize}px</span>
@@ -281,7 +316,7 @@ export default function SubjectMaskEditor({ imageUrl, loading, autoDetect = true
           <>
             <canvas
               ref={canvasRef}
-              className={`block max-h-[520px] w-full object-contain ${mode === "select" ? "cursor-crosshair" : "cursor-none"}`}
+              className={`block max-h-[520px] w-full object-contain ${activeMode === "select" ? "cursor-crosshair" : "cursor-none"}`}
               style={{ touchAction: "none" }}
               onPointerDown={handlePointerDown}
               onPointerMove={(event) => {
@@ -299,10 +334,10 @@ export default function SubjectMaskEditor({ imageUrl, loading, autoDetect = true
                 handlePointerUp();
               }}
             />
-            {mode !== "select" && cursor && maskRef.current && canvasRef.current && (
+            {activeMode !== "select" && cursor && maskRef.current && canvasRef.current && (
               <div
                 className={`pointer-events-none absolute rounded-full border-2 ${
-                  mode === "add" ? "border-emerald-500 bg-emerald-400/15" : "border-red-500 bg-red-400/15"
+                  activeMode === "add" ? "border-emerald-500 bg-emerald-400/15" : "border-red-500 bg-red-400/15"
                 } shadow-[0_0_0_1px_rgba(255,255,255,0.9)]`}
                 style={{
                   left: `${(cursor.x / maskRef.current.width) * canvasRef.current.getBoundingClientRect().width}px`,
