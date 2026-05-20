@@ -8,7 +8,7 @@ type Props = {
   title: string;
   patternUrl: string | null;
   mockupUrl: string | null;
-  copy: CultureCopy;
+  copy: CultureCopy | null;
   beadCounts: BeadCount[];
 };
 
@@ -35,7 +35,7 @@ function downloadCsv(items: BeadCount[], filename: string): void {
 }
 
 export default function ExportPanel({ title, patternUrl, mockupUrl, copy, beadCounts }: Props) {
-  const disabled = !patternUrl || !mockupUrl;
+  const disabled = !patternUrl || !mockupUrl || !copy;
 
   return (
     <section className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -69,6 +69,7 @@ export default function ExportPanel({ title, patternUrl, mockupUrl, copy, beadCo
         onClick={() =>
           patternUrl &&
           mockupUrl &&
+          copy &&
           exportProjectPdfLikeHtml({ title, patternUrl, mockupUrl, copy, beadCounts })
         }
         className="rounded-md bg-slate-900 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900"

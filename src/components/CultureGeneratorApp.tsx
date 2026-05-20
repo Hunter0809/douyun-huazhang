@@ -12,7 +12,7 @@ import ProductMockup from "@/components/ProductMockup";
 import { type AspectRatioId } from "@/data/aspectRatios";
 import { getProductTemplate } from "@/data/productTemplates";
 import { countBeads, type BeadCount } from "@/utils/countBeads";
-import { generateCultureCopy, type CultureCopy } from "@/utils/cultureTextGenerator";
+import type { CultureCopy } from "@/utils/cultureTextGenerator";
 import {
   generateSamplePattern,
   imageDataUrlToPattern,
@@ -156,19 +156,7 @@ export default function CultureGeneratorPage() {
 
 
   const beadCounts = useMemo(() => (pattern ? countBeads(pattern.grid) : []), [pattern]);
-  const copy = useMemo(
-    () => {
-      if (aiCopy) return aiCopy;
-      return (
-      generateCultureCopy({
-        ...options,
-        meaning,
-        beadCounts,
-      })
-      );
-    },
-    [aiCopy, beadCounts, meaning, options],
-  );
+  const workTitle = aiCopy?.title?.trim() || `${element}${product.name}`;
 
   const requestAiCopy = async (imageUrl?: string, counts: BeadCount[] = beadCounts): Promise<CultureCopy> => {
     const response = await fetch("/api/generate-culture-text", {
@@ -373,10 +361,10 @@ export default function CultureGeneratorPage() {
             <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
               <h2 className="mb-3 text-lg font-bold">导出作品</h2>
               <ExportPanel
-                title={copy.title}
+                title={workTitle}
                 patternUrl={patternUrl}
                 mockupUrl={mockupUrl}
-                copy={copy}
+                copy={aiCopy}
                 beadCounts={beadCounts}
               />
             </div>
@@ -388,7 +376,13 @@ export default function CultureGeneratorPage() {
               <BeadMaterialList items={beadCounts} />
             </div>
             <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-              <CultureExplanation copy={copy} />
+              {aiCopy ? (
+                <CultureExplanation copy={aiCopy} />
+              ) : (
+                <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 p-4 text-sm leading-6 text-slate-500">
+                  文化说明将由 AI 读取再创作图像后生成，并自动填入作品名称、文化来源、图案寓意和设计说明。
+                </div>
+              )}
             </div>
           </aside>
         </div>

@@ -24,7 +24,6 @@ import {
   renderSampleDesignOriginal,
   type BeadPattern,
 } from "@/utils/culturePattern";
-import { generateCultureCopy } from "@/utils/cultureTextGenerator";
 import type { SubjectAnalysis, SubjectMask } from "@/utils/subjectAnalysis";
 import {
   getAllHexValues,
@@ -790,11 +789,6 @@ export default function CreativeBeadStudio() {
     [pattern],
   );
 
-  const copy = useMemo(
-    () => generateCultureCopy({ ...options, meaning, beadCounts }),
-    [beadCounts, meaning, options],
-  );
-
   const forcedColorWarning = useMemo(() => {
     if (forcedColors.length <= colorCount) return null;
     return `已指定 ${forcedColors.length} 种颜色，超过当前 ${colorCount} 色上限。超出的 ${forcedColors.length - colorCount} 种颜色不会进入最终映射，请减少指定颜色或提高颜色上限。`;
@@ -957,6 +951,11 @@ export default function CreativeBeadStudio() {
       setToastMsg("请先生成拼豆图纸。");
       return;
     }
+    if (!extractedImageUrl) {
+      setToastType("warning");
+      setToastMsg("请先生成或上传再创作图像。");
+      return;
+    }
     setCultureTextLoading(true);
     try {
       const response = await fetch("/api/generate-culture-text", {
@@ -989,6 +988,11 @@ export default function CreativeBeadStudio() {
       setCultureTextLoading(false);
     }
   }, [pattern, beadCounts, theme, element, meaning, formLabel, gridSize, colorCount, extractedImageUrl]);
+
+  useEffect(() => {
+    setAiCultureCopy(null);
+    setCulturePrompt(null);
+  }, [extractedImageUrl, theme, element, meaning, formLabel, gridSize, colorCount]);
 
 
   const clearCurrentProgress = useCallback(() => {
@@ -1814,8 +1818,9 @@ export default function CreativeBeadStudio() {
     const total = beadCounts.reduce((sum, item) => sum + item.count, 0);
     const beadingMinutes = estimateBeadingMinutes(total, beadCounts.length);
     const cost = estimateMaterialCost(total, beadCounts.length);
+    const workTitle = aiCultureCopy?.title?.trim() || `${element}${formLabel}`;
     const planText = [
-      `${copy.title} 拼豆制作方案`,
+      `${workTitle} 拼豆制作方案`,
       "",
       `作品形式：${formLabel}`,
       `网格：${pattern ? `${pattern.width} x ${pattern.height}` : "-"}`,
@@ -1950,10 +1955,10 @@ export default function CreativeBeadStudio() {
           <div className="rounded-lg border border-stone-200 bg-white p-5">
             <h2 className="mb-3 text-xl font-semibold">方案导出</h2>
             <div className="grid gap-2 sm:grid-cols-2">
-              <button type="button" disabled={!patternUrl} onClick={() => patternUrl && downloadUrl(patternUrl, `${copy.title}-拼豆图纸.png`)} className="rounded-md bg-[#8f1d21] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">下载图纸 PNG</button>
-              <button type="button" disabled={!cleanPatternUrl} onClick={() => cleanPatternUrl && downloadUrl(cleanPatternUrl, `${copy.title}-无标注图纸.png`)} className="rounded-md bg-[#8f1d21] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">下载无标注 PNG</button>
-              <button type="button" disabled={beadCounts.length === 0} onClick={() => downloadBeadCsv(beadCounts, `${copy.title}-材料清单.csv`)} className="rounded-md bg-[#8f1d21] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">导出材料 CSV</button>
-              <button type="button" disabled={!pattern} onClick={() => downloadTextFile(planText, `${copy.title}-制作方案.txt`)} className="rounded-md bg-[#8f1d21] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">导出制作方案</button>
+              <button type="button" disabled={!patternUrl} onClick={() => patternUrl && downloadUrl(patternUrl, `${workTitle}-拼豆图纸.png`)} className="rounded-md bg-[#8f1d21] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">下载图纸 PNG</button>
+              <button type="button" disabled={!cleanPatternUrl} onClick={() => cleanPatternUrl && downloadUrl(cleanPatternUrl, `${workTitle}-无标注图纸.png`)} className="rounded-md bg-[#8f1d21] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">下载无标注 PNG</button>
+              <button type="button" disabled={beadCounts.length === 0} onClick={() => downloadBeadCsv(beadCounts, `${workTitle}-材料清单.csv`)} className="rounded-md bg-[#8f1d21] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">导出材料 CSV</button>
+              <button type="button" disabled={!pattern} onClick={() => downloadTextFile(planText, `${workTitle}-制作方案.txt`)} className="rounded-md bg-[#8f1d21] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">导出制作方案</button>
             </div>
           </div>
           {culturePrompt && (
@@ -1981,7 +1986,9 @@ export default function CreativeBeadStudio() {
             {aiCultureCopy ? (
               <CultureExplanation copy={aiCultureCopy} />
             ) : (
-              <CultureExplanation copy={copy} />
+              <div className="rounded-md border border-dashed border-stone-300 bg-stone-50 p-4 text-sm leading-6 text-stone-500">
+                点击 AI 生成文化说明后，系统会读取当前再创作图像，并把作品名称、文化来源、图案寓意、设计说明分别填入对应模块。
+              </div>
             )}
           </div>
 
