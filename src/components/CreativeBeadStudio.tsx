@@ -839,6 +839,9 @@ export default function CreativeBeadStudio() {
   const [subjectDirty, setSubjectDirty] = useState(false);
   const [subjectMaskMode, setSubjectMaskMode] = useState<MaskMode>("select");
   const [subjectMaskSnapshot, setSubjectMaskSnapshot] = useState<SubjectMask | null>(null);
+  const [resultSubjectAnalysis, setResultSubjectAnalysis] = useState<SubjectAnalysis | null>(null);
+  const [resultMaskMode, setResultMaskMode] = useState<MaskMode>("select");
+  const [resultMaskSnapshot, setResultMaskSnapshot] = useState<SubjectMask | null>(null);
   const [costDropdownOpen, setCostDropdownOpen] = useState(false);
   const [timeDropdownOpen, setTimeDropdownOpen] = useState(false);
 
@@ -929,6 +932,12 @@ export default function CreativeBeadStudio() {
     setCleanPatternUrl(null);
   }, []);
 
+  const clearResultSubjectSelection = useCallback(() => {
+    setResultSubjectAnalysis(null);
+    setResultMaskSnapshot(null);
+    setResultMaskMode("select");
+  }, []);
+
   const doUseSample = useCallback(() => {
     clearPatternArtifacts();
     const original = renderSampleDesignOriginal(options);
@@ -938,11 +947,12 @@ export default function CreativeBeadStudio() {
     setSubjectDirty(false);
     setSourceImageUrl(original);
     setExtractedImageUrl(original);
+    clearResultSubjectSelection();
     setExtractPrompt(null);
     setError(null);
     setConfirmNew(null);
     setStep("extract");
-  }, [clearPatternArtifacts, options]);
+  }, [clearPatternArtifacts, clearResultSubjectSelection, options]);
 
   const doUpload = async (file: File) => {
     setLoading(true);
@@ -960,6 +970,7 @@ export default function CreativeBeadStudio() {
       setSubjectDirty(false);
       setSourceImageUrl(imageUrl);
       setExtractedImageUrl(null);
+      clearResultSubjectSelection();
       setExtractPrompt(null);
       clearPatternArtifacts();
       setStep("extract");
@@ -1023,6 +1034,13 @@ export default function CreativeBeadStudio() {
     setStep("extract");
       return;
     }
+    if (!resultSubjectAnalysis) {
+      setError(null);
+      setToastType("warning");
+      setToastMsg("请先在创作结果中点击主体，或使用增加/减少画笔指定要拼豆化的主体区域。");
+      setStep("extract");
+      return;
+    }
     if (!directOutputRef.current && subjectDirty) {
       setError(null);
       setToastType("warning");
@@ -1034,11 +1052,8 @@ export default function CreativeBeadStudio() {
     setLoading(true);
     setError(null);
     try {
-      const patternSourceImage = directOutputRef.current && subjectAnalysis?.subjectImageUrl
-        ? subjectAnalysis.subjectImageUrl
-        : extractedImageUrl;
       const next = await imageDataUrlToPattern(
-        patternSourceImage,
+        resultSubjectAnalysis.subjectImageUrl,
         { ...options, antiAlias, connectIslands, source: sourceImageUrl === extractedImageUrl ? "ai" : "upload", preserveSourceRatio: false },
         forcedColors,
         selectedFilter,
@@ -1094,6 +1109,7 @@ export default function CreativeBeadStudio() {
       setSubjectDirty(false);
       setSourceImageUrl(result.imageUrl);
       setExtractedImageUrl(result.imageUrl);
+      clearResultSubjectSelection();
       setExtractPrompt(result.prompt);
       clearPatternArtifacts();
       setStep("extract");
@@ -1138,6 +1154,7 @@ export default function CreativeBeadStudio() {
       const result = await response.json();
       if (!response.ok) throw new Error(result?.error ?? "主体提取失败");
       setExtractedImageUrl(result.imageUrl);
+      clearResultSubjectSelection();
       setExtractPrompt(result.prompt);
       clearPatternArtifacts();
       setSubjectDirty(false);
@@ -1146,7 +1163,7 @@ export default function CreativeBeadStudio() {
     } finally {
       setLoading(false);
     }
-  }, [aspectRatio, clearPatternArtifacts, formLabel, product.aiPrompt, subjectAnalysis]);
+  }, [aspectRatio, clearPatternArtifacts, clearResultSubjectSelection, formLabel, product.aiPrompt, subjectAnalysis]);
 
   const renderImageBox = (url: string | null, alt: string) => (
     <div className="aspect-square overflow-hidden rounded-md border border-stone-200 bg-stone-50">
@@ -1158,6 +1175,7 @@ export default function CreativeBeadStudio() {
       )}
     </div>
   );
+  void renderImageBox;
 
   const renderStep = () => {
     if (step === "config") {
@@ -1437,9 +1455,9 @@ export default function CreativeBeadStudio() {
                     <button
                       key={item.id}
                       type="button"
-                      onClick={() => setSubjectMaskMode(item.id as MaskMode)}
+                      onClick={() => setResultMaskMode(item.id as MaskMode)}
                       className={`px-3 py-1.5 text-xs font-semibold transition ${
-                        subjectMaskMode === item.id ? "bg-[#8f1d21] text-white" : "bg-white text-stone-600 hover:bg-stone-50"
+                        resultMaskMode === item.id ? "bg-[#8f1d21] text-white" : "bg-white text-stone-600 hover:bg-stone-50"
                       }`}
                     >
                       {item.label}
@@ -1449,10 +1467,21 @@ export default function CreativeBeadStudio() {
               </div>
               <p className="mt-1 text-sm text-stone-500">
                 {directGeneratedImage
-                  ? "请在左侧点击主体，使用鼠标/增加/减少修正绿色蒙版。生成拼豆图纸时会优先根据你指定的主体蒙版进行拼豆化。"
-                  : "请在左侧点击主体并修正绿色蒙版，再进行创作或生成图纸。系统会根据你指定的主体蒙版确定要拼豆化的主体范围。"}
+                  ? "请在下方创作结果中点击主体，或使用增加/减少画笔手动涂鸦指定主体区域。这里不会自动识别，生成拼豆图纸时会按你指定的绿色蒙版进行拼豆化。"
+                  : "AI 再创作只会在点击按钮后执行。再创作完成后，请在下方创作结果中点击主体或涂鸦绿色蒙版，系统会按该主体范围生成拼豆图纸。"}
               </p>
-              <div className="mt-4">{renderImageBox(extractedImageUrl, directGeneratedImage ? "AI 生成输出图像" : "AI 再创作图像")}</div>
+              <div className="mt-4">
+                <SubjectMaskEditor
+                  imageUrl={extractedImageUrl}
+                  loading={loading}
+                  autoDetect={false}
+                  mode={resultMaskMode}
+                  savedMask={resultMaskSnapshot}
+                  onModeChange={setResultMaskMode}
+                  onSubjectChange={setResultSubjectAnalysis}
+                  onMaskSnapshotChange={setResultMaskSnapshot}
+                />
+              </div>
               <div className="mt-4 flex flex-wrap gap-3">
                 <button type="button" onClick={buildPatternFromExtracted} disabled={loading || !extractedImageUrl || (!directGeneratedImage && subjectDirty)} className="rounded-md bg-stone-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
                   {loading ? "生成中..." : "生成拼豆图纸"}
@@ -1894,6 +1923,7 @@ export default function CreativeBeadStudio() {
     setSourceImageUrl(record.sourceImageUrl);
     setExtractedImageUrl(record.extractedImageUrl);
     setSubjectMaskSnapshot(null);
+    clearResultSubjectSelection();
     setPatternUrl(record.patternUrl);
     setCleanPatternUrl(record.cleanPatternUrl);
 
@@ -1910,7 +1940,7 @@ export default function CreativeBeadStudio() {
 
     setStep("config");
     setView("start");
-  }, []);
+  }, [clearResultSubjectSelection]);
 
   // 自动保存当前作品到历史记录
   const buildCurrentProjectRecord = useCallback((title?: string): ProjectRecord => ({
@@ -2019,6 +2049,7 @@ export default function CreativeBeadStudio() {
     clearPatternArtifacts();
     setSourceImageUrl(null);
     setExtractedImageUrl(null);
+    clearResultSubjectSelection();
     setSubjectAnalysis(null);
     setSubjectMaskSnapshot(null);
     setSubjectDirty(false);
@@ -2030,7 +2061,7 @@ export default function CreativeBeadStudio() {
     setCommunityRefresh((value) => value + 1);
     setToastType("success");
     setToastMsg("已导入社区模板，并保存到个人主页。");
-  }, [clearPatternArtifacts, handleRestoreProject]);
+  }, [clearPatternArtifacts, clearResultSubjectSelection, handleRestoreProject]);
 
   useEffect(() => {
     if (restoringRef.current) {
@@ -2245,6 +2276,7 @@ export default function CreativeBeadStudio() {
                     clearPatternArtifacts();
                     setSourceImageUrl(null);
                     setExtractedImageUrl(null);
+                    clearResultSubjectSelection();
                     setSubjectAnalysis(null);
                     setSubjectMaskSnapshot(null);
                     setSubjectDirty(false);
@@ -2613,6 +2645,7 @@ export default function CreativeBeadStudio() {
                       clearPatternArtifacts();
                       setSourceImageUrl(null);
                       setExtractedImageUrl(null);
+                      clearResultSubjectSelection();
                       setSubjectAnalysis(null);
                       setSubjectMaskSnapshot(null);
                       setSubjectDirty(false);
