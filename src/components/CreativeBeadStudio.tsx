@@ -9,7 +9,7 @@ import LoginModal from "@/components/LoginModal";
 import AiChatPanel from "@/components/ai/AiChatPanel";
 import FloatingAiButton from "@/components/ai/FloatingAiButton";
 import { clearAiChatHistory } from "@/utils/aiChat";
-import { saveProjectRecord, loadCurrentUserProfile, type StoredUser } from "@/utils/profileStorage";
+import { saveProjectRecord, loadProjectHistory, loadCurrentUserProfile, type StoredUser } from "@/utils/profileStorage";
 import type { ProjectRecord } from "@/types/projectTypes";
 import { type AspectRatioId, aspectRatios } from "@/data/aspectRatios";
 import { cultureThemes } from "@/data/cultureThemes";
@@ -35,7 +35,7 @@ import {
   type ImageFilter,
 } from "@/utils/colorSystemUtils";
 
-type SiteView = "home" | "start" | "faq" | "profile";
+type SiteView = "home" | "start" | "community" | "faq" | "profile";
 type StudioStep = "config" | "extract" | "pattern" | "preview";
 type ProductConfigDefault = {
   aspectRatio: AspectRatioId;
@@ -46,6 +46,7 @@ type ProductConfigDefault = {
   const navItems: { id: SiteView; label: string }[] = [
   { id: "home", label: "首页" },
   { id: "start", label: "开始创作" },
+  { id: "community", label: "社区论坛" },
   { id: "faq", label: "帮助" },
 ];
 
@@ -109,6 +110,19 @@ const showcase = [
   },
 ];
 
+const communityTemplates: CommunityTemplate[] = showcase.map((item, index) => ({
+  id: `template_${index}`,
+  title: item.title,
+  author: ["青瓷手作", "敦煌拾色", "梨园拼豆", "山海造物"][index] ?? "豆韵工坊",
+  avatar: ["青", "敦", "京", "山"][index] ?? "豆",
+  createdAt: Date.UTC(2026, 4, 19 - index, 2, 0, 0),
+  theme: item.theme,
+  element: item.element,
+  meaning: item.meaning,
+  colors: item.colors,
+  productId: "coaster",
+}));
+
 const scrollingPatterns = [
   ["#FFFFFF", "#1557A8", "#3677D2", "#CDE8FF"],
   ["#FCF9E0", "#EDB045", "#943630", "#0B3C43"],
@@ -146,6 +160,24 @@ type HelpSection = {
   title: string;
   icon: string;
   subs: { title: string; content: string | string[] }[];
+};
+
+type CommunityTemplate = {
+  id: string;
+  title: string;
+  author: string;
+  avatar: string;
+  createdAt: number;
+  theme: string;
+  element: string;
+  meaning: string;
+  colors: string[];
+  productId: string;
+};
+
+type CommunityPost = CommunityTemplate & {
+  type: "template" | "project";
+  record?: ProjectRecord;
 };
 
 const helpSidebarNav = [
@@ -475,6 +507,17 @@ function estimateMaterialCost(totalBeads: number, colorKinds: number): { min: nu
   };
 }
 
+function formatPostTime(timestamp: number): string {
+  const diff = Date.now() - timestamp;
+  const minutes = Math.max(1, Math.floor(diff / 60000));
+  if (minutes < 60) return `${minutes} 分钟前`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} 小时前`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days} 天前`;
+  return new Date(timestamp).toLocaleDateString("zh-CN");
+}
+
 function PatternMiniature({ colors }: { colors: string[] }) {
   const cells = Array.from({ length: 64 }, (_, index) => {
     const x = index % 8;
@@ -575,6 +618,90 @@ function CraftSection({ setView }: { setView: (v: SiteView) => void }) {
   );
 }
 
+function HomeCommunitySection({ setView }: { setView: (v: SiteView) => void }) {
+  const sectionRef = useRef<HTMLElement>(null);
+  const [visible, setVisible] = useState(false);
+  const [forumText, setForumText] = useState("");
+  const [faqText, setFaqText] = useState("");
+  const forumTitle = "社区论坛";
+  const faqTitle = "疑问解答";
+
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), { threshold: 0.2 });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!visible) return;
+    setForumText("");
+    setFaqText("");
+    let forumIndex = 0;
+    let faqIndex = 0;
+    let faqTimer: ReturnType<typeof setInterval> | null = null;
+    const forumTimer = setInterval(() => {
+      forumIndex++;
+      setForumText(forumTitle.slice(0, forumIndex));
+      if (forumIndex >= forumTitle.length) {
+        clearInterval(forumTimer);
+        faqTimer = setInterval(() => {
+          faqIndex++;
+          setFaqText(faqTitle.slice(0, faqIndex));
+          if (faqIndex >= faqTitle.length && faqTimer) clearInterval(faqTimer);
+        }, 90);
+      }
+    }, 90);
+    return () => {
+      clearInterval(forumTimer);
+      if (faqTimer) clearInterval(faqTimer);
+    };
+  }, [visible]);
+
+  return (
+    <section ref={sectionRef} className="bg-[#f8f5ef] py-20">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div>
+            <p className="text-sm font-semibold text-[#8f1d21]">作品分享</p>
+            <h2 className="mt-2 min-h-[1.2em] text-3xl font-semibold tracking-tight">
+              {forumText}
+              {visible && forumText.length < forumTitle.length && <span className="ml-0.5 inline-block h-[0.9em] w-[2px] animate-pulse bg-[#8f1d21] align-middle" />}
+            </h2>
+            <button
+              type="button"
+              onClick={() => setView("community")}
+              className={`mt-8 w-full rounded-lg border border-stone-200 bg-white p-6 text-left shadow-sm transition-all duration-700 hover:border-[#8f1d21]/50 hover:shadow-md ${visible ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"}`}
+            >
+              <PatternMiniature colors={["#FFFFFF", "#1557A8", "#943630", "#EDB045"]} />
+              <h3 className="mt-4 text-xl font-semibold">进入论坛</h3>
+              <p className="mt-2 text-sm leading-6 text-stone-600">浏览大家发布的拼豆作品，搜索主题关键词，一键导入喜欢的模板继续创作。</p>
+            </button>
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-[#8f1d21]">使用帮助</p>
+            <h2 className="mt-2 min-h-[1.2em] text-3xl font-semibold tracking-tight">
+              {faqText}
+              {visible && forumText.length >= forumTitle.length && faqText.length < faqTitle.length && <span className="ml-0.5 inline-block h-[0.9em] w-[2px] animate-pulse bg-[#8f1d21] align-middle" />}
+            </h2>
+            <button
+              type="button"
+              onClick={() => setView("faq")}
+              className={`mt-8 w-full rounded-lg border border-stone-200 bg-white p-6 text-left shadow-sm transition-all delay-200 duration-700 hover:border-[#8f1d21]/50 hover:shadow-md ${visible ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"}`}
+            >
+              <div className="rounded-md bg-stone-100 p-5">
+                <h3 className="text-xl font-semibold">查看帮助</h3>
+                <p className="mt-2 text-sm leading-6 text-stone-600">从主题选择、主体识别、拼豆图纸到制作导出，按步骤查看详细说明。</p>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function ScrollingPatternBand() {
   const patternSet = [...scrollingPatterns, ...scrollingPatterns.slice(0, 2)];
 
@@ -667,13 +794,49 @@ export default function CreativeBeadStudio() {
     return `已指定 ${forcedColors.length} 种颜色，超过当前 ${colorCount} 色上限。超出的 ${forcedColors.length - colorCount} 种颜色不会进入最终映射，请减少指定颜色或提高颜色上限。`;
   }, [colorCount, forcedColors.length]);
 
+  const [currentUser, setCurrentUser] = useState<StoredUser | null>(() => loadCurrentUserProfile());
+  const [communityQuery, setCommunityQuery] = useState("");
+  const [communityRefresh, setCommunityRefresh] = useState(0);
+  const [selectedCommunityPost, setSelectedCommunityPost] = useState<CommunityPost | null>(null);
+
+  const communityPosts = useMemo<CommunityPost[]>(() => {
+    void communityRefresh;
+    const historyPosts = loadProjectHistory().map((record, index): CommunityPost => ({
+      id: `project_${record.id}`,
+      type: "project",
+      record,
+      title: record.title || `${record.theme} · ${record.element}`,
+      author: currentUser?.nickname ?? "豆韵用户",
+      avatar: currentUser?.avatarUrl?.startsWith("emoji:")
+        ? currentUser.avatarUrl.slice(6)
+        : currentUser?.nickname?.slice(0, 1) ?? "豆",
+      createdAt: record.updatedAt || record.createdAt,
+      theme: record.theme,
+      element: record.element,
+      meaning: record.meaning ?? "",
+      colors: showcase[index % showcase.length]?.colors ?? ["#FFFFFF", "#1557A8", "#943630", "#EDB045"],
+      productId: record.productId,
+    }));
+    const query = communityQuery.trim().toLowerCase();
+    const templatePosts = communityTemplates.map((template): CommunityPost => ({
+      ...template,
+      type: "template",
+    }));
+    return [...historyPosts, ...templatePosts]
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .filter((post) => {
+        if (!query) return true;
+        return [post.title, post.author, post.theme, post.element, post.meaning]
+          .some((value) => value.toLowerCase().includes(query));
+      });
+  }, [communityQuery, communityRefresh, currentUser]);
+
   const restoringRef = useRef(false);
 
   const [confirmNew, setConfirmNew] = useState<"ai" | "sample" | "upload" | null>(null);
   const pendingUploadRef = useRef<File | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [loginModalStep, setLoginModalStep] = useState<"login" | "register">("login");
-  const [currentUser, setCurrentUser] = useState<StoredUser | null>(() => loadCurrentUserProfile());
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [toastType, setToastType] = useState<"warning" | "success">("warning");
   const [showAiChat, setShowAiChat] = useState(false);
@@ -1660,6 +1823,113 @@ export default function CreativeBeadStudio() {
   }, []);
 
   // 自动保存当前作品到历史记录
+  const buildCurrentProjectRecord = useCallback((title?: string): ProjectRecord => ({
+    id: `proj_${Date.now()}`,
+    title: title ?? `${theme} · ${element}`,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    completed: step === "preview" && !!pattern,
+    theme,
+    element,
+    meaning,
+    productId,
+    gridSize,
+    colorCount,
+    aspectRatio,
+    showGrid,
+    antiAlias,
+    sourceImageUrl,
+    extractedImageUrl,
+    patternData: pattern ? JSON.stringify(pattern) : null,
+    patternUrl,
+    cleanPatternUrl,
+    mockupUrl: null,
+    productSceneUrl: null,
+  }), [antiAlias, aspectRatio, cleanPatternUrl, colorCount, element, extractedImageUrl, gridSize, meaning, pattern, patternUrl, productId, showGrid, sourceImageUrl, step, theme]);
+
+  const publishCurrentWork = useCallback(() => {
+    if (!sourceImageUrl && !pattern && !patternUrl) {
+      setToastType("warning");
+      setToastMsg("请先完成一个作品进度后再发布。");
+      return;
+    }
+    const record = buildCurrentProjectRecord(`${theme} · ${element}`);
+    saveProjectRecord(record);
+    setCommunityRefresh((value) => value + 1);
+    setToastType("success");
+    setToastMsg("作品已发布到社区，并同步保存到个人主页。");
+    setView("community");
+  }, [buildCurrentProjectRecord, element, pattern, patternUrl, sourceImageUrl, theme]);
+
+  const importCommunityPost = useCallback((post: CommunityPost) => {
+    if (post.record) {
+      const cloned: ProjectRecord = {
+        ...post.record,
+        id: `proj_${Date.now()}`,
+        title: `${post.title} · 导入`,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        completed: false,
+      };
+      saveProjectRecord(cloned);
+      handleRestoreProject(cloned);
+      setCommunityRefresh((value) => value + 1);
+      setSelectedCommunityPost(null);
+      setToastType("success");
+      setToastMsg("已导入作品模板，并保存到个人主页。");
+      return;
+    }
+
+    const defaults = getProductConfigDefault(post.productId);
+    const record: ProjectRecord = {
+      id: `proj_${Date.now()}`,
+      title: `${post.title} · 导入`,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      completed: false,
+      theme: post.theme,
+      element: post.element,
+      meaning: post.meaning,
+      productId: post.productId,
+      gridSize: defaults.gridSize,
+      colorCount: defaults.colorCount,
+      aspectRatio: defaults.aspectRatio,
+      showGrid: true,
+      antiAlias: true,
+      sourceImageUrl: null,
+      extractedImageUrl: null,
+      patternData: null,
+      patternUrl: null,
+      cleanPatternUrl: null,
+      mockupUrl: null,
+      productSceneUrl: null,
+    };
+    saveProjectRecord(record);
+    setTheme(post.theme);
+    setElement(post.element);
+    setMeaning(post.meaning);
+    setProductId(post.productId);
+    setAspectRatio(defaults.aspectRatio);
+    setGridSize(defaults.gridSize);
+    setColorCount(defaults.colorCount);
+    setShowGrid(true);
+    setAntiAlias(true);
+    setForcedColors(post.colors);
+    clearPatternArtifacts();
+    setSourceImageUrl(null);
+    setExtractedImageUrl(null);
+    setSubjectAnalysis(null);
+    setSubjectDirty(false);
+    setExtractPrompt(null);
+    directOutputRef.current = false;
+    setStep("config");
+    setView("start");
+    setSelectedCommunityPost(null);
+    setCommunityRefresh((value) => value + 1);
+    setToastType("success");
+    setToastMsg("已导入社区模板，并保存到个人主页。");
+  }, [clearPatternArtifacts, handleRestoreProject]);
+
   useEffect(() => {
     if (restoringRef.current) {
       restoringRef.current = false;
@@ -1890,7 +2160,150 @@ export default function CreativeBeadStudio() {
           </section>
 
           <CraftSection setView={setView} />
+          <HomeCommunitySection setView={setView} />
         </>
+      )}
+
+      {view === "community" && (
+        <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-5 border-b border-stone-200 pb-8 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-[#8f1d21]">社区论坛</p>
+              <h1 className="mt-2 text-4xl font-semibold tracking-tight text-stone-950">作品分享与模板导入</h1>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-600">
+                浏览用户发布的拼豆作品，按主题、作者或作品名称搜索。点击作品进入预览后，可一键导入为自己的创作进度。
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={publishCurrentWork}
+              disabled={!sourceImageUrl && !pattern && !patternUrl}
+              className="rounded-md bg-stone-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              发布当前作品
+            </button>
+          </div>
+
+          <div className="mt-8">
+            <label className="block text-sm font-medium text-stone-700" htmlFor="community-search">
+              搜索作品
+            </label>
+            <input
+              id="community-search"
+              value={communityQuery}
+              onChange={(event) => setCommunityQuery(event.target.value)}
+              placeholder="输入关键词：青花、飞天、脸谱、作者名..."
+              className="mt-2 w-full rounded-md border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#8f1d21] focus:ring-2 focus:ring-[#8f1d21]/20"
+            />
+          </div>
+
+          <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {communityPosts.map((post) => (
+              <button
+                key={post.id}
+                type="button"
+                onClick={() => setSelectedCommunityPost(post)}
+                className="group rounded-lg border border-stone-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-1 hover:border-[#8f1d21]/40 hover:shadow-md"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-full bg-[#8f1d21] text-sm font-semibold text-white">
+                    {post.avatar}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-stone-900">{post.author}</p>
+                    <p className="text-xs text-stone-500">{formatPostTime(post.createdAt)}</p>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  {post.record?.patternUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={post.record.patternUrl} alt={post.title} className="aspect-square w-full rounded-md border border-stone-200 object-contain" />
+                  ) : (
+                    <PatternMiniature colors={post.colors} />
+                  )}
+                </div>
+                <h2 className="mt-4 text-lg font-semibold text-stone-950">{post.title}</h2>
+                <p className="mt-1 text-sm text-stone-600">{post.theme} · {post.element}</p>
+                <p className="mt-3 line-clamp-2 text-sm leading-6 text-stone-500">{post.meaning}</p>
+              </button>
+            ))}
+          </div>
+
+          {communityPosts.length === 0 && (
+            <div className="mt-10 rounded-lg border border-dashed border-stone-300 bg-white p-10 text-center text-sm text-stone-500">
+              没有找到匹配的作品。
+            </div>
+          )}
+        </main>
+      )}
+
+      {selectedCommunityPost && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/45 px-4 py-8">
+          <div className="relative flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-lg bg-white shadow-2xl">
+            <button
+              type="button"
+              onClick={() => setSelectedCommunityPost(null)}
+              className="absolute right-4 top-4 z-10 rounded-md border border-stone-200 bg-white px-3 py-1.5 text-sm text-stone-600 shadow-sm transition hover:bg-stone-50"
+            >
+              关闭
+            </button>
+            <div className="overflow-y-auto p-6">
+              <div className="flex items-center gap-3 pr-20">
+                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[#8f1d21] text-sm font-semibold text-white">
+                  {selectedCommunityPost.avatar}
+                </span>
+                <div>
+                  <h2 className="text-2xl font-semibold text-stone-950">{selectedCommunityPost.title}</h2>
+                  <p className="mt-1 text-sm text-stone-500">
+                    {selectedCommunityPost.author} · {formatPostTime(selectedCommunityPost.createdAt)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(280px,0.9fr)]">
+                <div className="rounded-lg border border-stone-200 bg-stone-50 p-4">
+                  {selectedCommunityPost.record?.patternUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={selectedCommunityPost.record.patternUrl} alt={selectedCommunityPost.title} className="max-h-[560px] w-full object-contain" />
+                  ) : (
+                    <PatternMiniature colors={selectedCommunityPost.colors} />
+                  )}
+                </div>
+                <div className="space-y-4">
+                  <div className="rounded-lg border border-stone-200 p-4">
+                    <p className="text-xs font-semibold text-stone-500">传统主题</p>
+                    <p className="mt-1 text-lg font-semibold text-stone-950">{selectedCommunityPost.theme}</p>
+                  </div>
+                  <div className="rounded-lg border border-stone-200 p-4">
+                    <p className="text-xs font-semibold text-stone-500">核心元素</p>
+                    <p className="mt-1 text-lg font-semibold text-stone-950">{selectedCommunityPost.element}</p>
+                  </div>
+                  <div className="rounded-lg border border-stone-200 p-4">
+                    <p className="text-xs font-semibold text-stone-500">文化说明</p>
+                    <p className="mt-2 text-sm leading-6 text-stone-600">{selectedCommunityPost.meaning}</p>
+                  </div>
+                  <div className="rounded-lg border border-stone-200 p-4">
+                    <p className="text-xs font-semibold text-stone-500">推荐配色</p>
+                    <div className="mt-3 flex gap-2">
+                      {selectedCommunityPost.colors.map((color) => (
+                        <span key={color} title={color} className="h-8 w-8 rounded-full border border-stone-200" style={{ backgroundColor: color }} />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end border-t border-stone-200 bg-stone-50 px-6 py-4">
+              <button
+                type="button"
+                onClick={() => importCommunityPost(selectedCommunityPost)}
+                className="rounded-md bg-[#8f1d21] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#a82428]"
+              >
+                一键导入作品
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {view === "faq" && (
