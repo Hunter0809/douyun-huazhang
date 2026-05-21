@@ -2847,12 +2847,12 @@ export default function CreativeBeadStudio() {
 
             <div className="mt-8 space-y-6">
               {helpData.map((section) => {
-                // 为操作指南子章节标注 Step 1~4
+                // 为操作指南子章节标注步骤编号
                 const stepMap: Record<string, string> = {
-                  "guide-theme": "Step 1",
-                  "guide-upload": "Step 2",
-                  "guide-mapping": "Step 3",
-                  "guide-export": "Step 4",
+                  "guide-theme": "1",
+                  "guide-upload": "2",
+                  "guide-mapping": "3",
+                  "guide-export": "4",
                 };
                 const stepLabel = stepMap[section.id];
                 return (
@@ -2861,7 +2861,7 @@ export default function CreativeBeadStudio() {
                     <h2 className="flex items-center gap-2 text-xl font-semibold">
                       <span>{section.icon}</span>
                       {stepLabel && (
-                        <span className="text-sm font-bold tracking-wider text-[#8f1d21] uppercase">{stepLabel}</span>
+                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#8f1d21] text-xs font-bold text-white">{stepLabel}</span>
                       )}
                       <span>{section.title}</span>
                     </h2>
