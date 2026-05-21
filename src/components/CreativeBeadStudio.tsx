@@ -695,7 +695,7 @@ function HomeCommunitySection({ setView }: { setView: (v: SiteView) => void }) {
   return (
     <section ref={sectionRef} className="bg-[#f8f5ef] py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="space-y-12">
           <div>
             <p className="text-sm font-semibold text-[#8f1d21]">作品分享</p>
             <h2 className="mt-2 min-h-[1.2em] text-3xl font-semibold tracking-tight">
@@ -713,21 +713,32 @@ function HomeCommunitySection({ setView }: { setView: (v: SiteView) => void }) {
             </button>
           </div>
           <div>
-            <p className="text-sm font-semibold text-[#8f1d21]">使用帮助</p>
+            <p className="text-sm font-semibold text-[#8f1d21]">疑问解答</p>
             <h2 className="mt-2 min-h-[1.2em] text-3xl font-semibold tracking-tight">
               {faqText}
               {visible && forumText.length >= forumTitle.length && faqText.length < faqTitle.length && <span className="ml-0.5 inline-block h-[0.9em] w-[2px] animate-pulse bg-[#8f1d21] align-middle" />}
             </h2>
-            <button
-              type="button"
-              onClick={() => setView("faq")}
-              className={`mt-8 w-full rounded-lg border border-stone-200 bg-white p-6 text-left shadow-sm transition-all delay-200 duration-700 hover:border-[#8f1d21]/50 hover:shadow-md ${visible ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"}`}
-            >
-              <div className="rounded-md bg-stone-100 p-5">
-                <h3 className="text-xl font-semibold">查看帮助</h3>
-                <p className="mt-2 text-sm leading-6 text-stone-600">从主题选择、主体识别、拼豆图纸到制作导出，按步骤查看详细说明。</p>
-              </div>
-            </button>
+            <div className={`mt-8 grid gap-4 md:grid-cols-2 transition-all delay-200 duration-700 ${visible ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"}`}>
+              {helpSidebarNav.map((section) => (
+                <button
+                  key={section.id}
+                  type="button"
+                  onClick={() => {
+                    setView("faq");
+                    setTimeout(() => {
+                      document.getElementById(section.id)?.scrollIntoView({ behavior: "smooth" });
+                    }, 150);
+                  }}
+                  className="rounded-lg border border-stone-200 bg-white p-6 text-left shadow-sm transition hover:border-[#8f1d21]/50 hover:shadow-md"
+                >
+                  <span className="text-2xl">{section.icon}</span>
+                  <h3 className="mt-3 text-xl font-semibold text-stone-950">{section.label}</h3>
+                  <p className="mt-2 text-sm leading-6 text-stone-600">
+                    {section.subs.length > 0 ? section.subs.map((sub) => sub.label).join(" / ") : "查看对应模块的完整说明。"}
+                  </p>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -2448,7 +2459,7 @@ export default function CreativeBeadStudio() {
                   window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
                 className={`rounded-md px-5 py-2.5 text-base font-semibold transition ${
-                  view === item.id ? "bg-white text-stone-950 shadow-sm" : "text-stone-600 hover:text-stone-950"
+                  view === item.id ? "bg-[#8f1d21] text-white shadow-sm" : "text-stone-600 hover:text-stone-950"
                 }`}
               >
                 {item.label}
