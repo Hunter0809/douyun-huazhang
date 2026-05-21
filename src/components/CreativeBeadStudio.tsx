@@ -7,9 +7,8 @@ import ProfilePage from "@/components/ProfilePage";
 import SubjectMaskEditor, { type MaskMode } from "@/components/SubjectMaskEditor";
 import LoginModal from "@/components/LoginModal";
 import AiChatPanel from "@/components/ai/AiChatPanel";
-import FloatingAiButton from "@/components/ai/FloatingAiButton";
 import { clearAiChatHistory } from "@/utils/aiChat";
-import { saveProjectRecord, loadCurrentUserProfile, loadApiConfig, type StoredUser } from "@/utils/profileStorage";
+import { deleteProjectRecord, loadProjectHistory, saveProjectRecord, loadCurrentUserProfile, loadApiConfig, type StoredUser } from "@/utils/profileStorage";
 import { fetchCommunityPosts, publishCommunityPost } from "@/utils/communityForum";
 import type { ProjectRecord } from "@/types/projectTypes";
 import type { CommunityPost as CloudCommunityPost } from "@/types/community";
@@ -37,7 +36,7 @@ import {
   type ImageFilter,
 } from "@/utils/colorSystemUtils";
 
-type SiteView = "home" | "start" | "community" | "faq" | "profile";
+type SiteView = "home" | "start" | "projects" | "ai" | "community" | "faq" | "profile";
 type StudioStep = "config" | "extract" | "pattern" | "preview";
 type ProductConfigDefault = {
   aspectRatio: AspectRatioId;
@@ -72,13 +71,14 @@ function splitLines(value: string): string[] {
     .filter(Boolean);
 }
 
-  const navItems: { id: SiteView; label: string }[] = [
+const navItems: { id: SiteView; label: string }[] = [
   { id: "home", label: "首页" },
-  { id: "start", label: "开始创作" },
-  { id: "community", label: "社区论坛" },
+  { id: "start", label: "创作" },
+  { id: "projects", label: "项目" },
+  { id: "ai", label: "豆韵AI" },
+  { id: "community", label: "论坛" },
   { id: "faq", label: "帮助" },
 ];
-
 const studioSteps: { id: StudioStep; label: string; desc: string }[] = [
   { id: "config", label: "配置", desc: "选择传统主题、作品形式、网格尺寸、颜色数量和可用色" },
   { id: "extract", label: "主体提取与再创作", desc: "提取图片核心主体意象，展示颜色占比，并基于主体图进行文化风格再创作" },
@@ -515,10 +515,10 @@ function downloadTextFile(content: string, filename: string): void {
 
 function estimateBeadingMinutes(totalBeads: number, colorKinds: number): number {
   if (totalBeads <= 0) return 0;
-  return Math.round(totalBeads * 0.25 + colorKinds * 4 + 10);
+  return Math.round(totalBeads * 0.05 + colorKinds * 2 + 10);
 }
 
-const BEAD_TIME_PER_PIECE = 0.25;
+const BEAD_TIME_PER_PIECE = 0.05;
 const IRONING_TIME = 10;
 
 
@@ -779,6 +779,7 @@ export default function CreativeBeadStudio() {
   const [pattern, setPattern] = useState<BeadPattern | null>(null);
   const [patternUrl, setPatternUrl] = useState<string | null>(null);
   const [cleanPatternUrl, setCleanPatternUrl] = useState<string | null>(null);
+  const [highlightedPatternColor, setHighlightedPatternColor] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -823,6 +824,8 @@ export default function CreativeBeadStudio() {
   }, [colorCount, forcedColors.length]);
 
   const [currentUser, setCurrentUser] = useState<StoredUser | null>(() => loadCurrentUserProfile());
+  const [projectQuery, setProjectQuery] = useState("");
+  const [projectRecords, setProjectRecords] = useState<ProjectRecord[]>(() => loadProjectHistory());
   const [communityQuery, setCommunityQuery] = useState("");
   const [communityRefresh, setCommunityRefresh] = useState(0);
   const [selectedCommunityPost, setSelectedCommunityPost] = useState<CommunityPost | null>(null);
@@ -849,6 +852,21 @@ export default function CreativeBeadStudio() {
     return [...cloudPosts, ...templatePosts].sort((a, b) => b.createdAt - a.createdAt);
   }, [cloudCommunityPosts, communityQuery]);
 
+  const filteredProjectRecords = useMemo(() => {
+    const query = projectQuery.trim().toLowerCase();
+    const sorted = [...projectRecords].sort((a, b) => b.updatedAt - a.updatedAt);
+    if (!query) return sorted;
+    return sorted.filter((record) =>
+      [record.title, record.theme, record.element, record.productId]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query)),
+    );
+  }, [projectQuery, projectRecords]);
+
+  const refreshProjectRecords = useCallback(() => {
+    setProjectRecords(loadProjectHistory());
+  }, []);
+
   const restoringRef = useRef(false);
 
   const [confirmNew, setConfirmNew] = useState<"ai" | "sample" | "upload" | null>(null);
@@ -857,7 +875,6 @@ export default function CreativeBeadStudio() {
   const [loginModalStep, setLoginModalStep] = useState<"login" | "register">("login");
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [toastType, setToastType] = useState<"warning" | "success">("warning");
-  const [showAiChat, setShowAiChat] = useState(false);
   const [aiChatResetToken, setAiChatResetToken] = useState(0);
   const [extractPrompt, setExtractPrompt] = useState<string | null>(null);
   const [subjectAnalysis, setSubjectAnalysis] = useState<SubjectAnalysis | null>(null);
@@ -1093,7 +1110,7 @@ export default function CreativeBeadStudio() {
   useEffect(() => {
     if (!pattern) return;
     if (canvasRef.current) {
-      renderPatternToCanvas(canvasRef.current, pattern, showGrid);
+      renderPatternToCanvas(canvasRef.current, pattern, showGrid, highlightedPatternColor);
     }
     const patternCanvas = document.createElement("canvas");
     renderPatternToCanvas(patternCanvas, pattern, showGrid);
@@ -1102,7 +1119,7 @@ export default function CreativeBeadStudio() {
     const cleanCanvas = document.createElement("canvas");
     renderPatternToCanvasClean(cleanCanvas, pattern, showGrid);
     setCleanPatternUrl(cleanCanvas.toDataURL("image/png"));
-  }, [pattern, showGrid, step]);
+  }, [pattern, showGrid, step, highlightedPatternColor]);
 
   const handleThemeInput = (value: string) => {
     setTheme(value);
@@ -1739,7 +1756,7 @@ export default function CreativeBeadStudio() {
       
       // 处理画布点击：拼豆图纸上点击网格修改颜色
       const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-        if (!pattern || !canvasRef.current || !isPainting) return;
+        if (!pattern || !canvasRef.current) return;
         const canvas = canvasRef.current;
         const rect = canvas.getBoundingClientRect();
         const clickX = e.clientX - rect.left;
@@ -1767,6 +1784,8 @@ export default function CreativeBeadStudio() {
         
         const cellData = pattern.grid[gridRow]?.[gridCol];
         if (!cellData || cellData.isExternal) return;
+        setHighlightedPatternColor(cellData.color);
+        if (!isPainting) return;
         
         // 更新该像素的颜色
         const newGrid = pattern.grid.map((row, y) =>
@@ -1848,6 +1867,7 @@ export default function CreativeBeadStudio() {
                           key={hex}
                           type="button"
                           onClick={() => {
+                            setHighlightedPatternColor(hex);
                             setPaintColor(hex);
                             setPaintColorKey(key);
                           }}
@@ -1921,9 +1941,9 @@ export default function CreativeBeadStudio() {
                       key={item.rgb}
                       className="cursor-pointer border-t border-stone-200 hover:bg-stone-50"
                       onClick={() => {
+                        setHighlightedPatternColor(item.rgb);
                         setPaintColor(item.rgb);
                         setPaintColorKey(item.brandCode);
-                        setIsPainting(true);
                       }}
                       title="点击选择该颜色作为编辑颜色"
                     >
@@ -2253,6 +2273,7 @@ export default function CreativeBeadStudio() {
     }
     const record = buildCurrentProjectRecord(`${theme} · ${element}`);
     saveProjectRecord(record);
+    refreshProjectRecords();
     try {
       await publishCommunityPost({
         record,
@@ -2268,7 +2289,7 @@ export default function CreativeBeadStudio() {
       setToastType("warning");
       setToastMsg(err instanceof Error ? err.message : "作品发布失败");
     }
-  }, [buildCurrentProjectRecord, currentUser, element, forcedColors, pattern, patternUrl, sourceImageUrl, theme]);
+  }, [buildCurrentProjectRecord, currentUser, element, forcedColors, pattern, patternUrl, refreshProjectRecords, sourceImageUrl, theme]);
 
   const importCommunityPost = useCallback((post: CommunityPost) => {
     if (post.record) {
@@ -2281,6 +2302,7 @@ export default function CreativeBeadStudio() {
         completed: false,
       };
       saveProjectRecord(cloned);
+      refreshProjectRecords();
       handleRestoreProject(cloned);
       setCommunityRefresh((value) => value + 1);
       setSelectedCommunityPost(null);
@@ -2314,6 +2336,7 @@ export default function CreativeBeadStudio() {
       productSceneUrl: null,
     };
     saveProjectRecord(record);
+    refreshProjectRecords();
     setTheme(post.theme);
     setElement(post.element);
     setMeaning(post.meaning);
@@ -2340,7 +2363,7 @@ export default function CreativeBeadStudio() {
     setCommunityRefresh((value) => value + 1);
     setToastType("success");
     setToastMsg("已导入社区模板，并保存到个人主页。");
-  }, [clearPatternArtifacts, clearResultSubjectSelection, clearSubjectIdentification, handleRestoreProject]);
+  }, [clearPatternArtifacts, clearResultSubjectSelection, clearSubjectIdentification, handleRestoreProject, refreshProjectRecords]);
 
   useEffect(() => {
     if (restoringRef.current) {
@@ -2374,7 +2397,8 @@ export default function CreativeBeadStudio() {
       productSceneUrl: null,
     };
     saveProjectRecord(record);
-  }, [view, step, theme, element, meaning, productId, gridSize, colorCount, aspectRatio, showGrid, antiAlias, pattern, patternUrl, cleanPatternUrl, sourceImageUrl, extractedImageUrl]);
+    refreshProjectRecords();
+  }, [view, step, theme, element, meaning, productId, gridSize, colorCount, aspectRatio, showGrid, antiAlias, pattern, patternUrl, cleanPatternUrl, sourceImageUrl, extractedImageUrl, refreshProjectRecords]);
 
   // 帮助页面：当 details 离开视口时自动收起
   useEffect(() => {
@@ -2409,7 +2433,7 @@ export default function CreativeBeadStudio() {
         <div className="relative mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           {/* 左侧 Logo + 品牌文字 */}
           <button type="button" onClick={() => setView("home")} className="flex shrink-0 items-center gap-2">
-            <span className="grid h-8 w-8 place-items-center rounded-md bg-[#8f1d21] text-xs font-bold text-white">韵</span>
+            <img src="/logo.jpg" alt="豆韵" className="h-8 w-8 rounded-md object-cover" />
             <span className="hidden text-sm font-semibold text-stone-800 sm:inline">豆韵 | 传统纹样拼豆设计工具</span>
           </button>
 
@@ -2496,9 +2520,9 @@ export default function CreativeBeadStudio() {
           onLogout={() => {
             clearAiChatHistory();
             setAiChatResetToken((value) => value + 1);
-            setShowAiChat(false);
             clearCurrentProgress();
             setCurrentUser(null);
+            refreshProjectRecords();
           }}
         />
       )}
@@ -2578,6 +2602,86 @@ export default function CreativeBeadStudio() {
           <CraftSection setView={setView} />
           <HomeCommunitySection setView={setView} />
         </>
+      )}
+
+      {view === "projects" && (
+        <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-4 border-b border-stone-200 pb-8">
+            <div>
+              <p className="text-sm font-semibold text-[#8f1d21]">项目</p>
+              <h1 className="mt-2 text-4xl font-semibold tracking-tight text-stone-950">最近设计</h1>
+            </div>
+            <input
+              value={projectQuery}
+              onChange={(event) => setProjectQuery(event.target.value)}
+              placeholder="搜索项目名称、主题、元素..."
+              className="w-full rounded-md border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#8f1d21] focus:ring-2 focus:ring-[#8f1d21]/20"
+            />
+          </div>
+
+          <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {filteredProjectRecords.map((record) => {
+              const previewUrl = record.patternUrl || record.cleanPatternUrl || record.sourceImageUrl;
+              return (
+                <article key={record.id} className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm">
+                  <button type="button" onClick={() => handleRestoreProject(record)} className="block w-full text-left">
+                    <div className="aspect-square overflow-hidden rounded-md border border-stone-200 bg-stone-50">
+                      {previewUrl ? (
+                        <img src={previewUrl} alt={record.title} className="h-full w-full object-contain" />
+                      ) : (
+                        <div className="grid h-full place-items-center text-sm text-stone-400">暂无预览</div>
+                      )}
+                    </div>
+                    <h2 className="mt-4 truncate text-lg font-semibold text-stone-950">{record.title || record.theme}</h2>
+                    <p className="mt-1 text-sm text-stone-600">{record.theme} · {record.element}</p>
+                    <p className="mt-2 text-xs text-stone-400">{new Date(record.updatedAt).toLocaleString("zh-CN")}</p>
+                  </button>
+                  <div className="mt-4 flex gap-2">
+                    <button type="button" onClick={() => handleRestoreProject(record)} className="rounded-md bg-[#8f1d21] px-3 py-2 text-sm font-semibold text-white">继续编辑</button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        deleteProjectRecord(record.id);
+                        refreshProjectRecords();
+                      }}
+                      className="rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700"
+                    >
+                      删除
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => {
+                clearCurrentProgress();
+                setStep("config");
+                setView("start");
+              }}
+              className="grid min-h-[260px] place-items-center rounded-lg border border-dashed border-[#8f1d21]/40 bg-white p-6 text-center transition hover:border-[#8f1d21] hover:bg-[#8f1d21]/5"
+            >
+              <span className="grid h-16 w-16 place-items-center rounded-full bg-[#8f1d21] text-4xl font-light leading-none text-white">+</span>
+              <span className="mt-4 block text-sm font-semibold text-stone-700">新建项目</span>
+            </button>
+          </div>
+
+          {filteredProjectRecords.length === 0 && (
+            <div className="mt-8 rounded-lg border border-dashed border-stone-300 bg-white p-10 text-center text-sm text-stone-500">
+              没有找到匹配的项目。
+            </div>
+          )}
+        </main>
+      )}
+
+      {view === "ai" && (
+        <main className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
+          <div className="mb-6">
+            <p className="text-sm font-semibold text-[#8f1d21]">豆韵AI</p>
+            <h1 className="mt-2 text-4xl font-semibold tracking-tight text-stone-950">传统文化与拼豆问答</h1>
+          </div>
+          <AiChatPanel embedded resetToken={aiChatResetToken} />
+        </main>
       )}
 
       {view === "community" && (
@@ -2977,10 +3081,6 @@ export default function CreativeBeadStudio() {
           }}
         />
       )}
-
-      {/* AI 豆韵助手 - 浮动按钮 & 聊天面板 */}
-      <FloatingAiButton onClick={() => setShowAiChat(true)} />
-      <AiChatPanel isOpen={showAiChat} resetToken={aiChatResetToken} onClose={() => setShowAiChat(false)} />
 
       {/* 页脚 - 产权标语 */}
       <footer className="border-t border-stone-200 bg-[#fffdf7]">

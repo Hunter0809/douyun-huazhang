@@ -46,14 +46,14 @@ function formatSubjectIdentification(identification: SubjectIdentification | und
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const apiKey = process.env.AI_API_KEY ?? process.env.ARK_API_KEY ?? process.env.OPENAI_API_KEY;
-  const baseUrl = process.env.AI_BASE_URL ?? "https://ark.cn-beijing.volces.com/api/v3";
-  const model = process.env.AI_TEXT_MODEL ?? "doubao-seed-1-6-250615";
+  const apiKey = process.env.ARK_API_KEY;
+  const baseUrl = process.env.ARK_BASE_URL ?? "https://ark.cn-beijing.volces.com/api/v3";
+  const model = process.env.ARK_TEXT_MODEL ?? process.env.AI_TEXT_MODEL ?? "doubao-seed-1-6-250615";
   const subjectIdentification = body.subjectIdentification as SubjectIdentification | undefined;
 
   if (!apiKey) {
     return NextResponse.json(
-      { error: "服务端未配置 AI_API_KEY，无法调用 AI 文案接口。" },
+      { error: "服务端未配置 ARK_API_KEY，无法调用 AI 文案接口。" },
       { status: 500 },
     );
   }
@@ -144,4 +144,3 @@ ${formatSubjectIdentification(subjectIdentification)}
     );
   }
 }
-

@@ -72,23 +72,18 @@ export async function POST(req: Request) {
   const body = await req.json();
   const config = body.config as Partial<ApiConfig> | undefined;
   const useDefaultModel = config?.useDefaultModel === true;
-  const envApiKey = firstConfiguredValue(
-    process.env.AI_VISION_API_KEY,
-    process.env.AI_API_KEY,
-    process.env.ARK_API_KEY,
-    process.env.OPENAI_API_KEY,
-  );
+  const envApiKey = firstConfiguredValue(process.env.ARK_API_KEY);
   const apiKey = useDefaultModel
     ? envApiKey
     : firstConfiguredValue(config?.visionModelApiKey, envApiKey);
-  const baseUrl = process.env.AI_BASE_URL ?? "https://ark.cn-beijing.volces.com/api/v3";
+  const baseUrl = process.env.ARK_BASE_URL ?? "https://ark.cn-beijing.volces.com/api/v3";
   const model = useDefaultModel
-    ? firstConfiguredValue(process.env.AI_VISION_MODEL, process.env.AI_TEXT_MODEL, "doubao-seed-1-6-250615")
-    : firstConfiguredValue(config?.visionModelName, process.env.AI_VISION_MODEL, process.env.AI_TEXT_MODEL, "doubao-seed-1-6-250615");
+    ? firstConfiguredValue(process.env.ARK_VISION_MODEL, process.env.AI_VISION_MODEL, process.env.AI_TEXT_MODEL, "doubao-seed-1-6-250615")
+    : firstConfiguredValue(config?.visionModelName, process.env.ARK_VISION_MODEL, process.env.AI_VISION_MODEL, process.env.AI_TEXT_MODEL, "doubao-seed-1-6-250615");
 
   if (!apiKey) {
     return NextResponse.json(
-      { error: "服务端未配置 AI_API_KEY，无法调用主体识别接口。" },
+      { error: "服务端未配置 ARK_API_KEY，无法调用主体识别接口。" },
       { status: 500 },
     );
   }

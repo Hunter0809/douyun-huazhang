@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   DEFAULT_CHAT_MESSAGES,
   checkServerEnvConfig,
@@ -12,12 +12,67 @@ import {
 } from "@/utils/aiChat";
 
 type Props = {
-  isOpen: boolean;
-  onClose: () => void;
+  isOpen?: boolean;
+  onClose?: () => void;
   resetToken?: number;
+  embedded?: boolean;
 };
 
-export default function AiChatPanel({ isOpen, onClose, resetToken = 0 }: Props) {
+function renderInlineMarkdown(text: string): ReactNode {
+  return text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((part, index) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return <strong key={index}>{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith("`") && part.endsWith("`")) {
+      return <code key={index} className="rounded bg-stone-200 px-1 py-0.5 text-[0.9em]">{part.slice(1, -1)}</code>;
+    }
+    return <span key={index}>{part}</span>;
+  });
+}
+
+function renderMarkdown(content: string): ReactNode {
+  const nodes: ReactNode[] = [];
+  let listItems: string[] = [];
+
+  const flushList = () => {
+    if (listItems.length === 0) return;
+    nodes.push(
+      <ul key={`list-${nodes.length}`} className="my-2 list-disc space-y-1 pl-5">
+        {listItems.map((item, index) => <li key={index}>{renderInlineMarkdown(item)}</li>)}
+      </ul>,
+    );
+    listItems = [];
+  };
+
+  content.split(/\r?\n/).forEach((line, index) => {
+    const trimmed = line.trim();
+    const bullet = trimmed.match(/^[-*]\s+(.+)$/);
+    if (bullet) {
+      listItems.push(bullet[1]);
+      return;
+    }
+    flushList();
+    if (!trimmed) {
+      nodes.push(<div key={`space-${index}`} className="h-2" />);
+      return;
+    }
+    const heading = trimmed.match(/^(#{1,3})\s+(.+)$/);
+    if (heading) {
+      nodes.push(
+        <p key={index} className={heading[1].length === 1 ? "mt-2 text-base font-semibold" : "mt-2 text-sm font-semibold"}>
+          {renderInlineMarkdown(heading[2])}
+        </p>,
+      );
+      return;
+    }
+    nodes.push(<p key={index} className="my-1">{renderInlineMarkdown(trimmed)}</p>);
+  });
+  flushList();
+
+  return nodes;
+}
+
+export default function AiChatPanel({ isOpen = true, onClose, resetToken = 0, embedded = false }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>(() => loadAiChatHistory());
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -32,9 +87,7 @@ export default function AiChatPanel({ isOpen, onClose, resetToken = 0 }: Props) 
 
   useEffect(() => {
     checkServerEnvConfig().then(() => {
-      if (!isApiConfigured()) {
-        setShowApiWarning(true);
-      }
+      if (!isApiConfigured()) setShowApiWarning(true);
     });
   }, []);
 
@@ -142,24 +195,24 @@ export default function AiChatPanel({ isOpen, onClose, resetToken = 0 }: Props) 
         e.preventDefault();
         handleSend();
       }
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") onClose?.();
     },
     [handleSend, onClose],
   );
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-[200] grid place-items-center bg-black/40" onClick={onClose}>
-      <div
-        className="mx-4 flex h-[600px] w-full max-w-lg flex-col rounded-xl bg-white shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between rounded-t-xl bg-[#2b2118] px-5 py-3 text-white">
-          <div className="flex items-center gap-2">
-            <span className="text-xl">AI</span>
-            <span className="font-semibold">豆韵助手</span>
-          </div>
+  const chat = (
+    <div
+      className={embedded ? "flex h-[calc(100vh-10rem)] min-h-[620px] w-full flex-col rounded-lg border border-stone-200 bg-white shadow-sm" : "mx-4 flex h-[600px] w-full max-w-lg flex-col rounded-xl bg-white shadow-2xl"}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="flex items-center justify-between rounded-t-lg bg-[#2b2118] px-5 py-3 text-white">
+        <div className="flex items-center gap-2">
+          <span className="text-xl">AI</span>
+          <span className="font-semibold">豆韵AI</span>
+        </div>
+        {!embedded && (
           <button
             type="button"
             onClick={onClose}
@@ -170,71 +223,79 @@ export default function AiChatPanel({ isOpen, onClose, resetToken = 0 }: Props) 
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
-        </div>
-
-        {showApiWarning && (
-          <div className="mx-4 mt-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            未配置 API，暂时无法使用豆韵助手。
-            <button
-              type="button"
-              onClick={() => setShowApiWarning(false)}
-              className="ml-2 font-medium text-amber-900 underline hover:no-underline"
-            >
-              知道了
-            </button>
-          </div>
         )}
+      </div>
 
-        <div className="flex-1 overflow-y-auto px-4 py-3">
-          {messages.map((msg, index) => (
-            <div key={index} className={`mb-3 flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-              <div
-                className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
-                  msg.role === "user"
-                    ? "rounded-br-md bg-[#8f1d21] text-white"
-                    : "rounded-bl-md bg-stone-100 text-stone-800"
-                }`}
-              >
-                {msg.content || (
-                  <span className="inline-flex gap-1 text-stone-500">
-                    <span className="animate-bounce">.</span>
-                    <span className="animate-bounce" style={{ animationDelay: "0.2s" }}>.</span>
-                    <span className="animate-bounce" style={{ animationDelay: "0.4s" }}>.</span>
-                  </span>
-                )}
-              </div>
-            </div>
-          ))}
-          <div ref={messagesEndRef} />
+      {showApiWarning && (
+        <div className="mx-4 mt-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          未配置 API，暂时无法使用豆韵AI。
+          <button
+            type="button"
+            onClick={() => setShowApiWarning(false)}
+            className="ml-2 font-medium text-amber-900 underline hover:no-underline"
+          >
+            知道了
+          </button>
         </div>
+      )}
 
-        <div className="border-t border-stone-200 px-4 py-3">
-          {error && !loading && (
-            <p className="mb-2 text-xs text-red-500">{error}</p>
-          )}
-          <div className="flex gap-2">
-            <input
-              ref={inputRef}
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={showApiWarning ? "请先在设置中配置 API Key..." : "输入你的问题..."}
-              disabled={showApiWarning || loading}
-              className="flex-1 rounded-lg border border-stone-300 px-4 py-2.5 text-sm focus:border-[#8f1d21] focus:outline-none focus:ring-1 focus:ring-[#8f1d21] disabled:opacity-50"
-              autoFocus
-            />
-            <button
-              type="button"
-              onClick={handleSend}
-              disabled={showApiWarning || loading || !input.trim()}
-              className="rounded-lg bg-[#8f1d21] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+      <div className="flex-1 overflow-y-auto px-4 py-3">
+        {messages.map((msg, index) => (
+          <div key={index} className={`mb-3 flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+            <div
+              className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                msg.role === "user"
+                  ? "rounded-br-md bg-[#8f1d21] text-white"
+                  : "rounded-bl-md bg-stone-100 text-stone-800"
+              }`}
             >
-              发送
-            </button>
+              {msg.content ? renderMarkdown(msg.content) : (
+                <span className="inline-flex gap-1 text-stone-500">
+                  <span className="animate-bounce">.</span>
+                  <span className="animate-bounce" style={{ animationDelay: "0.2s" }}>.</span>
+                  <span className="animate-bounce" style={{ animationDelay: "0.4s" }}>.</span>
+                </span>
+              )}
+            </div>
           </div>
+        ))}
+        <div ref={messagesEndRef} />
+      </div>
+
+      <div className="border-t border-stone-200 px-4 py-3">
+        {error && !loading && (
+          <p className="mb-2 text-xs text-red-500">{error}</p>
+        )}
+        <div className="flex gap-2">
+          <input
+            ref={inputRef}
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={showApiWarning ? "请先在设置中配置 API Key..." : "输入你的问题..."}
+            disabled={showApiWarning || loading}
+            className="flex-1 rounded-lg border border-stone-300 px-4 py-2.5 text-sm focus:border-[#8f1d21] focus:outline-none focus:ring-1 focus:ring-[#8f1d21] disabled:opacity-50"
+            autoFocus
+          />
+          <button
+            type="button"
+            onClick={handleSend}
+            disabled={showApiWarning || loading || !input.trim()}
+            className="rounded-lg bg-[#8f1d21] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+          >
+            发送
+          </button>
         </div>
       </div>
+    </div>
+  );
+
+  if (embedded) return chat;
+
+  return (
+    <div className="fixed inset-0 z-[200] grid place-items-center bg-black/40" onClick={onClose}>
+      {chat}
     </div>
   );
 }

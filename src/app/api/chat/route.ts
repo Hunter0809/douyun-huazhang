@@ -68,19 +68,15 @@ export async function POST(req: Request) {
   const { messages, config } = body;
   const useDefaultModel = config?.useDefaultModel === true;
 
-  const envApiKey = firstConfiguredValue(
-    process.env.AI_API_KEY,
-    process.env.ARK_API_KEY,
-    process.env.OPENAI_API_KEY,
-  );
+  const envApiKey = firstConfiguredValue(process.env.ARK_API_KEY);
   const userApiKey = firstConfiguredValue(config?.textModelApiKey, config?.imageModelApiKey);
   const apiKey = useDefaultModel ? envApiKey : firstConfiguredValue(userApiKey, envApiKey);
   const model = useDefaultModel
-    ? firstConfiguredValue(process.env.AI_TEXT_MODEL, "gpt-4o-mini")
-    : firstConfiguredValue(config?.textModelName, process.env.AI_TEXT_MODEL, "gpt-4o-mini");
+    ? firstConfiguredValue(process.env.ARK_TEXT_MODEL, process.env.AI_TEXT_MODEL, "doubao-seed-1-6-250615")
+    : firstConfiguredValue(config?.textModelName, process.env.ARK_TEXT_MODEL, process.env.AI_TEXT_MODEL, "doubao-seed-1-6-250615");
   const baseUrl = useDefaultModel
-    ? firstConfiguredValue(process.env.AI_BASE_URL, "https://api.openai.com/v1")
-    : firstConfiguredValue(config?.textModelBaseUrl, process.env.AI_BASE_URL, "https://api.openai.com/v1");
+    ? firstConfiguredValue(process.env.ARK_BASE_URL, "https://ark.cn-beijing.volces.com/api/v3")
+    : firstConfiguredValue(config?.textModelBaseUrl, process.env.ARK_BASE_URL, "https://ark.cn-beijing.volces.com/api/v3");
 
   if (!apiKey) {
     return NextResponse.json(

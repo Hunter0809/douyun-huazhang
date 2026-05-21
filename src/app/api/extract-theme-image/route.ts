@@ -27,16 +27,16 @@ function formatSubjectIdentification(identification: SubjectIdentification): str
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const apiKey = process.env.AI_API_KEY ?? process.env.ARK_API_KEY ?? process.env.OPENAI_API_KEY;
-  const baseUrl = process.env.AI_BASE_URL ?? "https://ark.cn-beijing.volces.com/api/v3";
-  const model = process.env.AI_IMAGE_MODEL ?? "doubao-seedream-4-0-250828";
+  const apiKey = process.env.ARK_API_KEY;
+  const baseUrl = process.env.ARK_BASE_URL ?? "https://ark.cn-beijing.volces.com/api/v3";
+  const model = process.env.ARK_IMAGE_MODEL ?? process.env.AI_IMAGE_MODEL ?? "doubao-seedream-4-0-250828";
   const ratio = getAspectRatio(body.aspectRatio ?? "1:1");
   const isUpload = body.isUpload === true;
   const subjectIdentification = body.subjectIdentification as SubjectIdentification | undefined;
 
   if (!apiKey) {
     return NextResponse.json(
-      { error: "服务端未配置 AI_API_KEY，无法调用主题元素提取接口。" },
+      { error: "服务端未配置 ARK_API_KEY，无法调用主题元素提取接口。" },
       { status: 500 },
     );
   }
@@ -133,4 +133,3 @@ export async function POST(req: Request) {
     prompt: promptText,
   });
 }
-

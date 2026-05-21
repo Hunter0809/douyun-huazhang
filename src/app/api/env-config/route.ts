@@ -8,13 +8,11 @@ export const runtime = "nodejs";
  * 供前端 ProfilePage 在"使用默认模型"模式下展示
  */
 export async function GET() {
-  const apiKeyExists = Boolean(
-    process.env.AI_VISION_API_KEY ?? process.env.AI_API_KEY ?? process.env.ARK_API_KEY ?? process.env.OPENAI_API_KEY
-  );
-  const baseUrl = process.env.AI_BASE_URL ?? "";
-  const imageModel = process.env.AI_IMAGE_MODEL ?? "";
-  const textModel = process.env.AI_TEXT_MODEL ?? "";
-  const visionModel = process.env.AI_VISION_MODEL ?? "";
+  const apiKeyExists = Boolean(process.env.ARK_API_KEY);
+  const baseUrl = process.env.ARK_BASE_URL ?? "https://ark.cn-beijing.volces.com/api/v3";
+  const imageModel = process.env.ARK_IMAGE_MODEL ?? process.env.AI_IMAGE_MODEL ?? "";
+  const textModel = process.env.ARK_TEXT_MODEL ?? process.env.AI_TEXT_MODEL ?? "";
+  const visionModel = process.env.ARK_VISION_MODEL ?? process.env.AI_VISION_MODEL ?? "";
 
   return NextResponse.json({
     configured: apiKeyExists,
