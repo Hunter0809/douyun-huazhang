@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import sharp from "sharp";
 import type { SubjectIdentification } from "@/types/subjectIdentification";
+import type { ApiConfig } from "@/types/projectTypes";
 
 export const runtime = "nodejs";
 
@@ -16,6 +17,13 @@ function formatUpstreamError(detail: string, fallback: string): string {
   } catch {
     return fallback;
   }
+}
+
+function firstConfiguredValue(...values: Array<unknown>): string | undefined {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim().length > 0) return value.trim();
+  }
+  return undefined;
 }
 
 async function compactDataUrl(imageUrl: string): Promise<string> {
@@ -62,9 +70,21 @@ function parseSubjectIdentification(text: string): SubjectIdentification {
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const apiKey = process.env.AI_API_KEY ?? process.env.ARK_API_KEY ?? process.env.OPENAI_API_KEY;
+  const config = body.config as Partial<ApiConfig> | undefined;
+  const useDefaultModel = config?.useDefaultModel === true;
+  const envApiKey = firstConfiguredValue(
+    process.env.AI_VISION_API_KEY,
+    process.env.AI_API_KEY,
+    process.env.ARK_API_KEY,
+    process.env.OPENAI_API_KEY,
+  );
+  const apiKey = useDefaultModel
+    ? envApiKey
+    : firstConfiguredValue(config?.visionModelApiKey, envApiKey);
   const baseUrl = process.env.AI_BASE_URL ?? "https://ark.cn-beijing.volces.com/api/v3";
-  const model = process.env.AI_VISION_MODEL ?? process.env.AI_TEXT_MODEL ?? "doubao-seed-1-6-250615";
+  const model = useDefaultModel
+    ? firstConfiguredValue(process.env.AI_VISION_MODEL, process.env.AI_TEXT_MODEL, "doubao-seed-1-6-250615")
+    : firstConfiguredValue(config?.visionModelName, process.env.AI_VISION_MODEL, process.env.AI_TEXT_MODEL, "doubao-seed-1-6-250615");
 
   if (!apiKey) {
     return NextResponse.json(
@@ -146,4 +166,3 @@ export async function POST(req: Request) {
     );
   }
 }
-

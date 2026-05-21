@@ -9,7 +9,7 @@ import LoginModal from "@/components/LoginModal";
 import AiChatPanel from "@/components/ai/AiChatPanel";
 import FloatingAiButton from "@/components/ai/FloatingAiButton";
 import { clearAiChatHistory } from "@/utils/aiChat";
-import { saveProjectRecord, loadCurrentUserProfile, type StoredUser } from "@/utils/profileStorage";
+import { saveProjectRecord, loadCurrentUserProfile, loadApiConfig, type StoredUser } from "@/utils/profileStorage";
 import { fetchCommunityPosts, publishCommunityPost } from "@/utils/communityForum";
 import type { ProjectRecord } from "@/types/projectTypes";
 import type { CommunityPost as CloudCommunityPost } from "@/types/community";
@@ -1241,6 +1241,7 @@ export default function CreativeBeadStudio() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           imageUrl: subjectAnalysis.subjectImageUrl,
+          config: loadApiConfig(),
         }),
       });
       const result = await response.json();

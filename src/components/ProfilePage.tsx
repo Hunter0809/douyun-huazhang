@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ProjectRecord } from "@/types/projectTypes";
-import { TEXT_MODEL_OPTIONS, IMAGE_MODEL_OPTIONS } from "@/types/projectTypes";
+import { TEXT_MODEL_OPTIONS, IMAGE_MODEL_OPTIONS, VISION_MODEL_OPTIONS } from "@/types/projectTypes";
 import {
   loadApiConfig,
   saveApiConfig,
@@ -27,11 +27,12 @@ type Props = {
 
 export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Props) {
   const [apiConfig, setApiConfig] = useState(() =>
-    loadApiConfig() ?? { textModelApiKey: "", textModelName: "", imageModelApiKey: "", imageModelName: "" }
+    loadApiConfig() ?? { textModelApiKey: "", textModelName: "", imageModelApiKey: "", imageModelName: "", visionModelApiKey: "", visionModelName: "" }
   );
   const [saved, setSaved] = useState(false);
   const [showTextKey, setShowTextKey] = useState(false);
   const [showImageKey, setShowImageKey] = useState(false);
+  const [showVisionKey, setShowVisionKey] = useState(false);
   const [envConfig, setEnvConfig] = useState<{ configured: boolean; baseUrl: string; defaultImageModel: string; defaultTextModel: string; defaultVisionModel?: string } | null>(null);
   const [envLoading, setEnvLoading] = useState(false);
   const [profile, setProfile] = useState<StoredUser>(() => loadCurrentUserProfile() ?? { nickname: "豆韵用户", avatarUrl: "", createdAt: Date.now() });
@@ -131,6 +132,7 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Prop
           ...prev,
           textModelName: data.defaultTextModel || prev.textModelName,
           imageModelName: data.defaultImageModel || prev.imageModelName,
+          visionModelName: data.defaultVisionModel || data.defaultTextModel || prev.visionModelName,
         }));
       })
       .catch(() => setEnvConfig(null))
@@ -173,6 +175,7 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Prop
   const isLoggedIn = !!loadCurrentUser();
   const currentTextOption = TEXT_MODEL_OPTIONS.find(m => m.name === apiConfig.textModelName);
   const currentImageOption = IMAGE_MODEL_OPTIONS.find(m => m.name === apiConfig.imageModelName);
+  const currentVisionOption = VISION_MODEL_OPTIONS.find(m => m.name === apiConfig.visionModelName);
 
   const handleLoggedIn = useCallback((user: StoredUser) => {
     setProfile(user);
@@ -182,9 +185,9 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Prop
 
   const confirmLogout = useCallback(() => {
     logoutUser();
-    saveApiConfig({ textModelApiKey: "", textModelName: "", imageModelApiKey: "", imageModelName: "" });
+    saveApiConfig({ textModelApiKey: "", textModelName: "", imageModelApiKey: "", imageModelName: "", visionModelApiKey: "", visionModelName: "" });
     setProfile({ nickname: "豆韵用户", avatarUrl: "", createdAt: Date.now() });
-    setApiConfig({ textModelApiKey: "", textModelName: "", imageModelApiKey: "", imageModelName: "" });
+    setApiConfig({ textModelApiKey: "", textModelName: "", imageModelApiKey: "", imageModelName: "", visionModelApiKey: "", visionModelName: "" });
     setHistory(loadProjectHistory());
     setSelectedIds(new Set());
     setBatchMode(false);
@@ -307,7 +310,7 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Prop
             </div>
           ) : null}
 
-          <div className="mt-6 grid gap-6 md:grid-cols-2">
+          <div className="mt-6 grid gap-6 md:grid-cols-3">
             {/* 文本模型 */}
             <div>
               <label className="text-sm font-medium">文本模型</label>
@@ -361,6 +364,40 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Prop
                     <p className="mt-1.5 text-xs text-stone-400">
                       还没有 API Key？前往
                       <a href={currentImageOption.purchaseUrl} target="_blank" rel="noopener noreferrer" className="mx-1 font-medium text-[#8f1d21] underline hover:text-[#a52327]">官方网站购买</a>
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+            <div>
+              <label className="text-sm font-medium">图像理解模型</label>
+              <div className="relative mt-1">
+                <select
+                  value={apiConfig.visionModelName ?? ""}
+                  onChange={(e) => setApiConfig(p => ({ ...p, visionModelName: e.target.value }))}
+                  className={`w-full appearance-none rounded-md border py-2 pl-3 pr-8 text-sm ${apiConfig.useDefaultModel ? 'border-emerald-200 bg-emerald-50/50 text-stone-500' : 'border-stone-300'}`}
+                  disabled={apiConfig.useDefaultModel}
+                >
+                  <option value="" disabled>请选择</option>
+                  {VISION_MODEL_OPTIONS.map(m => <option key={m.name} value={m.name}>{m.icon} {m.name}</option>)}
+                </select>
+              </div>
+              {!apiConfig.useDefaultModel && (
+                <>
+                  <div className="relative mt-2">
+                    <input
+                      type={showVisionKey ? "text" : "password"}
+                      placeholder="API Key"
+                      value={apiConfig.visionModelApiKey ?? ""}
+                      onChange={(e) => setApiConfig(p => ({ ...p, visionModelApiKey: e.target.value }))}
+                      className="w-full rounded-md border border-stone-300 py-2 pl-3 pr-9 text-sm"
+                    />
+                    <button type="button" onClick={() => setShowVisionKey(v => !v)} className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-stone-400 hover:text-stone-700">{showVisionKey ? "🙈" : "👁️"}</button>
+                  </div>
+                  {!apiConfig.visionModelApiKey && currentVisionOption?.purchaseUrl && (
+                    <p className="mt-1.5 text-xs text-stone-400">
+                      还没有 API Key？前往
+                      <a href={currentVisionOption.purchaseUrl} target="_blank" rel="noopener noreferrer" className="mx-1 font-medium text-[#8f1d21] underline hover:text-[#a52327]">官方网站购买</a>
                     </p>
                   )}
                 </>
@@ -491,6 +528,41 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Prop
               >
                 放弃退出
               </button>
+            </div>
+            {/* 图像理解模型 */}
+            <div>
+              <label className="text-sm font-medium">图像理解模型</label>
+              <div className="relative mt-1">
+                <select
+                  value={apiConfig.visionModelName ?? ""}
+                  onChange={(e) => setApiConfig(p => ({ ...p, visionModelName: e.target.value }))}
+                  className={`w-full appearance-none rounded-md border py-2 pl-3 pr-8 text-sm ${apiConfig.useDefaultModel ? 'border-emerald-200 bg-emerald-50/50 text-stone-500' : 'border-stone-300'}`}
+                  disabled={apiConfig.useDefaultModel}
+                >
+                  <option value="" disabled>请选择</option>
+                  {VISION_MODEL_OPTIONS.map(m => <option key={m.name} value={m.name}>{m.icon} {m.name}</option>)}
+                </select>
+              </div>
+              {!apiConfig.useDefaultModel && (
+                <>
+                  <div className="relative mt-2">
+                    <input
+                      type={showVisionKey ? "text" : "password"}
+                      placeholder="API Key"
+                      value={apiConfig.visionModelApiKey ?? ""}
+                      onChange={(e) => setApiConfig(p => ({ ...p, visionModelApiKey: e.target.value }))}
+                      className="w-full rounded-md border border-stone-300 py-2 pl-3 pr-9 text-sm"
+                    />
+                    <button type="button" onClick={() => setShowVisionKey(v => !v)} className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-stone-400 hover:text-stone-700">{showVisionKey ? "🙈" : "👁️"}</button>
+                  </div>
+                  {!apiConfig.visionModelApiKey && currentVisionOption?.purchaseUrl && (
+                    <p className="mt-1.5 text-xs text-stone-400">
+                      还没有 API Key？前往
+                      <a href={currentVisionOption.purchaseUrl} target="_blank" rel="noopener noreferrer" className="mx-1 font-medium text-[#8f1d21] underline hover:text-[#a52327]">官方网站购买</a>
+                    </p>
+                  )}
+                </>
+              )}
             </div>
           </div>
         </div>

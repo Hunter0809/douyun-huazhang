@@ -9,7 +9,7 @@ export const runtime = "nodejs";
  */
 export async function GET() {
   const apiKeyExists = Boolean(
-    process.env.AI_API_KEY ?? process.env.ARK_API_KEY ?? process.env.OPENAI_API_KEY
+    process.env.AI_VISION_API_KEY ?? process.env.AI_API_KEY ?? process.env.ARK_API_KEY ?? process.env.OPENAI_API_KEY
   );
   const baseUrl = process.env.AI_BASE_URL ?? "";
   const imageModel = process.env.AI_IMAGE_MODEL ?? "";
