@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 
 type ChatMessage = {
-  role: "user" | "assistant" | "system";
+  role: "user" | "assistant";
   content: string;
 };
 
@@ -13,7 +13,7 @@ function formatUpstreamError(detail: string, fallback: string): string {
     const code = parsed?.error?.code;
     const message = parsed?.error?.message;
     if (code === "ModelNotOpen") {
-      return `当前 Ark 账号未开通所选模型：${message}`;
+      return `当前 Ark 账号未开通所选生图模型：${message}`;
     }
     return message ? `${fallback}：${message}` : fallback;
   } catch {
@@ -25,42 +25,15 @@ function firstConfiguredValue(...values: Array<string | undefined>): string {
   return values.map((value) => value?.trim()).find(Boolean) ?? "";
 }
 
-function sseData(value: unknown): string {
-  return `data: ${JSON.stringify(value)}\n\n`;
-}
-
-function extractDelta(payload: string): string {
-  if (payload === "[DONE]") return "";
-  try {
-    const parsed = JSON.parse(payload);
-    return parsed?.choices?.[0]?.delta?.content
-      ?? parsed?.choices?.[0]?.message?.content
-      ?? "";
-  } catch {
-    return "";
+function getLatestUserPrompt(messages: unknown): string {
+  if (!Array.isArray(messages)) return "";
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index] as Partial<ChatMessage> | undefined;
+    if (message?.role === "user" && typeof message.content === "string") {
+      return message.content.trim();
+    }
   }
-}
-
-const SYSTEM_PROMPT = `你是“豆韵助手”，专注回答中华传统文化、拼豆制作和豆韵工具使用问题。
-可覆盖：传统纹样与非遗文化、拼豆配色与图纸制作、材料和成品建议、豆韵功能步骤、文化图案设计含义。
-回答要求：使用简体中文；语气亲切自然；内容精炼但具体；优先给出可执行建议和例子；不确定时明确说明。`;
-
-function normalizeMessages(messages: unknown): ChatMessage[] {
-  if (!Array.isArray(messages)) return [];
-  return messages
-    .filter((message): message is ChatMessage => {
-      if (!message || typeof message !== "object") return false;
-      const candidate = message as Partial<ChatMessage>;
-      return (
-        (candidate.role === "user" || candidate.role === "assistant" || candidate.role === "system") &&
-        typeof candidate.content === "string" &&
-        candidate.content.trim().length > 0
-      );
-    })
-    .map((message) => ({
-      role: message.role,
-      content: message.content.trim(),
-    }));
+  return "";
 }
 
 export async function POST(req: Request) {
@@ -69,24 +42,26 @@ export async function POST(req: Request) {
   const useDefaultModel = config?.useDefaultModel === true;
 
   const envApiKey = firstConfiguredValue(process.env.ARK_API_KEY);
-  const userApiKey = firstConfiguredValue(config?.textModelApiKey, config?.imageModelApiKey);
+  const userApiKey = firstConfiguredValue(config?.imageModelApiKey);
   const apiKey = useDefaultModel ? envApiKey : firstConfiguredValue(userApiKey, envApiKey);
   const model = useDefaultModel
-    ? firstConfiguredValue(process.env.ARK_TEXT_MODEL, process.env.AI_TEXT_MODEL, "doubao-seed-1-6-250615")
-    : firstConfiguredValue(config?.textModelName, process.env.ARK_TEXT_MODEL, process.env.AI_TEXT_MODEL, "doubao-seed-1-6-250615");
-  const baseUrl = useDefaultModel
-    ? firstConfiguredValue(process.env.ARK_BASE_URL, "https://ark.cn-beijing.volces.com/api/v3")
-    : firstConfiguredValue(config?.textModelBaseUrl, process.env.ARK_BASE_URL, "https://ark.cn-beijing.volces.com/api/v3");
+    ? firstConfiguredValue(process.env.ARK_IMAGE_MODEL, process.env.AI_IMAGE_MODEL, "doubao-seedream-4-0-250828")
+    : firstConfiguredValue(config?.imageModelName, process.env.ARK_IMAGE_MODEL, process.env.AI_IMAGE_MODEL, "doubao-seedream-4-0-250828");
+  const baseUrl = firstConfiguredValue(process.env.ARK_BASE_URL, "https://ark.cn-beijing.volces.com/api/v3");
+  const prompt = getLatestUserPrompt(messages);
 
   if (!apiKey) {
     return NextResponse.json(
-      { error: "未配置 API Key。请在个人主页开启“使用系统默认模型”或手动填写 API Key。" },
+      { error: "未配置 Ark API Key。请在个人主页开启“使用系统默认模型”或填写生图模型 API Key。" },
       { status: 400 },
     );
   }
 
-  const chatMessages = normalizeMessages(messages);
-  const response = await fetch(`${baseUrl.replace(/\/$/, "")}/chat/completions`, {
+  if (!prompt) {
+    return NextResponse.json({ error: "请输入生图提示词。" }, { status: 400 });
+  }
+
+  const response = await fetch(`${baseUrl.replace(/\/$/, "")}/images/generations`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -94,79 +69,31 @@ export async function POST(req: Request) {
     },
     body: JSON.stringify({
       model,
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        ...chatMessages,
-      ],
-      stream: true,
-      temperature: 0.7,
-      max_tokens: 700,
+      prompt,
+      n: 1,
+      size: "1024x1024",
+      response_format: "b64_json",
+      watermark: false,
     }),
   });
 
-  if (!response.ok || !response.body) {
+  if (!response.ok) {
     const detail = await response.text();
     return NextResponse.json(
-      { error: formatUpstreamError(detail, "AI 对话请求失败。"), detail },
+      { error: formatUpstreamError(detail, "豆韵AI 生图请求失败。"), detail },
       { status: response.status },
     );
   }
 
-  const encoder = new TextEncoder();
-  const decoder = new TextDecoder();
+  const result = await response.json();
+  const base64 = result?.data?.[0]?.b64_json;
+  const url = result?.data?.[0]?.url;
+  if (!base64 && !url) {
+    return NextResponse.json({ error: "豆韵AI 生图接口未返回图片数据。" }, { status: 502 });
+  }
 
-  const stream = new ReadableStream<Uint8Array>({
-    async start(controller) {
-      const reader = response.body!.getReader();
-      let buffer = "";
-      let doneSent = false;
-
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split(/\r?\n/);
-          buffer = lines.pop() ?? "";
-
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed.startsWith("data:")) continue;
-            const payload = trimmed.slice(5).trim();
-            if (payload === "[DONE]") {
-              doneSent = true;
-              controller.enqueue(encoder.encode(sseData({ done: true })));
-              continue;
-            }
-
-            const delta = extractDelta(payload);
-            if (delta) {
-              controller.enqueue(encoder.encode(sseData({ delta })));
-            }
-          }
-        }
-
-        if (!doneSent) {
-          controller.enqueue(encoder.encode(sseData({ done: true })));
-        }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "AI 对话流中断。";
-        controller.enqueue(encoder.encode(sseData({ error: message })));
-      } finally {
-        controller.close();
-      }
-    },
-    cancel() {
-      response.body?.cancel().catch(() => undefined);
-    },
-  });
-
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "text/event-stream; charset=utf-8",
-      "Cache-Control": "no-cache, no-transform",
-      Connection: "keep-alive",
-    },
+  return NextResponse.json({
+    imageUrl: base64 ? `data:image/png;base64,${base64}` : url,
+    prompt,
   });
 }

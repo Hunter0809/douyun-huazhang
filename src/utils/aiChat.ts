@@ -3,13 +3,14 @@ import { loadApiConfig } from "./profileStorage";
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  imageUrl?: string;
 }
 
 export const AI_CHAT_HISTORY_KEY = "douyun_ai_chat_history";
 const CHAT_CONTEXT_LIMIT = 10;
 
 export const DEFAULT_CHAT_MESSAGES: ChatMessage[] = [
-  { role: "assistant", content: "你好！我是豆韵助手，有任何关于传统文化、拼豆制作或工具使用的问题都可以问我。" },
+  { role: "assistant", content: "你好，我是豆韵AI。输入你想生成的图像提示词，我会调用生图模型输出图片。" },
 ];
 
 let serverEnvConfigured: boolean | null = null;
@@ -25,9 +26,15 @@ export function loadAiChatHistory(): ChatMessage[] {
     if (!raw) return DEFAULT_CHAT_MESSAGES;
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return DEFAULT_CHAT_MESSAGES;
-    return parsed.filter((item): item is ChatMessage =>
-      (item?.role === "user" || item?.role === "assistant") && typeof item?.content === "string",
-    );
+    return parsed
+      .filter((item): item is ChatMessage =>
+        (item?.role === "user" || item?.role === "assistant") && typeof item?.content === "string",
+      )
+      .map((item) => ({
+        role: item.role,
+        content: item.content,
+        imageUrl: typeof item.imageUrl === "string" ? item.imageUrl : undefined,
+      }));
   } catch {
     return DEFAULT_CHAT_MESSAGES;
   }
@@ -71,6 +78,7 @@ function buildRequestConfig() {
         textModelApiKey: config?.textModelApiKey ?? "",
         imageModelApiKey: config?.imageModelApiKey ?? "",
         textModelName: config?.textModelName ?? "",
+        imageModelName: config?.imageModelName ?? "",
       };
 }
 
@@ -87,6 +95,7 @@ async function assertConfigured(): Promise<void> {
 export async function streamChatMessage(
   messages: ChatMessage[],
   onDelta: (delta: string) => void,
+  onImage?: (imageUrl: string) => void,
   signal?: AbortSignal,
 ): Promise<string> {
   await assertConfigured();
@@ -103,48 +112,23 @@ export async function streamChatMessage(
     signal,
   });
 
-  if (!response.ok || !response.body) {
-    const result = await response.json().catch(() => null);
-    throw new Error(result?.error ?? "AI 对话请求失败");
+  const result = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(result?.error ?? "豆韵AI 生图请求失败");
   }
 
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  let fullText = "";
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const events = buffer.split("\n\n");
-    buffer = events.pop() ?? "";
-
-    for (const event of events) {
-      const lines = event.split(/\r?\n/);
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed.startsWith("data:")) continue;
-        const payload = trimmed.slice(5).trim();
-        if (!payload) continue;
-
-        const parsed = JSON.parse(payload);
-        if (parsed.error) throw new Error(parsed.error);
-        if (parsed.delta) {
-          fullText += parsed.delta;
-          onDelta(parsed.delta);
-        }
-      }
-    }
+  if (typeof result?.imageUrl !== "string" || result.imageUrl.length === 0) {
+    throw new Error(result?.error ?? "豆韵AI 未返回图片");
   }
 
-  return fullText || "抱歉，我没有理解你的问题，请换一种方式提问。";
+  onDelta("已生成图像：");
+  onImage?.(result.imageUrl);
+  return "已生成图像：";
 }
 
 export async function sendChatMessage(
   messages: ChatMessage[],
   signal?: AbortSignal,
 ): Promise<string> {
-  return streamChatMessage(messages, () => undefined, signal);
+  return streamChatMessage(messages, () => undefined, undefined, signal);
 }

@@ -79,10 +79,6 @@ export default function AiChatPanel({ isOpen = true, onClose, resetToken = 0, em
   const [error, setError] = useState<string | null>(null);
   const [showApiWarning, setShowApiWarning] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const charQueueRef = useRef<string[]>([]);
-  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const assistantIndexRef = useRef<number | null>(null);
   const resetTokenRef = useRef(resetToken);
 
   useEffect(() => {
@@ -106,49 +102,7 @@ export default function AiChatPanel({ isOpen = true, onClose, resetToken = 0, em
     setError(null);
     setInput("");
     setLoading(false);
-    charQueueRef.current = [];
-    assistantIndexRef.current = null;
-    if (typingTimerRef.current) {
-      clearTimeout(typingTimerRef.current);
-      typingTimerRef.current = null;
-    }
   }, [resetToken]);
-
-  const drainCharQueue = useCallback(() => {
-    if (typingTimerRef.current) return;
-
-    const tick = () => {
-      const assistantIndex = assistantIndexRef.current;
-      const queueLength = charQueueRef.current.length;
-      const batchSize = queueLength > 120 ? 48 : queueLength > 40 ? 24 : 12;
-      const next = charQueueRef.current.splice(0, batchSize).join("");
-
-      if (next && assistantIndex !== null) {
-        setMessages((prev) =>
-          prev.map((msg, index) =>
-            index === assistantIndex ? { ...msg, content: msg.content + next } : msg,
-          ),
-        );
-        typingTimerRef.current = setTimeout(tick, 16);
-      } else {
-        typingTimerRef.current = null;
-      }
-    };
-
-    typingTimerRef.current = setTimeout(tick, 0);
-  }, []);
-
-  const waitForTypingComplete = useCallback(async () => {
-    while (charQueueRef.current.length > 0 || typingTimerRef.current) {
-      await new Promise((resolve) => setTimeout(resolve, 30));
-    }
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
-    };
-  }, []);
 
   const handleSend = useCallback(async () => {
     const text = input.trim();
@@ -160,23 +114,28 @@ export default function AiChatPanel({ isOpen = true, onClose, resetToken = 0, em
     const userMsg: ChatMessage = { role: "user", content: text };
     const nextMessages = [...messages, userMsg];
     const assistantIndex = nextMessages.length;
-    assistantIndexRef.current = assistantIndex;
-    charQueueRef.current = [];
-    setMessages([...nextMessages, { role: "assistant", content: "" }]);
+    setMessages([...nextMessages, { role: "assistant", content: "正在生成图像..." }]);
     setLoading(true);
 
     try {
-      await streamChatMessage(nextMessages, (delta) => {
-        charQueueRef.current.push(...Array.from(delta));
-        drainCharQueue();
-      });
-      await waitForTypingComplete();
+      await streamChatMessage(
+        nextMessages,
+        (content) => {
+          setMessages((prev) =>
+            prev.map((item, index) =>
+              index === assistantIndex ? { ...item, content } : item,
+            ),
+          );
+        },
+        (imageUrl) => {
+          setMessages((prev) =>
+            prev.map((item, index) =>
+              index === assistantIndex ? { ...item, imageUrl } : item,
+            ),
+          );
+        },
+      );
     } catch (err) {
-      charQueueRef.current = [];
-      if (typingTimerRef.current) {
-        clearTimeout(typingTimerRef.current);
-        typingTimerRef.current = null;
-      }
       const msg = err instanceof Error ? err.message : "发送失败，请重试";
       setError(msg);
       setMessages((prev) =>
@@ -187,7 +146,7 @@ export default function AiChatPanel({ isOpen = true, onClose, resetToken = 0, em
     } finally {
       setLoading(false);
     }
-  }, [drainCharQueue, input, loading, messages, waitForTypingComplete]);
+  }, [input, loading, messages]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -256,6 +215,13 @@ export default function AiChatPanel({ isOpen = true, onClose, resetToken = 0, em
                   <span className="animate-bounce" style={{ animationDelay: "0.4s" }}>.</span>
                 </span>
               )}
+              {msg.imageUrl && (
+                <img
+                  src={msg.imageUrl}
+                  alt="豆韵AI生成图像"
+                  className="mt-3 max-h-[520px] w-full rounded-lg border border-stone-200 bg-white object-contain"
+                />
+              )}
             </div>
           </div>
         ))}
@@ -268,12 +234,11 @@ export default function AiChatPanel({ isOpen = true, onClose, resetToken = 0, em
         )}
         <div className="flex gap-2">
           <input
-            ref={inputRef}
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={showApiWarning ? "请先在设置中配置 API Key..." : "输入你的问题..."}
+            placeholder={showApiWarning ? "请先在设置中配置 API Key..." : "输入生图提示词..."}
             disabled={showApiWarning || loading}
             className="flex-1 rounded-lg border border-stone-300 px-4 py-2.5 text-sm focus:border-[#8f1d21] focus:outline-none focus:ring-1 focus:ring-[#8f1d21] disabled:opacity-50"
             autoFocus
@@ -284,7 +249,7 @@ export default function AiChatPanel({ isOpen = true, onClose, resetToken = 0, em
             disabled={showApiWarning || loading || !input.trim()}
             className="rounded-lg bg-[#8f1d21] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
           >
-            发送
+            生成图片
           </button>
         </div>
       </div>
