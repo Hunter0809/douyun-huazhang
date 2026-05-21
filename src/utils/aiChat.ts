@@ -8,6 +8,13 @@ export interface ChatMessage {
 
 export const AI_CHAT_HISTORY_KEY = "douyun_ai_chat_history";
 const CHAT_CONTEXT_LIMIT = 10;
+const HISTORY_LIMIT = 30;
+
+function getPersistableImageUrl(imageUrl: unknown): string | undefined {
+  if (typeof imageUrl !== "string") return undefined;
+  if (imageUrl.startsWith("data:")) return undefined;
+  return imageUrl;
+}
 
 export const DEFAULT_CHAT_MESSAGES: ChatMessage[] = [
   { role: "assistant", content: "你好，我是豆韵AI。输入你想生成的图像提示词，我会调用生图模型输出图片。" },
@@ -33,7 +40,7 @@ export function loadAiChatHistory(): ChatMessage[] {
       .map((item) => ({
         role: item.role,
         content: item.content,
-        imageUrl: typeof item.imageUrl === "string" ? item.imageUrl : undefined,
+        imageUrl: getPersistableImageUrl(item.imageUrl),
       }));
   } catch {
     return DEFAULT_CHAT_MESSAGES;
@@ -42,7 +49,16 @@ export function loadAiChatHistory(): ChatMessage[] {
 
 export function saveAiChatHistory(messages: ChatMessage[]): void {
   if (!isStorageAvailable()) return;
-  localStorage.setItem(AI_CHAT_HISTORY_KEY, JSON.stringify(messages));
+  const persistableMessages = messages.slice(-HISTORY_LIMIT).map((message) => ({
+    role: message.role,
+    content: message.content,
+    imageUrl: getPersistableImageUrl(message.imageUrl),
+  }));
+  try {
+    localStorage.setItem(AI_CHAT_HISTORY_KEY, JSON.stringify(persistableMessages));
+  } catch {
+    localStorage.removeItem(AI_CHAT_HISTORY_KEY);
+  }
 }
 
 export function clearAiChatHistory(): void {
