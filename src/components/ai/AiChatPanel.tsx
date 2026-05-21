@@ -168,8 +168,7 @@ export default function AiChatPanel({ isOpen = true, onClose, resetToken = 0, em
     >
       <div className="flex items-center justify-between rounded-t-lg bg-[#2b2118] px-5 py-3 text-white">
         <div className="flex items-center gap-2">
-          <span className="text-xl">AI</span>
-          <span className="font-semibold">豆韵AI</span>
+          <span className="font-semibold">豆韵</span>
         </div>
         {!embedded && (
           <button
@@ -249,7 +248,7 @@ export default function AiChatPanel({ isOpen = true, onClose, resetToken = 0, em
             disabled={showApiWarning || loading || !input.trim()}
             className="rounded-lg bg-[#8f1d21] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
           >
-            生成图片
+            发送
           </button>
         </div>
       </div>
