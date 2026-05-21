@@ -275,14 +275,14 @@ export default function AiChatPanel({ isOpen = true, onClose, resetToken = 0, em
             type="button"
             onClick={loading ? handleInterrupt : handleSend}
             disabled={showApiWarning || (!loading && !input.trim())}
-            aria-label={loading ? "中断生成" : "生成图片"}
-            title={loading ? "中断生成" : "生成图片"}
+            aria-label={loading ? "中断生成" : "发送"}
+            title={loading ? "中断生成" : "发送"}
             className={loading
               ? "grid h-11 w-11 shrink-0 place-items-center rounded-full bg-red-600 text-white shadow-sm transition hover:bg-red-700 disabled:opacity-50"
               : "rounded-lg bg-[#8f1d21] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
             }
           >
-            {loading ? <span className="h-3.5 w-3.5 rounded-[2px] bg-white" /> : "生成图片"}
+            {loading ? <span className="h-3.5 w-3.5 rounded-[2px] bg-white" /> : "发送"}
           </button>
         </div>
       </div>
