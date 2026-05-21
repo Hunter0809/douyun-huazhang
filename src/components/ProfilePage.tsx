@@ -526,43 +526,8 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Prop
                 onClick={() => setShowLogoutConfirm(false)}
                 className="rounded-md border border-stone-300 bg-white px-4 py-3 text-sm font-semibold text-stone-700 transition hover:bg-stone-50"
               >
-                放弃退出
+                鏀惧純閫€鍑?
               </button>
-            </div>
-            {/* 图像理解模型 */}
-            <div>
-              <label className="text-sm font-medium">图像理解模型</label>
-              <div className="relative mt-1">
-                <select
-                  value={apiConfig.visionModelName ?? ""}
-                  onChange={(e) => setApiConfig(p => ({ ...p, visionModelName: e.target.value }))}
-                  className={`w-full appearance-none rounded-md border py-2 pl-3 pr-8 text-sm ${apiConfig.useDefaultModel ? 'border-emerald-200 bg-emerald-50/50 text-stone-500' : 'border-stone-300'}`}
-                  disabled={apiConfig.useDefaultModel}
-                >
-                  <option value="" disabled>请选择</option>
-                  {VISION_MODEL_OPTIONS.map(m => <option key={m.name} value={m.name}>{m.icon} {m.name}</option>)}
-                </select>
-              </div>
-              {!apiConfig.useDefaultModel && (
-                <>
-                  <div className="relative mt-2">
-                    <input
-                      type={showVisionKey ? "text" : "password"}
-                      placeholder="API Key"
-                      value={apiConfig.visionModelApiKey ?? ""}
-                      onChange={(e) => setApiConfig(p => ({ ...p, visionModelApiKey: e.target.value }))}
-                      className="w-full rounded-md border border-stone-300 py-2 pl-3 pr-9 text-sm"
-                    />
-                    <button type="button" onClick={() => setShowVisionKey(v => !v)} className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-stone-400 hover:text-stone-700">{showVisionKey ? "🙈" : "👁️"}</button>
-                  </div>
-                  {!apiConfig.visionModelApiKey && currentVisionOption?.purchaseUrl && (
-                    <p className="mt-1.5 text-xs text-stone-400">
-                      还没有 API Key？前往
-                      <a href={currentVisionOption.purchaseUrl} target="_blank" rel="noopener noreferrer" className="mx-1 font-medium text-[#8f1d21] underline hover:text-[#a52327]">官方网站购买</a>
-                    </p>
-                  )}
-                </>
-              )}
             </div>
           </div>
         </div>

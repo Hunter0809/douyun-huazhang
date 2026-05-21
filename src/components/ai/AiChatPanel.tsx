@@ -65,8 +65,10 @@ export default function AiChatPanel({ isOpen, onClose, resetToken = 0 }: Props) 
     if (typingTimerRef.current) return;
 
     const tick = () => {
-      const next = charQueueRef.current.shift();
       const assistantIndex = assistantIndexRef.current;
+      const queueLength = charQueueRef.current.length;
+      const batchSize = queueLength > 120 ? 48 : queueLength > 40 ? 24 : 12;
+      const next = charQueueRef.current.splice(0, batchSize).join("");
 
       if (next && assistantIndex !== null) {
         setMessages((prev) =>
@@ -74,7 +76,7 @@ export default function AiChatPanel({ isOpen, onClose, resetToken = 0 }: Props) 
             index === assistantIndex ? { ...msg, content: msg.content + next } : msg,
           ),
         );
-        typingTimerRef.current = setTimeout(tick, 18);
+        typingTimerRef.current = setTimeout(tick, 16);
       } else {
         typingTimerRef.current = null;
       }

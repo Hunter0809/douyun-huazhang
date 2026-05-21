@@ -6,6 +6,7 @@ export interface ChatMessage {
 }
 
 export const AI_CHAT_HISTORY_KEY = "douyun_ai_chat_history";
+const CHAT_CONTEXT_LIMIT = 10;
 
 export const DEFAULT_CHAT_MESSAGES: ChatMessage[] = [
   { role: "assistant", content: "你好！我是豆韵助手，有任何关于传统文化、拼豆制作或工具使用的问题都可以问我。" },
@@ -94,7 +95,9 @@ export async function streamChatMessage(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      messages: messages.map(({ role, content }) => ({ role, content })),
+      messages: messages
+        .slice(-CHAT_CONTEXT_LIMIT)
+        .map(({ role, content }) => ({ role, content })),
       config: buildRequestConfig(),
     }),
     signal,

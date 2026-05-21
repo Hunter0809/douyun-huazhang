@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
+type ChatMessage = {
+  role: "user" | "assistant" | "system";
+  content: string;
+};
+
 function formatUpstreamError(detail: string, fallback: string): string {
   try {
     const parsed = JSON.parse(detail);
@@ -36,21 +41,27 @@ function extractDelta(payload: string): string {
   }
 }
 
-const SYSTEM_PROMPT = `你是豆韵助手，一个专注解答中华传统文化和拼豆制作相关问题的 AI 助手。
+const SYSTEM_PROMPT = `你是“豆韵助手”，专注回答中华传统文化、拼豆制作和豆韵工具使用问题。
+可覆盖：传统纹样与非遗文化、拼豆配色与图纸制作、材料和成品建议、豆韵功能步骤、文化图案设计含义。
+回答要求：使用简体中文；语气亲切自然；内容精炼但具体；优先给出可执行建议和例子；不确定时明确说明。`;
 
-你可以回答以下几类问题：
-1. 传统文化知识：青花瓷、敦煌文化、戏曲脸谱、山海经、二十四节气、传统纹样、书法篆刻、非遗工艺等
-2. 拼豆制作技巧：颜色选择、像素化处理、图纸设计、成品制作、材料推荐等
-3. 豆韵工具使用：如何操作豆韵工具的各个功能步骤、参数含义等
-4. 配色建议：基于传统文化主题的配色方案推荐
-5. 文化图案设计：传统纹样的含义、应用场景等
-
-回答风格：
-- 用简体中文回答
-- 语言亲切友好，像老朋友聊天一样
-- 回答精炼，重点突出
-- 可以给出具体的建议和示例
-- 对于不确定的内容，坦诚说明`;
+function normalizeMessages(messages: unknown): ChatMessage[] {
+  if (!Array.isArray(messages)) return [];
+  return messages
+    .filter((message): message is ChatMessage => {
+      if (!message || typeof message !== "object") return false;
+      const candidate = message as Partial<ChatMessage>;
+      return (
+        (candidate.role === "user" || candidate.role === "assistant" || candidate.role === "system") &&
+        typeof candidate.content === "string" &&
+        candidate.content.trim().length > 0
+      );
+    })
+    .map((message) => ({
+      role: message.role,
+      content: message.content.trim(),
+    }));
+}
 
 export async function POST(req: Request) {
   const body = await req.json();
@@ -73,11 +84,12 @@ export async function POST(req: Request) {
 
   if (!apiKey) {
     return NextResponse.json(
-      { error: "未配置 API Key。请在个人主页开启「使用系统默认模型」或手动填写 API Key。" },
+      { error: "未配置 API Key。请在个人主页开启“使用系统默认模型”或手动填写 API Key。" },
       { status: 400 },
     );
   }
 
+  const chatMessages = normalizeMessages(messages);
   const response = await fetch(`${baseUrl.replace(/\/$/, "")}/chat/completions`, {
     method: "POST",
     headers: {
@@ -88,9 +100,11 @@ export async function POST(req: Request) {
       model,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
-        ...(messages || []).map((m: { role: string; content: string }) => ({ role: m.role, content: m.content })),
+        ...chatMessages,
       ],
       stream: true,
+      temperature: 0.7,
+      max_tokens: 700,
     }),
   });
 
@@ -109,6 +123,7 @@ export async function POST(req: Request) {
     async start(controller) {
       const reader = response.body!.getReader();
       let buffer = "";
+      let doneSent = false;
 
       try {
         while (true) {
@@ -124,6 +139,7 @@ export async function POST(req: Request) {
             if (!trimmed.startsWith("data:")) continue;
             const payload = trimmed.slice(5).trim();
             if (payload === "[DONE]") {
+              doneSent = true;
               controller.enqueue(encoder.encode(sseData({ done: true })));
               continue;
             }
@@ -135,7 +151,9 @@ export async function POST(req: Request) {
           }
         }
 
-        controller.enqueue(encoder.encode(sseData({ done: true })));
+        if (!doneSent) {
+          controller.enqueue(encoder.encode(sseData({ done: true })));
+        }
       } catch (error) {
         const message = error instanceof Error ? error.message : "AI 对话流中断。";
         controller.enqueue(encoder.encode(sseData({ error: message })));
