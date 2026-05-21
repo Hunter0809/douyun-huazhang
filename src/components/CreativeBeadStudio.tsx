@@ -2859,7 +2859,7 @@ export default function CreativeBeadStudio() {
                 <div key={section.id} id={section.id} className="scroll-mt-20 rounded-lg border border-stone-200 bg-white">
                   <div className="border-b border-stone-100 px-5 py-4">
                     <h2 className="flex items-center gap-2 text-xl font-semibold">
-                      <span>{section.icon}</span>
+                      {!stepLabel && <span>{section.icon}</span>}
                       {stepLabel && (
                         <span className="text-sm font-bold tracking-wider text-[#8f1d21] uppercase">{stepLabel}</span>
                       )}
