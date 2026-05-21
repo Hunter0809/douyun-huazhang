@@ -14,11 +14,13 @@ export async function GET() {
   const baseUrl = process.env.AI_BASE_URL ?? "";
   const imageModel = process.env.AI_IMAGE_MODEL ?? "";
   const textModel = process.env.AI_TEXT_MODEL ?? "";
+  const visionModel = process.env.AI_VISION_MODEL ?? "";
 
   return NextResponse.json({
     configured: apiKeyExists,
     baseUrl: baseUrl,
     defaultImageModel: imageModel,
     defaultTextModel: textModel,
+    defaultVisionModel: visionModel,
   });
 }

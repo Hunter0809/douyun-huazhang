@@ -32,7 +32,7 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Prop
   const [saved, setSaved] = useState(false);
   const [showTextKey, setShowTextKey] = useState(false);
   const [showImageKey, setShowImageKey] = useState(false);
-  const [envConfig, setEnvConfig] = useState<{ configured: boolean; baseUrl: string; defaultImageModel: string; defaultTextModel: string } | null>(null);
+  const [envConfig, setEnvConfig] = useState<{ configured: boolean; baseUrl: string; defaultImageModel: string; defaultTextModel: string; defaultVisionModel?: string } | null>(null);
   const [envLoading, setEnvLoading] = useState(false);
   const [profile, setProfile] = useState<StoredUser>(() => loadCurrentUserProfile() ?? { nickname: "豆韵用户", avatarUrl: "", createdAt: Date.now() });
   const [nicknameEditing, setNicknameEditing] = useState(false);
@@ -298,6 +298,7 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout }: Prop
                 {envConfig.baseUrl && <li>接口地址：<code className="rounded bg-emerald-100 px-1">{envConfig.baseUrl}</code></li>}
                 {envConfig.defaultTextModel && <li>默认文本模型：<code className="rounded bg-emerald-100 px-1">{envConfig.defaultTextModel}</code></li>}
                 {envConfig.defaultImageModel && <li>默认图片模型：<code className="rounded bg-emerald-100 px-1">{envConfig.defaultImageModel}</code></li>}
+                <li>主体识别模型：<code className="rounded bg-emerald-100 px-1">{envConfig.defaultVisionModel || envConfig.defaultTextModel || "未单独配置"}</code></li>
               </ul>
             </div>
           ) : apiConfig.useDefaultModel && !envLoading ? (

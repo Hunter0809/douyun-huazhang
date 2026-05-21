@@ -1,5 +1,6 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import sharp from "sharp";
+import type { SubjectIdentification } from "@/types/subjectIdentification";
 
 export const runtime = "nodejs";
 
@@ -30,11 +31,25 @@ async function compactDataUrl(imageUrl: string): Promise<string> {
   return `data:image/jpeg;base64,${output.toString("base64")}`;
 }
 
+function formatSubjectIdentification(identification: SubjectIdentification | undefined): string {
+  if (!identification) return "未提供主体识别结果。";
+
+  return [
+    `主体名称：${identification.subject}`,
+    `主体类别：${identification.category}`,
+    `识别置信度：${identification.confidence}`,
+    `视觉证据：${identification.evidence.join("；")}`,
+    `备选识别：${identification.alternatives.join("；")}`,
+    `视觉摘要：${identification.visualSummary}`,
+  ].join("\n");
+}
+
 export async function POST(req: Request) {
   const body = await req.json();
   const apiKey = process.env.AI_API_KEY ?? process.env.ARK_API_KEY ?? process.env.OPENAI_API_KEY;
   const baseUrl = process.env.AI_BASE_URL ?? "https://ark.cn-beijing.volces.com/api/v3";
   const model = process.env.AI_TEXT_MODEL ?? "doubao-seed-1-6-250615";
+  const subjectIdentification = body.subjectIdentification as SubjectIdentification | undefined;
 
   if (!apiKey) {
     return NextResponse.json(
@@ -43,31 +58,30 @@ export async function POST(req: Request) {
     );
   }
 
-  const prompt = `请根据用户信息和参考图像，为一个中华文创拼豆作品生成“作品介绍”。
+  const prompt = `请根据参考图像中可见的主体、色彩、构图和风格，以及下方人工可编辑的主体识别结果，为一个中华文创拼豆作品生成“作品介绍”。
 
 参考生成模板：
 {
-  "title": "8到14个中文字符的作品名称，体现主题、元素和文创形式",
-  "source": "文化来源：说明该主题/元素的文化出处、纹样来源或审美传统，80到140字",
-  "meaning": "图案寓意：结合图像中的主体、色彩、构图解释象征意义，80到140字",
+  "title": "8到14个中文字符的作品名称，基于图像可见主体和文创形式",
+  "source": "文化来源：只依据图像可见纹样、器物、符号、色彩、审美特征和主体识别结果推断文化出处或审美传统，80到140字",
+  "meaning": "图案寓意：结合图像中的主体、色彩、构图和主体识别证据解释象征意义，80到140字",
   "design": "设计说明：结合参考图像描述拼豆化设计、产品载体、色彩控制和使用场景，100到180字"
 }
 
 只输出严格 JSON，字段只能是 title, source, meaning, design。
 
-主题：${body.theme}
-元素：${body.element}
-用户提供的文化说明：${body.meaning ?? ""}
 产品：${body.product}
 网格：${body.gridWidth && body.gridHeight ? `${body.gridWidth}x${body.gridHeight}` : `${body.gridSize}x${body.gridSize}`}
 颜色数：${body.colorCount}
 材料颜色：${JSON.stringify(body.beadCounts ?? [])}
+主体识别结果：
+${formatSubjectIdentification(subjectIdentification)}
 要求：
-1. 参考图像只用于识别可见主体、色彩和构图，不得覆盖用户指定的主题、元素和产品。
-2. 作品名称必须以“${body.element}”为核心，并且必须包含“${body.product}”这几个字；禁止把产品写成挂饰、钥匙扣、冰箱贴、胸针、摆件等其他形式，除非用户指定的产品本身就是这些形式。
-3. 设计说明必须说明该拼豆成果如何作为“${body.product}”落地使用。
-4. 若图像内容与主题有偏差，应以“${body.theme} / ${body.element} / ${body.product}”为主线解释，不得把图像误识别结果当作新主题。
-5. 输出前自检：title、source、meaning、design 四项都应服务于“${body.product}”这个产品载体。`;
+1. 只能依据参考图像和主体识别结果进行文化说明，不得结合、延续或猜测用户在配置页选择的主题、核心元素、文化说明。
+2. 主体识别结果来自独立识别模块，若它与图像可见信息冲突，应以图像可见内容和识别证据为准，不要套用配置主题。
+3. 作品名称必须包含“${body.product}”这几个字；禁止把产品写成挂饰、钥匙扣、冰箱贴、胸针、摆件等其他形式，除非产品本身就是这些形式。
+4. 设计说明必须说明该拼豆成果如何作为“${body.product}”落地使用。
+5. 输出前自检：title、source、meaning、design 四项都必须能被参考图像或主体识别结果支撑。`;
 
   const rawImageUrl = Array.isArray(body.imageUrl) ? body.imageUrl[0] : body.imageUrl;
   const compactImageUrl =
@@ -95,7 +109,7 @@ export async function POST(req: Request) {
         {
           role: "system",
           content:
-            "你是文创产品策划师和视觉分析师。用户文字约束的优先级高于图像识别结果，参考图像只作为视觉证据。根据文字信息与参考图像生成作品介绍，只输出严格 JSON，不要 Markdown。",
+            "你是文创产品策划师和视觉分析师。文化判断必须以参考图像的可见内容和独立主体识别结果为依据，不得使用配置页主题、核心元素或用户文化说明来补全。只输出严格 JSON，不要 Markdown。",
         },
         { role: "user", content: userContent },
       ],
@@ -130,3 +144,4 @@ export async function POST(req: Request) {
     );
   }
 }
+

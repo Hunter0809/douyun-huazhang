@@ -13,6 +13,7 @@ import { saveProjectRecord, loadCurrentUserProfile, type StoredUser } from "@/ut
 import { fetchCommunityPosts, publishCommunityPost } from "@/utils/communityForum";
 import type { ProjectRecord } from "@/types/projectTypes";
 import type { CommunityPost as CloudCommunityPost } from "@/types/community";
+import type { SubjectIdentification } from "@/types/subjectIdentification";
 import { type AspectRatioId, aspectRatios } from "@/data/aspectRatios";
 import { cultureThemes } from "@/data/cultureThemes";
 import { getProductTemplate } from "@/data/productTemplates";
@@ -43,6 +44,33 @@ type ProductConfigDefault = {
   gridSize: number;
   colorCount: number;
 };
+
+const emptySubjectIdentification: SubjectIdentification = {
+  subject: "",
+  category: "",
+  evidence: [],
+  confidence: 0,
+  alternatives: [],
+  visualSummary: "",
+};
+
+function formatSubjectIdentification(identification: SubjectIdentification): string {
+  return [
+    `主体名称：${identification.subject || "-"}`,
+    `类别：${identification.category || "-"}`,
+    `置信度：${Number.isFinite(identification.confidence) ? `${Math.round(identification.confidence * 100)}%` : "-"}`,
+    `证据：${identification.evidence.length ? identification.evidence.join("；") : "-"}`,
+    `备选：${identification.alternatives.length ? identification.alternatives.join("；") : "-"}`,
+    `摘要：${identification.visualSummary || "-"}`,
+  ].join("\n");
+}
+
+function splitLines(value: string): string[] {
+  return value
+    .split(/\r?\n/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
 
   const navItems: { id: SiteView; label: string }[] = [
   { id: "home", label: "首页" },
@@ -829,11 +857,13 @@ export default function CreativeBeadStudio() {
   const [loginModalStep, setLoginModalStep] = useState<"login" | "register">("login");
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [toastType, setToastType] = useState<"warning" | "success">("warning");
-  const [, setAiCopy] = useState<string | null>(null);
   const [showAiChat, setShowAiChat] = useState(false);
   const [aiChatResetToken, setAiChatResetToken] = useState(0);
   const [extractPrompt, setExtractPrompt] = useState<string | null>(null);
   const [subjectAnalysis, setSubjectAnalysis] = useState<SubjectAnalysis | null>(null);
+  const [subjectIdentification, setSubjectIdentification] = useState<SubjectIdentification | null>(null);
+  const [subjectIdentificationPrompt, setSubjectIdentificationPrompt] = useState<string | null>(null);
+  const [subjectIdentificationLoading, setSubjectIdentificationLoading] = useState(false);
   const [subjectDirty, setSubjectDirty] = useState(false);
   const [subjectMaskMode, setSubjectMaskMode] = useState<MaskMode>("select");
   const [subjectMaskSnapshot, setSubjectMaskSnapshot] = useState<SubjectMask | null>(null);
@@ -945,6 +975,11 @@ export default function CreativeBeadStudio() {
     setResultMaskMode("select");
   }, []);
 
+  const clearSubjectIdentification = useCallback(() => {
+    setSubjectIdentification(null);
+    setSubjectIdentificationPrompt(null);
+  }, []);
+
   const generateCultureText = useCallback(async () => {
     if (!pattern || beadCounts.length === 0) {
       setToastType("warning");
@@ -962,9 +997,6 @@ export default function CreativeBeadStudio() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          theme,
-          element,
-          meaning,
           product: formLabel,
           gridWidth: pattern.width,
           gridHeight: pattern.height,
@@ -972,6 +1004,7 @@ export default function CreativeBeadStudio() {
           colorCount,
           beadCounts,
           imageUrl: extractedImageUrl,
+          subjectIdentification,
         }),
       });
       const result = await response.json();
@@ -987,12 +1020,12 @@ export default function CreativeBeadStudio() {
     } finally {
       setCultureTextLoading(false);
     }
-  }, [pattern, beadCounts, theme, element, meaning, formLabel, gridSize, colorCount, extractedImageUrl]);
+  }, [pattern, beadCounts, formLabel, gridSize, colorCount, extractedImageUrl, subjectIdentification]);
 
   useEffect(() => {
     setAiCultureCopy(null);
     setCulturePrompt(null);
-  }, [extractedImageUrl, theme, element, meaning, formLabel, gridSize, colorCount]);
+  }, [extractedImageUrl, formLabel, gridSize, colorCount, subjectIdentification]);
 
 
   const clearCurrentProgress = useCallback(() => {
@@ -1003,12 +1036,13 @@ export default function CreativeBeadStudio() {
     setExtractedImageUrl(null);
     setSubjectAnalysis(null);
     setSubjectMaskSnapshot(null);
+    clearSubjectIdentification();
     setSubjectDirty(false);
     setExtractPrompt(null);
     setError(null);
     setConfirmNew(null);
     setStep("config");
-  }, [clearPatternArtifacts, clearResultSubjectSelection]);
+  }, [clearPatternArtifacts, clearResultSubjectSelection, clearSubjectIdentification]);
 
   const doUseSample = useCallback(() => {
     clearPatternArtifacts();
@@ -1016,6 +1050,7 @@ export default function CreativeBeadStudio() {
     directOutputRef.current = true;
     setSubjectAnalysis(null);
     setSubjectMaskSnapshot(null);
+    clearSubjectIdentification();
     setSubjectDirty(false);
     setSourceImageUrl(original);
     setExtractedImageUrl(original);
@@ -1024,7 +1059,7 @@ export default function CreativeBeadStudio() {
     setError(null);
     setConfirmNew(null);
     setStep("extract");
-  }, [clearPatternArtifacts, clearResultSubjectSelection, options]);
+  }, [clearPatternArtifacts, clearResultSubjectSelection, clearSubjectIdentification, options]);
 
   const doUpload = async (file: File) => {
     setLoading(true);
@@ -1039,6 +1074,7 @@ export default function CreativeBeadStudio() {
       directOutputRef.current = false;
       setSubjectAnalysis(null);
       setSubjectMaskSnapshot(null);
+      clearSubjectIdentification();
       setSubjectDirty(false);
       setSourceImageUrl(imageUrl);
     setExtractedImageUrl(null);
@@ -1046,20 +1082,6 @@ export default function CreativeBeadStudio() {
       setExtractPrompt(null);
       clearPatternArtifacts();
       setStep("extract");
-      // 上传时自动生成AI文化描述
-      try {
-        const res = await fetch("/api/generate-culture-text", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ theme, element, meaning, product: formLabel }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data?.text) setAiCopy(data.text);
-        }
-      } catch {
-        // AI 文化描述生成失败不影响主流程
-      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "图片处理失败");
     } finally {
@@ -1178,6 +1200,7 @@ export default function CreativeBeadStudio() {
       directOutputRef.current = true;
       setSubjectAnalysis(null);
       setSubjectMaskSnapshot(null);
+      clearSubjectIdentification();
       setSubjectDirty(false);
       setSourceImageUrl(result.imageUrl);
       setExtractedImageUrl(result.imageUrl);
@@ -1194,12 +1217,42 @@ export default function CreativeBeadStudio() {
 
   const handleSubjectAnalysis = useCallback((analysis: SubjectAnalysis) => {
     setSubjectAnalysis(analysis);
+    setSubjectIdentification(null);
+    setSubjectIdentificationPrompt(null);
     if (directOutputRef.current) {
       setSubjectDirty(false);
       return;
     }
     setSubjectDirty(true);
   }, []);
+
+  const identifySubject = useCallback(async () => {
+    if (!subjectAnalysis) {
+      setToastType("warning");
+      setToastMsg("请先在左侧完成主体区域选择。");
+      return;
+    }
+
+    setSubjectIdentificationLoading(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/identify-subject", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          imageUrl: subjectAnalysis.subjectImageUrl,
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result?.error ?? "主体识别失败");
+      setSubjectIdentification(result.identification);
+      setSubjectIdentificationPrompt(result.prompt ?? null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "主体识别失败");
+    } finally {
+      setSubjectIdentificationLoading(false);
+    }
+  }, [subjectAnalysis]);
 
   const generateSubjectRecreation = useCallback(async () => {
     if (directOutputRef.current) return;
@@ -1209,6 +1262,12 @@ export default function CreativeBeadStudio() {
       setToastMsg("请先在左侧完成主体区域选择。");
       return;
     }
+    if (!subjectIdentification) {
+      setError(null);
+      setToastType("warning");
+      setToastMsg("请先完成主体识别，确认或修改识别结果后再进行 AI 再创作。");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -1216,8 +1275,8 @@ export default function CreativeBeadStudio() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          imageUrl: subjectAnalysis.subjectImageUrl,
           isUpload: true,
+          subjectIdentification,
           product: formLabel,
           productPrompt: product.aiPrompt,
           aspectRatio,
@@ -1235,7 +1294,7 @@ export default function CreativeBeadStudio() {
     } finally {
       setLoading(false);
     }
-  }, [aspectRatio, clearPatternArtifacts, clearResultSubjectSelection, formLabel, product.aiPrompt, subjectAnalysis]);
+  }, [aspectRatio, clearPatternArtifacts, clearResultSubjectSelection, formLabel, product.aiPrompt, subjectAnalysis, subjectIdentification]);
 
   const renderImageBox = (url: string | null, alt: string) => (
     <div className="aspect-square overflow-hidden rounded-md border border-stone-200 bg-stone-50">
@@ -1248,6 +1307,128 @@ export default function CreativeBeadStudio() {
     </div>
   );
   void renderImageBox;
+
+  const renderSubjectIdentificationEditor = (context: "extract" | "preview") => {
+    const identification = subjectIdentification ?? emptySubjectIdentification;
+    const editable = context === "extract";
+
+    return (
+      <section className="rounded-lg border border-stone-200 bg-white p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-semibold">{context === "extract" ? "主体识别结果" : "文化说明识别依据"}</h2>
+            <p className="mt-1 text-sm leading-6 text-stone-500">
+              {context === "extract"
+                ? "AI 先识别主体并生成结构化信息。你可以修改后再用于 AI 再创作。"
+                : "文化说明会同时读取这份主体信息和当前再创作图像。"}
+            </p>
+          </div>
+          {context === "extract" && (
+            <button
+              type="button"
+              onClick={identifySubject}
+              disabled={subjectIdentificationLoading || !subjectAnalysis}
+              className="rounded-md bg-stone-900 px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
+            >
+              {subjectIdentificationLoading ? "识别中..." : subjectIdentification ? "重新识别主体" : "AI 识别主体"}
+            </button>
+          )}
+        </div>
+
+        {subjectIdentification ? (
+          <div className="mt-4 grid gap-4">
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className="text-sm font-medium">
+                主体名称
+                <input
+                  value={identification.subject}
+                  disabled={!editable}
+                  onChange={(event) => setSubjectIdentification((prev) => ({ ...(prev ?? emptySubjectIdentification), subject: event.target.value }))}
+                  className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2 disabled:bg-stone-50"
+                />
+              </label>
+              <label className="text-sm font-medium">
+                类别
+                <input
+                  value={identification.category}
+                  disabled={!editable}
+                  onChange={(event) => setSubjectIdentification((prev) => ({ ...(prev ?? emptySubjectIdentification), category: event.target.value }))}
+                  className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2 disabled:bg-stone-50"
+                />
+              </label>
+            </div>
+            <label className="text-sm font-medium">
+              视觉证据
+              <textarea
+                value={identification.evidence.join("\n")}
+                disabled={!editable}
+                rows={4}
+                onChange={(event) => setSubjectIdentification((prev) => ({ ...(prev ?? emptySubjectIdentification), evidence: splitLines(event.target.value) }))}
+                className="mt-2 w-full resize-none rounded-md border border-stone-300 px-3 py-2 disabled:bg-stone-50"
+                placeholder="每行一条证据"
+              />
+            </label>
+            <div className="grid gap-3 md:grid-cols-[1fr_160px]">
+              <label className="text-sm font-medium">
+                备选识别
+                <textarea
+                  value={identification.alternatives.join("\n")}
+                  disabled={!editable}
+                  rows={3}
+                  onChange={(event) => setSubjectIdentification((prev) => ({ ...(prev ?? emptySubjectIdentification), alternatives: splitLines(event.target.value) }))}
+                  className="mt-2 w-full resize-none rounded-md border border-stone-300 px-3 py-2 disabled:bg-stone-50"
+                  placeholder="每行一个备选"
+                />
+              </label>
+              <label className="text-sm font-medium">
+                置信度
+                <input
+                  type="number"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={identification.confidence}
+                  disabled={!editable}
+                  onChange={(event) => setSubjectIdentification((prev) => ({ ...(prev ?? emptySubjectIdentification), confidence: Number(event.target.value) }))}
+                  className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2 disabled:bg-stone-50"
+                />
+                <div className="mt-2 h-2 overflow-hidden rounded-full bg-stone-100">
+                  <div className="h-full bg-[#8f1d21]" style={{ width: `${Math.max(0, Math.min(100, identification.confidence * 100))}%` }} />
+                </div>
+              </label>
+            </div>
+            <label className="text-sm font-medium">
+              视觉摘要
+              <textarea
+                value={identification.visualSummary}
+                disabled={!editable}
+                rows={4}
+                onChange={(event) => setSubjectIdentification((prev) => ({ ...(prev ?? emptySubjectIdentification), visualSummary: event.target.value }))}
+                className="mt-2 w-full resize-none rounded-md border border-stone-300 px-3 py-2 disabled:bg-stone-50"
+              />
+            </label>
+            <div className="rounded-md bg-stone-50 p-3 text-xs leading-relaxed text-stone-600 whitespace-pre-wrap">
+              {formatSubjectIdentification(identification)}
+            </div>
+            {context === "extract" && subjectIdentificationPrompt && (
+              <details className="rounded-md border border-stone-200 bg-white p-3">
+                <summary className="cursor-pointer text-sm font-medium text-stone-700">查看主体识别提示词</summary>
+                <div className="mt-3 max-h-36 overflow-y-auto rounded-md bg-stone-50 p-3 text-xs leading-relaxed text-stone-600 font-mono whitespace-pre-wrap">
+                  {subjectIdentificationPrompt}
+                </div>
+              </details>
+            )}
+          </div>
+        ) : (
+          <div className="mt-4 rounded-md border border-dashed border-stone-300 bg-stone-50 p-4 text-sm leading-6 text-stone-500">
+            {context === "extract"
+              ? "完成左侧主体区域选择后，点击“AI 识别主体”生成主体名称、类别、证据、置信度和备选项。"
+              : "步骤二尚未生成主体识别结果。"}
+          </div>
+        )}
+      </section>
+    );
+  };
 
   const renderStep = () => {
     if (step === "config") {
@@ -1490,12 +1671,16 @@ export default function CreativeBeadStudio() {
             </div>
           </section>
           <div className="space-y-5">
+            {!directGeneratedImage && renderSubjectIdentificationEditor("extract")}
             {!directGeneratedImage && (
               <section className="rounded-lg border border-stone-200 bg-white p-5">
                 <h2 className="text-xl font-semibold">AI 再创作</h2>
                 <p className="mt-1 text-sm leading-6 text-stone-500">
                   左侧主体识别只在本地计算蒙版和裁切主体。点击此按钮后，才会把主体裁切图发送给 AI 生成传统文化风格输出图像。
                 </p>
+                <div className="mt-3 rounded-md border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-600">
+                  当前再创作请求只发送主体识别 JSON，不发送主体图片。
+                </div>
                 {subjectDirty && extractedImageUrl && (
                   <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
                     主体区域已变化，需要重新 AI 再创作后再生成拼豆图纸。
@@ -1504,7 +1689,7 @@ export default function CreativeBeadStudio() {
                 <button
                   type="button"
                   onClick={generateSubjectRecreation}
-                  disabled={loading || !subjectAnalysis}
+                  disabled={loading || !subjectAnalysis || !subjectIdentification}
                   className="mt-4 rounded-md bg-[#8f1d21] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
                 >
                   {loading ? "生成中..." : extractedImageUrl ? "重新 AI 再创作" : "AI 再创作"}
@@ -1961,6 +2146,7 @@ export default function CreativeBeadStudio() {
               <button type="button" disabled={!pattern} onClick={() => downloadTextFile(planText, `${workTitle}-制作方案.txt`)} className="rounded-md bg-[#8f1d21] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">导出制作方案</button>
             </div>
           </div>
+          {renderSubjectIdentificationEditor("preview")}
           {culturePrompt && (
             <div className="rounded-lg border border-stone-200 bg-white p-5">
               <div className="flex items-center justify-between">
@@ -2013,6 +2199,7 @@ export default function CreativeBeadStudio() {
     setSourceImageUrl(record.sourceImageUrl);
     setExtractedImageUrl(record.extractedImageUrl);
     setSubjectMaskSnapshot(null);
+    clearSubjectIdentification();
     clearResultSubjectSelection();
     setPatternUrl(record.patternUrl);
     setCleanPatternUrl(record.cleanPatternUrl);
@@ -2030,7 +2217,7 @@ export default function CreativeBeadStudio() {
 
     setStep("config");
     setView("start");
-  }, [clearResultSubjectSelection]);
+  }, [clearResultSubjectSelection, clearSubjectIdentification]);
 
   // 自动保存当前作品到历史记录
   const buildCurrentProjectRecord = useCallback((title?: string): ProjectRecord => ({
@@ -2142,6 +2329,7 @@ export default function CreativeBeadStudio() {
     clearResultSubjectSelection();
     setSubjectAnalysis(null);
     setSubjectMaskSnapshot(null);
+    clearSubjectIdentification();
     setSubjectDirty(false);
     setExtractPrompt(null);
     directOutputRef.current = false;
@@ -2151,7 +2339,7 @@ export default function CreativeBeadStudio() {
     setCommunityRefresh((value) => value + 1);
     setToastType("success");
     setToastMsg("已导入社区模板，并保存到个人主页。");
-  }, [clearPatternArtifacts, clearResultSubjectSelection, handleRestoreProject]);
+  }, [clearPatternArtifacts, clearResultSubjectSelection, clearSubjectIdentification, handleRestoreProject]);
 
   useEffect(() => {
     if (restoringRef.current) {
@@ -2370,6 +2558,7 @@ export default function CreativeBeadStudio() {
                     clearResultSubjectSelection();
                     setSubjectAnalysis(null);
                     setSubjectMaskSnapshot(null);
+                    clearSubjectIdentification();
                     setSubjectDirty(false);
                     directOutputRef.current = false;
                     setView("start");
@@ -2739,6 +2928,7 @@ export default function CreativeBeadStudio() {
                       clearResultSubjectSelection();
                       setSubjectAnalysis(null);
                       setSubjectMaskSnapshot(null);
+                      clearSubjectIdentification();
                       setSubjectDirty(false);
                       setConfirmNew(null);
                       if (action === "ai") {

@@ -1,5 +1,6 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getAspectRatio } from "@/data/aspectRatios";
+import type { SubjectIdentification } from "@/types/subjectIdentification";
 
 export const runtime = "nodejs";
 
@@ -13,12 +14,25 @@ function formatUpstreamError(detail: string, fallback: string): string {
   }
 }
 
+function formatSubjectIdentification(identification: SubjectIdentification): string {
+  return [
+    `主体名称：${identification.subject}`,
+    `主体类别：${identification.category}`,
+    `识别置信度：${identification.confidence}`,
+    `视觉证据：${identification.evidence.join("；")}`,
+    `备选识别：${identification.alternatives.join("；")}`,
+    `视觉摘要：${identification.visualSummary}`,
+  ].join("\n");
+}
+
 export async function POST(req: Request) {
   const body = await req.json();
   const apiKey = process.env.AI_API_KEY ?? process.env.ARK_API_KEY ?? process.env.OPENAI_API_KEY;
   const baseUrl = process.env.AI_BASE_URL ?? "https://ark.cn-beijing.volces.com/api/v3";
   const model = process.env.AI_IMAGE_MODEL ?? "doubao-seedream-4-0-250828";
   const ratio = getAspectRatio(body.aspectRatio ?? "1:1");
+  const isUpload = body.isUpload === true;
+  const subjectIdentification = body.subjectIdentification as SubjectIdentification | undefined;
 
   if (!apiKey) {
     return NextResponse.json(
@@ -27,32 +41,34 @@ export async function POST(req: Request) {
     );
   }
 
-  if (!body.imageUrl) {
+  if (!isUpload && !body.imageUrl) {
     return NextResponse.json({ error: "缺少待提取的图片。" }, { status: 400 });
   }
 
-  // 上传图片模式：主体分割由前端 Canvas 算法完成，AI 识别裁切主体并做受约束的文化再创作。
-  const isUpload = body.isUpload === true;
+  if (isUpload && !subjectIdentification) {
+    return NextResponse.json({ error: "缺少主体识别结果，无法进行文本驱动再创作。" }, { status: 400 });
+  }
 
   const promptText = isUpload
     ? [
-        "【任务：基于代码提取结果进行文化意象再创作】",
-        "输入图片已经由程序完成主体分割，透明区域为背景，非透明区域为需要保留的主体。",
-        "请直接识别非透明区域中的物体主体，并以该主体的轮廓、姿态、结构和可识别特征为基础进行再创作。",
+        "【任务：基于主体识别结果进行文化意象再创作】",
+        "请只依据下方主体识别信息进行图案再创作，不要读取或依赖原始图片。",
         "",
-        "文化创作方向：",
-        "请根据输入主体自身的形态、材质、姿态和视觉线索，判断最适合融合的中华传统文化意象或纹样语言，不要依赖外部填写的主题、核心元素或文化说明。",
+        "主体识别信息：",
+        subjectIdentification ? formatSubjectIdentification(subjectIdentification) : "",
+        "",
         `作品形式：${body.product ?? "拼豆文创底稿"}`,
         "",
         "创作要求：",
-        "以输入主体的轮廓、姿态、结构和可识别特征为基础，结合 AI 自行识别出的传统文化意象和作品形式重新设计文创图案。",
-        "不要强行替换主体；应以主体轮廓为主，用合适的传统纹样、边饰、符号或结构语言进行融合。",
+        "以主体名称、类别、视觉证据和视觉摘要为基础，重新设计为适合拼豆转化的文创图案。",
+        "不要强行替换主体；应保留识别信息中描述的关键轮廓、结构、颜色关系和可识别特征。",
+        "可以结合主体自身特征选择合适的传统纹样、边饰、符号或结构语言进行融合。",
         "颜色应服务于文化主题和作品形式，保持主体清晰、层次克制、色块分明。",
         "背景建议为纯白或浅纯色，背景色不计入主体表达。",
         "可以围绕主体元素融入中国传统纹样来增强文化感，但主体应占据画面主要面积。",
         "",
         "技术要求：",
-        "• 保留输入主体元素的必要轮廓和识别特征",
+        "• 保留主体识别信息中的必要轮廓和识别特征",
         "• 输出为干净背景上的正面文创图案，背景建议为纯白或浅纯色（浅纯色不计入配色方案）",
         "• 边缘清晰，色块分明，高对比度，避免复杂渐变和模糊过渡",
         "• 这是第二步「主体再创作」，后续第三步会对本结果进行像素化处理变成拼豆图纸",
@@ -89,11 +105,11 @@ export async function POST(req: Request) {
     body: JSON.stringify({
       model,
       prompt: promptText,
-      image_urls: [body.imageUrl],
       n: 1,
       size: ratio.imageSize,
       response_format: "b64_json",
       watermark: false,
+      ...(!isUpload && body.imageUrl ? { image_urls: [body.imageUrl] } : {}),
     }),
   });
 
@@ -117,3 +133,4 @@ export async function POST(req: Request) {
     prompt: promptText,
   });
 }
+

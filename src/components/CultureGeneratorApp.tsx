@@ -163,8 +163,9 @@ export default function CultureGeneratorPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        ...options,
-        meaning,
+        product: product.name,
+        gridSize,
+        colorCount,
         beadCounts: counts,
         imageUrl,
       }),

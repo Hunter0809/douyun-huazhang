@@ -179,7 +179,13 @@ export default function FourPageApp() {
     const response = await fetch("/api/generate-culture-text", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...options, meaning, beadCounts: counts, imageUrl }),
+      body: JSON.stringify({
+        product: product.name,
+        gridSize,
+        colorCount,
+        beadCounts: counts,
+        imageUrl,
+      }),
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result?.error ?? "AI 作品信息生成失败");
