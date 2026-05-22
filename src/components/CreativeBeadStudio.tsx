@@ -839,6 +839,7 @@ export default function CreativeBeadStudio() {
   const [loginModalStep, setLoginModalStep] = useState<"login" | "register">("login");
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [toastType, setToastType] = useState<"warning" | "success">("warning");
+  const [projectTitleDraft, setProjectTitleDraft] = useState("");
   const [autoSaveIntervalSeconds, setAutoSaveIntervalSeconds] = useState(() => normalizeAutoSaveIntervalSeconds(loadApiConfig()?.autoSaveIntervalSeconds ?? DEFAULT_AUTO_SAVE_INTERVAL_SECONDS));
   const [aiChatResetToken, setAiChatResetToken] = useState(0);
   const [extractPrompt, setExtractPrompt] = useState<string | null>(null);
@@ -1016,10 +1017,17 @@ export default function CreativeBeadStudio() {
     setCulturePrompt(null);
   }, [extractedImageUrl, formLabel, gridSize, colorCount, subjectIdentification]);
 
+  useEffect(() => {
+    if (currentProjectIdRef.current) return;
+    if (projectTitleDraft.trim().length > 0) return;
+    setProjectTitleDraft(`${theme} · ${element}`);
+  }, [element, projectTitleDraft, theme]);
+
 
   const clearCurrentProgress = useCallback(() => {
     directOutputRef.current = false;
     resetAutoSaveTracking();
+    setProjectTitleDraft("");
     clearPatternArtifacts();
     clearResultSubjectSelection();
     setSourceImageUrl(null);
@@ -2181,6 +2189,67 @@ export default function CreativeBeadStudio() {
               <button type="button" disabled={!pattern} onClick={() => downloadTextFile(planText, `${workTitle}-制作方案.txt`)} className="rounded-md bg-[#8f1d21] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">导出制作方案</button>
             </div>
           </div>
+          <div className="rounded-lg border border-stone-200 bg-white p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-semibold">保存项目</h2>
+                <p className="mt-1 text-sm leading-6 text-stone-500">保存后可在“项目”页面和个人主页历史记录中继续编辑、恢复进度或发布到社区。</p>
+              </div>
+              <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-600">
+                {currentProjectIdRef.current ? "更新现有项目" : "创建新项目"}
+              </span>
+            </div>
+            <div className="mt-4 space-y-3">
+              <label className="block text-sm font-medium text-stone-700">
+                项目名称
+                <input
+                  type="text"
+                  value={projectTitleDraft}
+                  onChange={(event) => setProjectTitleDraft(event.target.value)}
+                  placeholder={`${theme} · ${element}`}
+                  className="mt-2 w-full rounded-md border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#8f1d21] focus:ring-2 focus:ring-[#8f1d21]/20"
+                />
+              </label>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={saveCurrentProject}
+                  disabled={!sourceImageUrl && !pattern && !patternUrl}
+                  className="rounded-md bg-[#8f1d21] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                >
+                  保存到项目
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (saveCurrentProject()) setView("projects");
+                  }}
+                  disabled={!sourceImageUrl && !pattern && !patternUrl}
+                  className="rounded-md border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-700 disabled:opacity-50"
+                >
+                  保存并查看项目
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (saveCurrentProject()) setView("profile");
+                  }}
+                  disabled={!sourceImageUrl && !pattern && !patternUrl}
+                  className="rounded-md border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-700 disabled:opacity-50"
+                >
+                  保存并查看历史
+                </button>
+                <button
+                  type="button"
+                  onClick={publishCurrentWork}
+                  disabled={!sourceImageUrl && !pattern && !patternUrl}
+                  className="rounded-md border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-700 disabled:opacity-50"
+                >
+                  保存后发布到社区
+                </button>
+              </div>
+            </div>
+          </div>
           {renderSubjectIdentificationEditor("preview")}
           {culturePrompt && (
             <div className="rounded-lg border border-stone-200 bg-white p-5">
@@ -2222,6 +2291,7 @@ export default function CreativeBeadStudio() {
     restoringRef.current = true;
     currentProjectIdRef.current = record.id;
     lastAutoSaveSignatureRef.current = "";
+    setProjectTitleDraft(record.title);
     // 恢复所有状态
     setTheme(record.theme);
     setElement(record.element);
@@ -2259,11 +2329,14 @@ export default function CreativeBeadStudio() {
   // 自动保存当前作品到历史记录
   const buildCurrentProjectRecord = useCallback((title?: string): ProjectRecord => {
     const id = currentProjectIdRef.current ?? `proj_${Date.now()}`;
+    const existingRecord = currentProjectIdRef.current
+      ? projectRecords.find((record) => record.id === currentProjectIdRef.current) ?? null
+      : null;
     currentProjectIdRef.current = id;
     return {
       id,
-      title: title ?? `${theme} · ${element}`,
-      createdAt: Date.now(),
+      title: title ?? (projectTitleDraft.trim() || `${theme} · ${element}`),
+      createdAt: existingRecord?.createdAt ?? Date.now(),
       updatedAt: Date.now(),
       completed: step === "preview" && !!pattern,
       theme,
@@ -2283,7 +2356,7 @@ export default function CreativeBeadStudio() {
       mockupUrl: null,
       productSceneUrl: null,
     };
-  }, [antiAlias, aspectRatio, cleanPatternUrl, colorCount, element, extractedImageUrl, gridSize, meaning, pattern, patternUrl, productId, showGrid, sourceImageUrl, step, theme]);
+  }, [antiAlias, aspectRatio, cleanPatternUrl, colorCount, element, extractedImageUrl, gridSize, meaning, pattern, patternUrl, productId, projectRecords, projectTitleDraft, showGrid, sourceImageUrl, step, theme]);
 
   const buildCurrentProjectSignature = useCallback(() => JSON.stringify({
     theme,
@@ -2308,7 +2381,7 @@ export default function CreativeBeadStudio() {
       setToastMsg("请先完成一个作品进度后再发布。");
       return;
     }
-    const record = buildCurrentProjectRecord(`${theme} · ${element}`);
+    const record = buildCurrentProjectRecord(projectTitleDraft.trim() || undefined);
     saveProjectRecord(record);
     refreshProjectRecords();
     try {
@@ -2326,7 +2399,24 @@ export default function CreativeBeadStudio() {
       setToastType("warning");
       setToastMsg(err instanceof Error ? err.message : "作品发布失败");
     }
-  }, [buildCurrentProjectRecord, currentUser, element, forcedColors, pattern, patternUrl, refreshProjectRecords, sourceImageUrl, theme]);
+  }, [buildCurrentProjectRecord, currentUser, forcedColors, pattern, patternUrl, projectTitleDraft, refreshProjectRecords, sourceImageUrl]);
+
+  const saveCurrentProject = useCallback(() => {
+    if (!sourceImageUrl && !pattern && !patternUrl) {
+      setToastType("warning");
+      setToastMsg("请先完成当前创作内容，再保存项目。");
+      return false;
+    }
+
+    const record = buildCurrentProjectRecord(projectTitleDraft.trim() || undefined);
+    saveProjectRecord(record);
+    lastAutoSaveSignatureRef.current = buildCurrentProjectSignature();
+    setProjectTitleDraft(record.title);
+    refreshProjectRecords();
+    setToastType("success");
+    setToastMsg("项目已保存，可在“项目”和个人主页历史记录中继续编辑或发布。");
+    return true;
+  }, [buildCurrentProjectRecord, buildCurrentProjectSignature, pattern, patternUrl, projectTitleDraft, refreshProjectRecords, sourceImageUrl]);
 
   const importCommunityPost = useCallback((post: CommunityPost) => {
     if (post.record) {
