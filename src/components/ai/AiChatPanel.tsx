@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
-  DEFAULT_CHAT_MESSAGES,
   checkServerEnvConfig,
+  getDefaultChatMessages,
   isApiConfigured,
   loadAiChatHistory,
+  loadAiChatHistoryAsync,
   loadAiChatMode,
   saveAiChatHistory,
   saveAiChatMode,
@@ -13,12 +14,14 @@ import {
   type ChatMessage,
   type ChatMode,
 } from "@/utils/aiChat";
+import type { AppLanguage } from "@/utils/language";
 
 type Props = {
   isOpen?: boolean;
   onClose?: () => void;
   resetToken?: number;
   embedded?: boolean;
+  language?: AppLanguage;
 };
 
 function renderInlineMarkdown(text: string): ReactNode {
@@ -77,18 +80,52 @@ function renderMarkdown(content: string): ReactNode {
 
 let pendingAbortController: AbortController | null = null;
 
-export default function AiChatPanel({ isOpen = true, onClose, resetToken = 0, embedded = false }: Props) {
+export default function AiChatPanel({ isOpen = true, onClose, resetToken = 0, embedded = false, language = "zh" }: Props) {
+  const ui = useMemo(() => ({
+    title: "豆韵AI",
+    apiWarning: language === "en" ? "API is not configured. DouYun AI is unavailable." : "未配置 API，暂时无法使用豆韵AI。",
+    gotIt: language === "en" ? "Got it" : "知道了",
+    close: language === "en" ? "Close" : "关闭",
+    imageAlt: language === "en" ? "DouYun AI generated image" : "豆韵AI生成图像",
+    textMode: language === "en" ? "Text Chat" : "文字对话",
+    imageMode: language === "en" ? "Image Mode" : "生图模式",
+    configureApi: language === "en" ? "Configure an API key in settings first..." : "请先在设置中配置 API Key...",
+    imagePlaceholder: language === "en" ? "Enter an image prompt..." : "输入生图提示词...",
+    textPlaceholder: language === "en" ? "Ask a question..." : "输入想聊的问题...",
+    interruptImage: language === "en" ? "Stop image generation" : "中断生图",
+    interruptText: language === "en" ? "Stop response" : "中断回复",
+    send: language === "en" ? "Send" : "发送",
+    generating: language === "en" ? "Generating image..." : "正在生成图像...",
+    thinking: language === "en" ? "Thinking..." : "正在思考...",
+    imageStopped: language === "en" ? "Image generation stopped." : "已中断生图。",
+    textStopped: language === "en" ? "Response stopped." : "已中断回复。",
+    sendFailed: language === "en" ? "Failed to send. Please try again." : "发送失败，请重试",
+    errorPrefix: language === "en" ? "Error: " : "出错了：",
+  }), [language]);
   const [messages, setMessages] = useState<ChatMessage[]>(() => loadAiChatHistory());
   const [mode, setMode] = useState<ChatMode>(() => loadAiChatMode());
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(
     () => pendingAbortController !== null && !pendingAbortController.signal.aborted,
   );
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showApiWarning, setShowApiWarning] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const resetTokenRef = useRef(resetToken);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    loadAiChatHistoryAsync().then((history) => {
+      if (!alive) return;
+      setMessages(history);
+      setHistoryLoaded(true);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (pendingAbortController && !pendingAbortController.signal.aborted) {
@@ -107,8 +144,9 @@ export default function AiChatPanel({ isOpen = true, onClose, resetToken = 0, em
   }, [messages]);
 
   useEffect(() => {
+    if (!historyLoaded) return;
     saveAiChatHistory(messages);
-  }, [messages]);
+  }, [historyLoaded, messages]);
 
   useEffect(() => {
     saveAiChatMode(mode);
@@ -120,12 +158,12 @@ export default function AiChatPanel({ isOpen = true, onClose, resetToken = 0, em
     pendingAbortController?.abort();
     pendingAbortController = null;
     abortControllerRef.current = null;
-    setMessages(DEFAULT_CHAT_MESSAGES);
+    setMessages(getDefaultChatMessages(language));
     setError(null);
     setInput("");
     setLoading(false);
     setMode("text");
-  }, [resetToken]);
+  }, [language, resetToken]);
 
   function persistMessages(updater: (prev: ChatMessage[]) => ChatMessage[]) {
     setMessages((prev) => {
@@ -136,13 +174,13 @@ export default function AiChatPanel({ isOpen = true, onClose, resetToken = 0, em
   }
 
   const handleSend = useCallback(async () => {
-    const text = input.trim();
-    if (!text || loading) return;
+    const prompt = input.trim();
+    if (!prompt || loading) return;
 
     setInput("");
     setError(null);
 
-    const userMsg: ChatMessage = { role: "user", content: text };
+    const userMsg: ChatMessage = { role: "user", content: prompt };
     const nextMessages = [...messages, userMsg];
     const assistantIndex = nextMessages.length;
 
@@ -152,7 +190,7 @@ export default function AiChatPanel({ isOpen = true, onClose, resetToken = 0, em
 
     persistMessages(() => [
       ...nextMessages,
-      { role: "assistant", content: mode === "image" ? "正在生成图像..." : "正在思考..." },
+      { role: "assistant", content: mode === "image" ? ui.generating : ui.thinking },
     ]);
     setLoading(true);
 
@@ -181,18 +219,18 @@ export default function AiChatPanel({ isOpen = true, onClose, resetToken = 0, em
         persistMessages((prev) =>
           prev.map((item, index) => (
             index === assistantIndex
-              ? { role: "assistant", content: mode === "image" ? "已中断生图。" : "已中断回复。" }
+              ? { role: "assistant", content: mode === "image" ? ui.imageStopped : ui.textStopped }
               : item
           )),
         );
         return;
       }
 
-      const message = err instanceof Error ? err.message : "发送失败，请重试";
+      const message = err instanceof Error ? err.message : ui.sendFailed;
       setError(message);
       persistMessages((prev) =>
         prev.map((item, index) => (
-          index === assistantIndex ? { role: "assistant", content: `出错了：${message}` } : item
+          index === assistantIndex ? { role: "assistant", content: `${ui.errorPrefix}${message}` } : item
         )),
       );
     } finally {
@@ -202,7 +240,7 @@ export default function AiChatPanel({ isOpen = true, onClose, resetToken = 0, em
         abortControllerRef.current = null;
       }
     }
-  }, [input, loading, messages, mode]);
+  }, [input, loading, messages, mode, ui]);
 
   const handleInterrupt = useCallback(() => {
     pendingAbortController?.abort();
@@ -228,14 +266,14 @@ export default function AiChatPanel({ isOpen = true, onClose, resetToken = 0, em
     >
       <div className="flex items-center justify-between rounded-t-lg bg-[#2b2118] px-5 py-3 text-white">
         <div className="flex items-center gap-2">
-          <span className="font-semibold">豆韵AI</span>
+          <span className="font-semibold">{ui.title}</span>
         </div>
         {!embedded && (
           <button
             type="button"
             onClick={onClose}
             className="grid h-8 w-8 place-items-center rounded-full text-white/70 transition hover:bg-white/10 hover:text-white"
-            aria-label="关闭"
+            aria-label={ui.close}
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -246,13 +284,13 @@ export default function AiChatPanel({ isOpen = true, onClose, resetToken = 0, em
 
       {showApiWarning && (
         <div className="mx-4 mt-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          未配置 API，暂时无法使用豆韵AI。
+          {ui.apiWarning}
           <button
             type="button"
             onClick={() => setShowApiWarning(false)}
             className="ml-2 font-medium text-amber-900 underline hover:no-underline"
           >
-            知道了
+            {ui.gotIt}
           </button>
         </div>
       )}
@@ -277,7 +315,7 @@ export default function AiChatPanel({ isOpen = true, onClose, resetToken = 0, em
               {msg.imageUrl && (
                 <img
                   src={msg.imageUrl}
-                  alt="豆韵AI生成图像"
+                  alt={ui.imageAlt}
                   className="mt-3 max-h-[520px] w-full rounded-lg border border-stone-200 bg-white object-contain"
                 />
               )}
@@ -300,7 +338,7 @@ export default function AiChatPanel({ isOpen = true, onClose, resetToken = 0, em
               mode === "text" ? "bg-[#8f1d21] text-white shadow-sm" : "text-[#8f1d21]/72 hover:text-[#8f1d21]"
             } disabled:opacity-50`}
           >
-            文字对话
+            {ui.textMode}
           </button>
           <button
             type="button"
@@ -310,7 +348,7 @@ export default function AiChatPanel({ isOpen = true, onClose, resetToken = 0, em
               mode === "image" ? "bg-[#8f1d21] text-white shadow-sm" : "text-[#8f1d21]/72 hover:text-[#8f1d21]"
             } disabled:opacity-50`}
           >
-            生图模式
+            {ui.imageMode}
           </button>
         </div>
         <div className="flex gap-2">
@@ -319,7 +357,7 @@ export default function AiChatPanel({ isOpen = true, onClose, resetToken = 0, em
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={showApiWarning ? "请先在设置中配置 API Key..." : mode === "image" ? "输入生图提示词..." : "输入想聊的问题..."}
+            placeholder={showApiWarning ? ui.configureApi : mode === "image" ? ui.imagePlaceholder : ui.textPlaceholder}
             disabled={showApiWarning || loading}
             className="flex-1 rounded-lg border border-stone-300 px-4 py-2.5 text-sm focus:border-[#8f1d21] focus:outline-none focus:ring-1 focus:ring-[#8f1d21] disabled:opacity-50"
             autoFocus
@@ -328,14 +366,14 @@ export default function AiChatPanel({ isOpen = true, onClose, resetToken = 0, em
             type="button"
             onClick={loading ? handleInterrupt : handleSend}
             disabled={showApiWarning || (!loading && !input.trim())}
-            aria-label={loading ? (mode === "image" ? "中断生图" : "中断回复") : "发送"}
-            title={loading ? (mode === "image" ? "中断生图" : "中断回复") : "发送"}
+            aria-label={loading ? (mode === "image" ? ui.interruptImage : ui.interruptText) : ui.send}
+            title={loading ? (mode === "image" ? ui.interruptImage : ui.interruptText) : ui.send}
             className={loading
               ? "grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#8f1d21] text-white shadow-sm transition hover:bg-[#a82428] disabled:opacity-50"
               : "rounded-lg bg-[#8f1d21] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
             }
           >
-            {loading ? <span className="h-3.5 w-3.5 rounded-[2px] bg-white" /> : "发送"}
+            {loading ? <span className="h-3.5 w-3.5 rounded-[2px] bg-white" /> : ui.send}
           </button>
         </div>
       </div>

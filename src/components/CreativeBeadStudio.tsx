@@ -8,7 +8,8 @@ import SubjectMaskEditor, { type MaskMode } from "@/components/SubjectMaskEditor
 import LoginModal from "@/components/LoginModal";
 import AiChatPanel from "@/components/ai/AiChatPanel";
 import { clearAiChatHistory } from "@/utils/aiChat";
-import { deleteProjectRecord, loadProjectHistoryAsync, saveProjectRecord, loadCurrentUserProfile, loadApiConfig, DEFAULT_AUTO_SAVE_INTERVAL_SECONDS, normalizeAutoSaveIntervalSeconds, type StoredUser } from "@/utils/profileStorage";
+import { deleteProjectRecord, loadActiveProjectId, loadProjectHistoryAsync, saveProjectRecord, loadCurrentUserProfile, loadApiConfig, DEFAULT_AUTO_SAVE_INTERVAL_SECONDS, normalizeAutoSaveIntervalSeconds, type StoredUser } from "@/utils/profileStorage";
+import { loadAppLanguage, saveAppLanguage, type AppLanguage } from "@/utils/language";
 import { fetchCommunityPosts, publishCommunityPost } from "@/utils/communityForum";
 import type { ProjectRecord } from "@/types/projectTypes";
 import type { CommunityPost as CloudCommunityPost } from "@/types/community";
@@ -140,13 +141,13 @@ function deserializePattern(raw: string | null): BeadPattern | null {
   }
 }
 
-const navItems: { id: SiteView; label: string }[] = [
-  { id: "home", label: "首页" },
-  { id: "start", label: "创作" },
-  { id: "projects", label: "项目" },
-  { id: "ai", label: "豆韵AI" },
-  { id: "community", label: "论坛" },
-  { id: "faq", label: "帮助" },
+const navItems: { id: SiteView; zh: string; en: string }[] = [
+  { id: "home", zh: "首页", en: "Home" },
+  { id: "start", zh: "创作", en: "Create" },
+  { id: "projects", zh: "项目", en: "Projects" },
+  { id: "ai", zh: "豆韵AI", en: "DouYun AI" },
+  { id: "community", zh: "论坛", en: "Forum" },
+  { id: "faq", zh: "帮助", en: "Help" },
 ];
 const studioSteps: { id: StudioStep; label: string; desc: string }[] = [
   { id: "config", label: "配置", desc: "选择传统主题、作品形式、网格尺寸、颜色数量和可用色" },
@@ -786,6 +787,27 @@ function ScrollingPatternBand() {
 }
 
 export default function CreativeBeadStudio() {
+  const [language, setLanguage] = useState<AppLanguage>(() => loadAppLanguage());
+  const ui = {
+    brand: language === "en" ? "DouYun | Traditional Pattern Bead Design" : "豆韵 | 传统纹样拼豆设计工具",
+    login: language === "en" ? "Log in" : "登录",
+    register: language === "en" ? "Register" : "注册",
+    newProject: language === "en" ? "New Project" : "新建项目",
+    noProjects: language === "en" ? "No matching projects found." : "没有找到匹配的项目。",
+    aiTitle: language === "en" ? "Traditional Culture and Bead Design Chat" : "传统文化与拼豆问答",
+    forumEyebrow: language === "en" ? "Community Forum" : "社区论坛",
+    forumTitle: language === "en" ? "Works, Sharing, and Template Imports" : "作品分享与模板导入",
+    forumDesc: language === "en"
+      ? "Browse cloud-synced bead works, search by theme, author, or title, and import a work as your own editable project."
+      : "云端同步不同用户发布的拼豆作品，按主题、作者或作品名称搜索。点击作品进入预览后，可一键导入为自己的创作进度。",
+    publishCurrent: language === "en" ? "Publish Current Work" : "发布当前作品",
+  };
+
+  useEffect(() => {
+    saveAppLanguage(language);
+    document.documentElement.lang = language === "en" ? "en" : "zh-CN";
+  }, [language]);
+
   const firstTheme = cultureThemes[1] ?? cultureThemes[0];
   const [view, setView] = useState<SiteView>("home");
   const [step, setStep] = useState<StudioStep>("config");
@@ -911,6 +933,7 @@ export default function CreativeBeadStudio() {
   const restoringRef = useRef(false);
   const currentProjectIdRef = useRef<string | null>(null);
   const lastAutoSaveSignatureRef = useRef<string>("");
+  const activeProjectRestoredRef = useRef(false);
   const previousViewRef = useRef<SiteView>("home");
 
   const [confirmNew, setConfirmNew] = useState<"ai" | "sample" | "upload" | null>(null);
@@ -2425,6 +2448,20 @@ export default function CreativeBeadStudio() {
     setView("start");
   }, [clearResultSubjectSelection, clearSubjectIdentification]);
 
+  useEffect(() => {
+    if (activeProjectRestoredRef.current) return;
+    if (projectRecords.length === 0 || hasUnsavedWork) return;
+
+    const activeProjectId = loadActiveProjectId();
+    const activeRecord = activeProjectId
+      ? projectRecords.find((record) => record.id === activeProjectId)
+      : projectRecords[0];
+    if (!activeRecord) return;
+
+    activeProjectRestoredRef.current = true;
+    handleRestoreProject(activeRecord);
+  }, [handleRestoreProject, hasUnsavedWork, projectRecords]);
+
   // 自动保存当前作品到历史记录
   const buildCurrentProjectRecord = useCallback((title?: string): ProjectRecord => {
     const id = currentProjectIdRef.current ?? `proj_${Date.now()}`;
@@ -2483,6 +2520,23 @@ export default function CreativeBeadStudio() {
     patternUrl,
     cleanPatternUrl,
   }), [antiAlias, aspectRatio, cleanPatternUrl, colorCount, connectIslands, element, extractPrompt, extractedImageUrl, forcedColors, gridSize, meaning, pattern, patternUrl, productId, selectedFilter, showGrid, sourceImageUrl, step, theme]);
+
+  useEffect(() => {
+    if (restoringRef.current || view !== "start" || !hasUnsavedWork) return;
+    const signature = buildCurrentProjectSignature();
+    if (signature === lastAutoSaveSignatureRef.current) return;
+
+    const timer = setTimeout(() => {
+      const record = buildCurrentProjectRecord();
+      void saveProjectRecord(record).then((saved) => {
+        if (!saved) return;
+        lastAutoSaveSignatureRef.current = signature;
+        void refreshProjectRecords();
+      });
+    }, 1200);
+
+    return () => clearTimeout(timer);
+  }, [buildCurrentProjectRecord, buildCurrentProjectSignature, hasUnsavedWork, refreshProjectRecords, view]);
 
   const publishCurrentWork = useCallback(async () => {
     if (!sourceImageUrl && !pattern && !patternUrl) {
@@ -2679,7 +2733,7 @@ export default function CreativeBeadStudio() {
           {/* 左侧 Logo + 品牌文字 */}
           <button type="button" onClick={() => setView("home")} className="flex shrink-0 items-center gap-2">
             <img src="/logo.jpg" alt="豆韵" className="h-8 w-8 rounded-md object-cover" />
-            <span className="hidden text-sm font-semibold text-stone-800 sm:inline">豆韵 | 传统纹样拼豆设计工具</span>
+            <span className="hidden text-sm font-semibold text-stone-800 sm:inline">{ui.brand}</span>
           </button>
 
           {/* 中间导航 - 绝对居中 */}
@@ -2696,7 +2750,7 @@ export default function CreativeBeadStudio() {
                   view === item.id ? "bg-[#8f1d21] text-white shadow-sm" : "text-stone-600 hover:text-stone-950"
                 }`}
               >
-                {item.label}
+                {language === "en" ? item.en : item.zh}
               </button>
             ))}
           </nav>
@@ -2740,7 +2794,7 @@ export default function CreativeBeadStudio() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
                   </svg>
                 </span>
-                <span className="hidden sm:inline">登录</span>
+                <span className="hidden sm:inline">{ui.login}</span>
               </button>
               <button
                 type="button"
@@ -2750,7 +2804,7 @@ export default function CreativeBeadStudio() {
                 }}
                 className="flex shrink-0 items-center gap-2 rounded-md border border-[#8f1d21] px-4 py-1.5 text-sm font-semibold text-[#8f1d21] transition hover:bg-[#8f1d21] hover:text-white"
               >
-                <span className="hidden sm:inline">注册</span>
+                <span className="hidden sm:inline">{ui.register}</span>
               </button>
             </div>
           )}
@@ -2765,6 +2819,8 @@ export default function CreativeBeadStudio() {
           onApiConfigSaved={(config) => {
             setAutoSaveIntervalSeconds(normalizeAutoSaveIntervalSeconds(config.autoSaveIntervalSeconds));
           }}
+          language={language}
+          onLanguageChange={setLanguage}
           onLogout={() => {
             clearAiChatHistory();
             setAiChatResetToken((value) => value + 1);
@@ -2921,13 +2977,13 @@ export default function CreativeBeadStudio() {
               className="grid min-h-[260px] place-items-center rounded-lg border border-dashed border-[#8f1d21]/40 bg-white p-6 text-center transition hover:border-[#8f1d21] hover:bg-[#8f1d21]/5"
             >
               <span className="grid h-16 w-16 place-items-center rounded-full bg-[#8f1d21] text-4xl font-light leading-none text-white">+</span>
-              <span className="mt-4 block text-sm font-semibold text-stone-700">新建项目</span>
+              <span className="mt-4 block text-sm font-semibold text-stone-700">{ui.newProject}</span>
             </button>
           </div>
 
           {filteredProjectRecords.length === 0 && (
             <div className="mt-8 rounded-lg border border-dashed border-stone-300 bg-white p-10 text-center text-sm text-stone-500">
-              没有找到匹配的项目。
+              {ui.noProjects}
             </div>
           )}
         </main>
@@ -2936,10 +2992,10 @@ export default function CreativeBeadStudio() {
       {view === "ai" && (
         <main className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
           <div className="mb-6">
-            <p className="text-sm font-semibold text-[#8f1d21]">豆韵AI</p>
-            <h1 className="mt-2 text-4xl font-semibold tracking-tight text-stone-950">传统文化与拼豆问答</h1>
+            <p className="text-sm font-semibold text-[#8f1d21]">DouYun AI</p>
+            <h1 className="mt-2 text-4xl font-semibold tracking-tight text-stone-950">{ui.aiTitle}</h1>
           </div>
-          <AiChatPanel embedded resetToken={aiChatResetToken} />
+          <AiChatPanel embedded resetToken={aiChatResetToken} language={language} />
         </main>
       )}
 
@@ -2947,10 +3003,10 @@ export default function CreativeBeadStudio() {
         <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-5 border-b border-stone-200 pb-8 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-sm font-semibold text-[#8f1d21]">社区论坛</p>
-              <h1 className="mt-2 text-4xl font-semibold tracking-tight text-stone-950">作品分享与模板导入</h1>
+              <p className="text-sm font-semibold text-[#8f1d21]">{ui.forumEyebrow}</p>
+              <h1 className="mt-2 text-4xl font-semibold tracking-tight text-stone-950">{ui.forumTitle}</h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-600">
-                云端同步不同用户发布的拼豆作品，按主题、作者或作品名称搜索。点击作品进入预览后，可一键导入为自己的创作进度。
+                {ui.forumDesc}
               </p>
             </div>
             <button
@@ -2959,7 +3015,7 @@ export default function CreativeBeadStudio() {
               disabled={!sourceImageUrl && !pattern && !patternUrl}
               className="rounded-md bg-stone-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-45"
             >
-              🌐 发布当前作品
+              🌐 {ui.publishCurrent}
             </button>
           </div>
 

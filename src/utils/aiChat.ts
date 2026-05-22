@@ -1,4 +1,5 @@
 import { loadApiConfig } from "./profileStorage";
+import { loadAppLanguage, type AppLanguage } from "./language";
 
 export interface ChatMessage {
   role: "user" | "assistant";
@@ -10,6 +11,9 @@ export type ChatMode = "text" | "image";
 
 export const AI_CHAT_HISTORY_KEY = "douyun_ai_chat_history";
 export const AI_CHAT_MODE_KEY = "douyun_ai_chat_mode";
+const AI_CHAT_DB_NAME = "douyun_ai_chat_db";
+const AI_CHAT_DB_VERSION = 1;
+const AI_CHAT_STORE_NAME = "chat";
 const CHAT_CONTEXT_LIMIT = 10;
 const HISTORY_LIMIT = 30;
 
@@ -21,9 +25,43 @@ function isStorageAvailable(): boolean {
   return typeof window !== "undefined" && typeof window.localStorage?.getItem === "function";
 }
 
+function isIndexedDbAvailable(): boolean {
+  return typeof window !== "undefined" && typeof indexedDB !== "undefined";
+}
+
+function requestToPromise<T>(request: IDBRequest<T>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+function transactionDone(transaction: IDBTransaction): Promise<void> {
+  return new Promise((resolve, reject) => {
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
+    transaction.onabort = () => reject(transaction.error);
+  });
+}
+
+function openChatDb(): Promise<IDBDatabase> {
+  if (!isIndexedDbAvailable()) return Promise.reject(new Error("indexeddb_unavailable"));
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(AI_CHAT_DB_NAME, AI_CHAT_DB_VERSION);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(AI_CHAT_STORE_NAME)) {
+        db.createObjectStore(AI_CHAT_STORE_NAME, { keyPath: "key" });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+    request.onblocked = () => reject(new Error("indexeddb_open_blocked"));
+  });
+}
+
 function getPersistableImageUrl(imageUrl: unknown): string | undefined {
   if (typeof imageUrl !== "string") return undefined;
-  if (imageUrl.startsWith("data:")) return undefined;
   return imageUrl;
 }
 
@@ -43,23 +81,32 @@ function cloneMessages(messages: ChatMessage[]): ChatMessage[] {
   }));
 }
 
-export const DEFAULT_CHAT_MESSAGES: ChatMessage[] = [
-  { role: "assistant", content: "你好，我是豆韵AI。可以切换到“文字对话”或“生图模式”分别使用。" },
-];
+export function getDefaultChatMessages(language: AppLanguage = loadAppLanguage()): ChatMessage[] {
+  return [
+    {
+      role: "assistant",
+      content: language === "en"
+        ? "Hi, I am DouYun AI. Switch between text chat and image generation as needed."
+        : "你好，我是豆韵AI。可以切换到“文字对话”或“生图模式”分别使用。",
+    },
+  ];
+}
+
+export const DEFAULT_CHAT_MESSAGES: ChatMessage[] = getDefaultChatMessages("zh");
 
 export function loadAiChatHistory(): ChatMessage[] {
   if (memoryChatHistory) return cloneMessages(memoryChatHistory);
-  if (!isStorageAvailable()) return DEFAULT_CHAT_MESSAGES;
+  if (!isStorageAvailable()) return getDefaultChatMessages();
   try {
     const raw = localStorage.getItem(AI_CHAT_HISTORY_KEY);
     if (!raw) {
-      memoryChatHistory = DEFAULT_CHAT_MESSAGES;
-      return DEFAULT_CHAT_MESSAGES;
+      memoryChatHistory = getDefaultChatMessages();
+      return cloneMessages(memoryChatHistory);
     }
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) {
-      memoryChatHistory = DEFAULT_CHAT_MESSAGES;
-      return DEFAULT_CHAT_MESSAGES;
+      memoryChatHistory = getDefaultChatMessages();
+      return cloneMessages(memoryChatHistory);
     }
     const history = parsed
       .filter((item): item is ChatMessage =>
@@ -70,32 +117,66 @@ export function loadAiChatHistory(): ChatMessage[] {
         content: item.content,
         imageUrl: getPersistableImageUrl(item.imageUrl),
       }));
-    memoryChatHistory = history.length > 0 ? cloneMessages(history) : cloneMessages(DEFAULT_CHAT_MESSAGES);
+    memoryChatHistory = history.length > 0 ? cloneMessages(history) : cloneMessages(getDefaultChatMessages());
     return cloneMessages(memoryChatHistory);
   } catch {
-    memoryChatHistory = cloneMessages(DEFAULT_CHAT_MESSAGES);
-    return cloneMessages(DEFAULT_CHAT_MESSAGES);
+    memoryChatHistory = cloneMessages(getDefaultChatMessages());
+    return cloneMessages(memoryChatHistory);
+  }
+}
+
+export async function loadAiChatHistoryAsync(): Promise<ChatMessage[]> {
+  let db: IDBDatabase | null = null;
+  try {
+    db = await openChatDb();
+    const transaction = db.transaction(AI_CHAT_STORE_NAME, "readonly");
+    const raw = await requestToPromise<{ key: string; messages: ChatMessage[] } | undefined>(
+      transaction.objectStore(AI_CHAT_STORE_NAME).get(AI_CHAT_HISTORY_KEY),
+    );
+    const messages = Array.isArray(raw?.messages) ? normalizeMessages(raw.messages) : loadAiChatHistory();
+    memoryChatHistory = messages.length > 0 ? cloneMessages(messages) : cloneMessages(getDefaultChatMessages());
+    return cloneMessages(memoryChatHistory);
+  } catch {
+    return loadAiChatHistory();
+  } finally {
+    db?.close();
+  }
+}
+
+async function saveAiChatHistoryAsync(messages: ChatMessage[]): Promise<void> {
+  let db: IDBDatabase | null = null;
+  try {
+    db = await openChatDb();
+    const transaction = db.transaction(AI_CHAT_STORE_NAME, "readwrite");
+    transaction.objectStore(AI_CHAT_STORE_NAME).put({
+      key: AI_CHAT_HISTORY_KEY,
+      messages: normalizeMessages(messages),
+    });
+    await transactionDone(transaction);
+  } catch {
+    // The memory copy remains available for the current session.
+  } finally {
+    db?.close();
   }
 }
 
 export function saveAiChatHistory(messages: ChatMessage[]): void {
   memoryChatHistory = cloneMessages(messages);
   const normalizedMessages = normalizeMessages(messages);
+  void saveAiChatHistoryAsync(normalizedMessages);
   if (!isStorageAvailable()) return;
   try {
-    localStorage.setItem(AI_CHAT_HISTORY_KEY, JSON.stringify(normalizedMessages));
+    const textOnlyMessages = normalizedMessages.map(({ role, content }) => ({ role, content }));
+    localStorage.setItem(AI_CHAT_HISTORY_KEY, JSON.stringify(textOnlyMessages));
   } catch {
-    try {
-      const textOnlyMessages = normalizedMessages.map(({ role, content }) => ({ role, content }));
-      localStorage.setItem(AI_CHAT_HISTORY_KEY, JSON.stringify(textOnlyMessages));
-    } catch {
-      // Keep the session copy in memory even if persistent storage is full.
-    }
+    // Keep the session copy in memory even if persistent storage is full.
   }
 }
 
 export function clearAiChatHistory(): void {
-  memoryChatHistory = cloneMessages(DEFAULT_CHAT_MESSAGES);
+  const defaultMessages = getDefaultChatMessages();
+  memoryChatHistory = cloneMessages(defaultMessages);
+  void saveAiChatHistoryAsync(defaultMessages);
   if (!isStorageAvailable()) return;
   localStorage.removeItem(AI_CHAT_HISTORY_KEY);
 }
@@ -149,13 +230,14 @@ export function isApiConfigured(): boolean {
 function buildRequestConfig() {
   const config = loadApiConfig();
   if (!config || config.useDefaultModel) {
-    return { useDefaultModel: true };
+    return { useDefaultModel: true, language: loadAppLanguage() };
   }
   return {
     textModelApiKey: config.textModelApiKey ?? "",
     textModelName: config.textModelName ?? "",
     imageModelApiKey: config.imageModelApiKey ?? "",
     imageModelName: config.imageModelName ?? "",
+    language: loadAppLanguage(),
     useDefaultModel: false,
   };
 }

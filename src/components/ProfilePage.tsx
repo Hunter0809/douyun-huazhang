@@ -20,15 +20,80 @@ import {
 import AvatarCropper from "@/components/AvatarCropper";
 import LoginModal from "@/components/LoginModal";
 import { publishCommunityPost } from "@/utils/communityForum";
+import { languageLabel, type AppLanguage } from "@/utils/language";
 
 type Props = {
   onBack: () => void;
   onRestoreProject: (record: ProjectRecord) => void;
   onLogout?: () => void;
   onApiConfigSaved?: (config: ApiConfig) => void;
+  language: AppLanguage;
+  onLanguageChange: (language: AppLanguage) => void;
 };
 
-export default function ProfilePage({ onBack, onRestoreProject, onLogout, onApiConfigSaved }: Props) {
+type EnvConfig = {
+  configured: boolean;
+  baseUrl: string;
+  defaultImageModel: string;
+  defaultTextModel: string;
+  defaultVisionModel?: string;
+};
+
+let cachedEnvConfig: EnvConfig | null = null;
+let envConfigLoaded = false;
+let envConfigPromise: Promise<EnvConfig | null> | null = null;
+
+function loadEnvConfigOnce(): Promise<EnvConfig | null> {
+  if (envConfigLoaded) return Promise.resolve(cachedEnvConfig);
+  if (envConfigPromise) return envConfigPromise;
+
+  envConfigPromise = fetch("/api/env-config")
+    .then(res => res.json())
+    .then((data: EnvConfig) => {
+      cachedEnvConfig = data;
+      envConfigLoaded = true;
+      return data;
+    })
+    .catch(() => {
+      envConfigLoaded = true;
+      return null;
+    })
+    .finally(() => {
+      envConfigPromise = null;
+    });
+
+  return envConfigPromise;
+}
+
+export default function ProfilePage({ onBack, onRestoreProject, onLogout, onApiConfigSaved, language, onLanguageChange }: Props) {
+  const text = {
+    backHome: language === "en" ? "Back Home" : "返回首页",
+    profileTitle: language === "en" ? "Profile" : "个人主页",
+    languageTitle: language === "en" ? "Language" : "语言",
+    languageDesc: language === "en"
+      ? "Select the system language. Navigation, profile settings, and future AI responses follow this choice."
+      : "选择系统语言。顶部导航、个人配置和后续 AI 输出都会随之切换。",
+    personalInfo: language === "en" ? "Personal Info" : "个人资料",
+    personalInfoDesc: language === "en" ? "Set your avatar and nickname. This information is stored only in this browser." : "设置头像和昵称，信息仅存储在本地浏览器中。",
+    change: language === "en" ? "Change" : "更换",
+    remove: language === "en" ? "Remove" : "移除",
+    save: language === "en" ? "Save" : "保存",
+    cancel: language === "en" ? "Cancel" : "取消",
+    edit: language === "en" ? "Edit" : "编辑",
+    avatarHint: language === "en" ? "JPG/PNG avatars are supported. Nickname can be changed anytime." : "头像支持 JPG/PNG 格式，昵称可随时修改",
+    apiConfig: language === "en" ? "API Configuration" : "API 配置",
+    apiConfigDesc: language === "en" ? "Add model API keys to enable AI features. Keys are stored only in this browser." : "填写模型 API 密钥以启用 AI 生成功能，密钥仅存储在本地浏览器中。",
+    useDefaultModel: language === "en" ? "Use System Default Model" : "使用系统默认模型",
+    loadingEnv: language === "en" ? "Reading environment configuration..." : "正在读取环境配置…",
+    envConfigured: language === "en" ? "Server API key detected. Manual input is not required." : "已检测到服务端 API 密钥，无需手动填写",
+    envMissing: language === "en" ? "Server environment API key is not configured." : "服务端未配置环境变量密钥",
+    manualKey: language === "en" ? "Manual API Key" : "手动填写 API Key",
+    history: language === "en" ? "Project History" : "历史作品",
+    historyDesc: language === "en" ? "Restore saved work and continue editing. Finished works can be exported." : "点击作品可恢复进度继续编辑，已完成的作品支持导出。",
+    account: language === "en" ? "Account Settings" : "账号设置",
+    logout: language === "en" ? "Log out" : "退出登录",
+    loginRegister: language === "en" ? "Log in / Register" : "登录 / 注册",
+  };
   const [apiConfig, setApiConfig] = useState(() =>
     loadApiConfig() ?? { textModelApiKey: "", textModelName: "", imageModelApiKey: "", imageModelName: "", visionModelApiKey: "", visionModelName: "", autoSaveIntervalSeconds: DEFAULT_AUTO_SAVE_INTERVAL_SECONDS, useDefaultModel: true }
   );
@@ -36,7 +101,7 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout, onApiC
   const [showTextKey, setShowTextKey] = useState(false);
   const [showImageKey, setShowImageKey] = useState(false);
   const [showVisionKey, setShowVisionKey] = useState(false);
-  const [envConfig, setEnvConfig] = useState<{ configured: boolean; baseUrl: string; defaultImageModel: string; defaultTextModel: string; defaultVisionModel?: string } | null>(null);
+  const [envConfig, setEnvConfig] = useState<EnvConfig | null>(() => cachedEnvConfig);
   const [envLoading, setEnvLoading] = useState(false);
   const [profile, setProfile] = useState<StoredUser>(() => loadCurrentUserProfile() ?? { nickname: "豆韵用户", avatarUrl: "", createdAt: Date.now() });
   const [nicknameEditing, setNicknameEditing] = useState(false);
@@ -132,23 +197,42 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout, onApiC
 
   useEffect(() => {
     if (!apiConfig.useDefaultModel) {
-      setEnvConfig(null);
+      setEnvLoading(false);
       return;
     }
+
+    if (envConfigLoaded) {
+      setEnvConfig(cachedEnvConfig);
+      setEnvLoading(false);
+      setApiConfig(prev => ({
+        ...prev,
+        textModelName: cachedEnvConfig?.defaultTextModel || prev.textModelName,
+        imageModelName: cachedEnvConfig?.defaultImageModel || prev.imageModelName,
+        visionModelName: cachedEnvConfig?.defaultVisionModel || cachedEnvConfig?.defaultTextModel || prev.visionModelName,
+      }));
+      return;
+    }
+
+    let alive = true;
     setEnvLoading(true);
-    fetch("/api/env-config")
-      .then(res => res.json())
+    loadEnvConfigOnce()
       .then(data => {
+        if (!alive) return;
         setEnvConfig(data);
         setApiConfig(prev => ({
           ...prev,
-          textModelName: data.defaultTextModel || prev.textModelName,
-          imageModelName: data.defaultImageModel || prev.imageModelName,
-          visionModelName: data.defaultVisionModel || data.defaultTextModel || prev.visionModelName,
+          textModelName: data?.defaultTextModel || prev.textModelName,
+          imageModelName: data?.defaultImageModel || prev.imageModelName,
+          visionModelName: data?.defaultVisionModel || data?.defaultTextModel || prev.visionModelName,
         }));
       })
-      .catch(() => setEnvConfig(null))
-      .finally(() => setEnvLoading(false));
+      .finally(() => {
+        if (alive) setEnvLoading(false);
+      });
+
+    return () => {
+      alive = false;
+    };
   }, [apiConfig.useDefaultModel]);
 
   const handleSaveApi = useCallback(() => {
@@ -236,18 +320,44 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout, onApiC
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <button type="button" onClick={onBack} className="flex items-center gap-2 text-sm font-medium text-stone-600 hover:text-stone-950">
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
-            返回首页
+            {text.backHome}
           </button>
-          <span className="text-lg font-semibold tracking-tight">个人主页</span>
+          <span className="text-lg font-semibold tracking-tight">{text.profileTitle}</span>
           <div className="w-20" />
         </div>
       </header>
 
       <div className="mx-auto max-w-5xl space-y-8 px-4 py-10 sm:px-6 lg:px-8">
+        <section className="rounded-lg border border-stone-200 bg-white p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-xl font-semibold">{text.languageTitle} / Language</h2>
+              <p className="mt-1 text-sm text-stone-500">{text.languageDesc}</p>
+            </div>
+            <div className="inline-flex rounded-lg border border-[#8f1d21]/25 bg-[#8f1d21]/8 p-1">
+              {(["zh", "en"] as AppLanguage[]).map((item) => {
+                const selected = language === item;
+                return (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => onLanguageChange(item)}
+                    className={`rounded-md px-4 py-2 text-sm font-semibold transition ${
+                      selected ? "bg-[#8f1d21] text-white shadow-sm" : "text-[#8f1d21] hover:bg-white"
+                    }`}
+                  >
+                    {languageLabel(item)}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
         {/* 头像 & 昵称 */}
         <section className="rounded-lg border border-stone-200 bg-white p-6">
-          <h2 className="text-xl font-semibold">个人资料</h2>
-          <p className="mt-1 text-sm text-stone-500">设置头像和昵称，信息仅存储在本地浏览器中。</p>
+          <h2 className="text-xl font-semibold">{text.personalInfo}</h2>
+          <p className="mt-1 text-sm text-stone-500">{text.personalInfoDesc}</p>
           <div className="mt-5 flex items-center gap-5">
             <div className="relative shrink-0">
               <div className="h-20 w-20 overflow-hidden rounded-full border-2 border-stone-200 bg-stone-100">
@@ -269,9 +379,9 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout, onApiC
               </div>
               <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
               <div className="mt-2 flex justify-center gap-2">
-                <button type="button" onClick={() => fileInputRef.current?.click()} className="text-xs font-medium text-[#8f1d21] hover:underline">更换</button>
+                <button type="button" onClick={() => fileInputRef.current?.click()} className="text-xs font-medium text-[#8f1d21] hover:underline">{text.change}</button>
                 {profile.avatarUrl && (
-                  <button type="button" onClick={removeAvatar} className="text-xs font-medium text-stone-400 hover:text-red-600 hover:underline">移除</button>
+                  <button type="button" onClick={removeAvatar} className="text-xs font-medium text-stone-400 hover:text-red-600 hover:underline">{text.remove}</button>
                 )}
               </div>
             </div>
@@ -286,36 +396,36 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout, onApiC
                     onKeyDown={(e) => { if (e.key === "Enter") saveNickname(); if (e.key === "Escape") { setNicknameDraft(profile.nickname); setNicknameEditing(false); } }}
                     autoFocus
                   />
-                  <button type="button" onClick={saveNickname} className="text-sm font-semibold text-[#8f1d21]">保存</button>
-                  <button type="button" onClick={() => { setNicknameDraft(profile.nickname); setNicknameEditing(false); }} className="text-sm text-stone-500">取消</button>
+                  <button type="button" onClick={saveNickname} className="text-sm font-semibold text-[#8f1d21]">{text.save}</button>
+                  <button type="button" onClick={() => { setNicknameDraft(profile.nickname); setNicknameEditing(false); }} className="text-sm text-stone-500">{text.cancel}</button>
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
                   <span className="text-lg font-semibold">{profile.nickname}</span>
-                  <button type="button" onClick={() => { setNicknameDraft(profile.nickname); setNicknameEditing(true); }} className="text-sm text-stone-400 hover:text-[#8f1d21]">✎ 编辑</button>
+                  <button type="button" onClick={() => { setNicknameDraft(profile.nickname); setNicknameEditing(true); }} className="text-sm text-stone-400 hover:text-[#8f1d21]">✎ {text.edit}</button>
                 </div>
               )}
-              <p className="mt-1 text-xs text-stone-400">头像支持 JPG/PNG 格式，昵称可随时修改</p>
+              <p className="mt-1 text-xs text-stone-400">{text.avatarHint}</p>
             </div>
           </div>
         </section>
 
         {/* API 配置 */}
         <section className="rounded-lg border border-stone-200 bg-white p-6">
-          <h2 className="text-xl font-semibold">API 配置</h2>
-          <p className="mt-1 text-sm text-stone-500">填写模型 API 密钥以启用 AI 生成功能，密钥仅存储在本地浏览器中。</p>
+          <h2 className="text-xl font-semibold">{text.apiConfig}</h2>
+          <p className="mt-1 text-sm text-stone-500">{text.apiConfigDesc}</p>
 
           <div className="mt-4 flex items-center justify-between rounded-md border border-stone-200 bg-stone-50 px-4 py-3">
             <div>
-              <div className="text-sm font-medium text-stone-800">使用系统默认模型</div>
+              <div className="text-sm font-medium text-stone-800">{text.useDefaultModel}</div>
               <div className="text-xs text-stone-500">
                 {apiConfig.useDefaultModel
                   ? envLoading
-                    ? "正在读取环境配置…"
+                    ? text.loadingEnv
                     : envConfig?.configured
-                      ? "已检测到服务端 API 密钥，无需手动填写"
-                      : "服务端未配置环境变量密钥"
-                  : "手动填写 API Key"}
+                      ? text.envConfigured
+                      : text.envMissing
+                  : text.manualKey}
               </div>
             </div>
             <label className="relative inline-flex cursor-pointer items-center">
@@ -467,8 +577,8 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout, onApiC
         <section className="rounded-lg border border-stone-200 bg-white p-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-semibold">历史作品</h2>
-              <p className="mt-1 text-sm text-stone-500">点击作品可恢复进度继续编辑，已完成的作品支持导出。</p>
+              <h2 className="text-xl font-semibold">{text.history}</h2>
+              <p className="mt-1 text-sm text-stone-500">{text.historyDesc}</p>
             </div>
             {history.length > 0 && (
               <button
@@ -530,7 +640,7 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout, onApiC
 
         {/* 账号设置 */}
         <section className="rounded-lg border border-red-100 bg-white p-6">
-          <h2 className="text-xl font-semibold text-stone-800">账号设置</h2>
+          <h2 className="text-xl font-semibold text-stone-800">{text.account}</h2>
           {isLoggedIn ? (
             <>
               <p className="mt-1 text-sm text-stone-500">登出后将不再显示与该账号有关的信息，本地未保存的作品不会被删除。</p>
@@ -539,7 +649,7 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout, onApiC
                 onClick={() => setShowLogoutConfirm(true)}
                 className="mt-4 rounded-md border border-red-300 bg-red-50 px-5 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100"
               >
-                退出登录
+                {text.logout}
               </button>
             </>
           ) : (
@@ -551,7 +661,7 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout, onApiC
                   onClick={() => setShowLoginModal(true)}
                   className="rounded-md bg-[#8f1d21] px-5 py-2 text-sm font-semibold text-white transition hover:bg-[#a52327]"
                 >
-                  登录 / 注册
+                  {text.loginRegister}
                 </button>
               </div>
             </>

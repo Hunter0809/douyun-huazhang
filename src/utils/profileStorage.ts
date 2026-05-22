@@ -2,6 +2,7 @@ import type { ApiConfig, ProjectRecord } from "@/types/projectTypes";
 
 const API_CONFIG_KEY = "douyun_api_config";
 const PROJECT_HISTORY_KEY = "douyun_project_history";
+const ACTIVE_PROJECT_KEY = "douyun_active_project";
 const USERS_KEY = "douyun_users";
 const CURRENT_USER_KEY = "douyun_current_user";
 export const DEFAULT_AUTO_SAVE_INTERVAL_SECONDS = 30;
@@ -200,6 +201,40 @@ function getProjectHistoryKey(): string {
   return username ? `${PROJECT_HISTORY_KEY}:${username}` : ANONYMOUS_PROJECT_KEY;
 }
 
+function getActiveProjectKey(): string {
+  return `${ACTIVE_PROJECT_KEY}:${getProjectHistoryKey()}`;
+}
+
+export function loadActiveProjectId(): string | null {
+  if (!isAvailable()) return null;
+  try {
+    return localStorage.getItem(getActiveProjectKey());
+  } catch {
+    return null;
+  }
+}
+
+export function saveActiveProjectId(id: string): void {
+  if (!isAvailable()) return;
+  try {
+    localStorage.setItem(getActiveProjectKey(), id);
+  } catch {
+    // ignore small pointer write failures
+  }
+}
+
+export function clearActiveProjectId(id?: string): void {
+  if (!isAvailable()) return;
+  try {
+    const key = getActiveProjectKey();
+    if (!id || localStorage.getItem(key) === id) {
+      localStorage.removeItem(key);
+    }
+  } catch {
+    // ignore small pointer write failures
+  }
+}
+
 function isIndexedDbAvailable(): boolean {
   return typeof window !== "undefined" && typeof indexedDB !== "undefined";
 }
@@ -336,6 +371,7 @@ export async function saveProjectRecord(record: ProjectRecord): Promise<boolean>
       entries.slice(MAX_PROJECT_HISTORY).forEach((entry) => trimStore.delete(entry.storageId));
       await transactionDone(trimTransaction);
     }
+    saveActiveProjectId(record.id);
     return true;
   } catch (e) {
     console.error("保存项目记录失败:", e);
@@ -354,6 +390,7 @@ export async function deleteProjectRecord(id: string): Promise<void> {
     const transaction = db.transaction(PROJECT_STORE_NAME, "readwrite");
     transaction.objectStore(PROJECT_STORE_NAME).delete(`${key}:${id}`);
     await transactionDone(transaction);
+    clearActiveProjectId(id);
   } catch { /* ignore */ }
   finally {
     db?.close();
@@ -372,6 +409,10 @@ export async function deleteProjectRecords(ids: string[]): Promise<void> {
     const store = transaction.objectStore(PROJECT_STORE_NAME);
     ids.forEach((id) => store.delete(`${key}:${id}`));
     await transactionDone(transaction);
+    const activeId = loadActiveProjectId();
+    if (activeId && ids.includes(activeId)) {
+      clearActiveProjectId(activeId);
+    }
   } catch { /* ignore */ }
   finally {
     db?.close();

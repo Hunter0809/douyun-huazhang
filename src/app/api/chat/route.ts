@@ -15,6 +15,7 @@ type RequestConfig = {
   textModelName?: string;
   imageModelApiKey?: string;
   imageModelName?: string;
+  language?: "zh" | "en";
 };
 
 function formatUpstreamError(detail: string, fallback: string): string {
@@ -80,7 +81,18 @@ function extractAssistantText(content: unknown): string {
   return "";
 }
 
+function getLanguageInstruction(language: RequestConfig["language"]): string {
+  return language === "en"
+    ? "Always answer in natural English unless the user explicitly asks for another language."
+    : "始终使用自然、准确的中文回答，除非用户明确要求使用其他语言。";
+}
+
+function localizedError(language: RequestConfig["language"], zh: string, en: string): string {
+  return language === "en" ? en : zh;
+}
+
 async function handleTextChat(messages: unknown, config: RequestConfig | undefined) {
+  const language = config?.language === "en" ? "en" : "zh";
   const envApiKey = firstConfiguredValue(process.env.ARK_API_KEY);
   const userApiKey = firstConfiguredValue(config?.textModelApiKey);
   const apiKey = config?.useDefaultModel === true ? envApiKey : firstConfiguredValue(userApiKey, envApiKey);
@@ -92,13 +104,21 @@ async function handleTextChat(messages: unknown, config: RequestConfig | undefin
 
   if (!apiKey) {
     return NextResponse.json(
-      { error: "未配置文本模型 API Key。请在个人主页填写文本模型 Key，或开启“使用系统默认模型”。" },
+      {
+        error: localizedError(
+          language,
+          "未配置文本模型 API Key。请在个人主页填写文本模型 Key，或开启“使用系统默认模型”。",
+          "Text model API key is not configured. Add a text model key on the profile page or enable the system default model.",
+        ),
+      },
       { status: 400 },
     );
   }
 
   if (normalizedMessages.length === 0) {
-    return NextResponse.json({ error: "请输入对话内容。" }, { status: 400 });
+    return NextResponse.json({
+      error: localizedError(language, "请输入对话内容。", "Please enter a message."),
+    }, { status: 400 });
   }
 
   const response = await fetch(`${baseUrl.replace(/\/$/, "")}/chat/completions`, {
@@ -112,7 +132,7 @@ async function handleTextChat(messages: unknown, config: RequestConfig | undefin
       messages: [
         {
           role: "system",
-          content: "你是豆韵AI助手。优先直接回答用户问题，保持简洁、准确、中文输出；只有当用户明确要求生成图片时才建议切换到生图模式。",
+          content: `你是豆韵AI助手。优先直接回答用户问题，保持简洁、准确；只有当用户明确要求生成图片时才建议切换到生图模式。${getLanguageInstruction(language)}`,
         },
         ...normalizedMessages,
       ],
@@ -122,7 +142,13 @@ async function handleTextChat(messages: unknown, config: RequestConfig | undefin
   if (!response.ok) {
     const detail = await response.text();
     return NextResponse.json(
-      { error: formatUpstreamError(detail, "豆韵AI 对话请求失败"), detail },
+      {
+        error: formatUpstreamError(
+          detail,
+          localizedError(language, "豆韵AI 对话请求失败", "DouYun AI chat request failed"),
+        ),
+        detail,
+      },
       { status: response.status },
     );
   }
@@ -130,13 +156,16 @@ async function handleTextChat(messages: unknown, config: RequestConfig | undefin
   const result = await response.json();
   const content = extractAssistantText(result?.choices?.[0]?.message?.content);
   if (!content) {
-    return NextResponse.json({ error: "豆韵AI 对话接口未返回文本内容。" }, { status: 502 });
+    return NextResponse.json({
+      error: localizedError(language, "豆韵AI 对话接口未返回文本内容。", "DouYun AI did not return text content."),
+    }, { status: 502 });
   }
 
   return NextResponse.json({ content });
 }
 
 async function handleImageGeneration(messages: unknown, config: RequestConfig | undefined) {
+  const language = config?.language === "en" ? "en" : "zh";
   const envApiKey = firstConfiguredValue(process.env.ARK_API_KEY);
   const userApiKey = firstConfiguredValue(config?.imageModelApiKey);
   const apiKey = config?.useDefaultModel === true ? envApiKey : firstConfiguredValue(userApiKey, envApiKey);
@@ -148,13 +177,21 @@ async function handleImageGeneration(messages: unknown, config: RequestConfig | 
 
   if (!apiKey) {
     return NextResponse.json(
-      { error: "未配置生图模型 API Key。请在个人主页填写生图模型 Key，或开启“使用系统默认模型”。" },
+      {
+        error: localizedError(
+          language,
+          "未配置生图模型 API Key。请在个人主页填写生图模型 Key，或开启“使用系统默认模型”。",
+          "Image model API key is not configured. Add an image model key on the profile page or enable the system default model.",
+        ),
+      },
       { status: 400 },
     );
   }
 
   if (!prompt) {
-    return NextResponse.json({ error: "请输入生图提示词。" }, { status: 400 });
+    return NextResponse.json({
+      error: localizedError(language, "请输入生图提示词。", "Please enter an image prompt."),
+    }, { status: 400 });
   }
 
   const response = await fetch(`${baseUrl.replace(/\/$/, "")}/images/generations`, {
@@ -176,7 +213,13 @@ async function handleImageGeneration(messages: unknown, config: RequestConfig | 
   if (!response.ok) {
     const detail = await response.text();
     return NextResponse.json(
-      { error: formatUpstreamError(detail, "豆韵AI 生图请求失败"), detail },
+      {
+        error: formatUpstreamError(
+          detail,
+          localizedError(language, "豆韵AI 生图请求失败", "DouYun AI image generation request failed"),
+        ),
+        detail,
+      },
       { status: response.status },
     );
   }
@@ -185,7 +228,9 @@ async function handleImageGeneration(messages: unknown, config: RequestConfig | 
   const base64 = result?.data?.[0]?.b64_json;
   const url = result?.data?.[0]?.url;
   if (!base64 && !url) {
-    return NextResponse.json({ error: "豆韵AI 生图接口未返回图片数据。" }, { status: 502 });
+    return NextResponse.json({
+      error: localizedError(language, "豆韵AI 生图接口未返回图片数据。", "DouYun AI did not return image data."),
+    }, { status: 502 });
   }
 
   return NextResponse.json({
