@@ -763,6 +763,11 @@ export default function CreativeBeadStudio() {
     return `已指定 ${forcedColors.length} 种颜色，超过当前 ${colorCount} 色上限。超出的 ${forcedColors.length - colorCount} 种颜色不会进入最终映射，请减少指定颜色或提高颜色上限。`;
   }, [colorCount, forcedColors.length]);
 
+  const selectedCultureTheme = useMemo(
+    () => cultureThemes.find((item) => item.name === theme || item.id === theme),
+    [theme],
+  );
+
   const [currentUser, setCurrentUser] = useState<StoredUser | null>(() => loadCurrentUserProfile());
   const [projectQuery, setProjectQuery] = useState("");
   const [projectRecords, setProjectRecords] = useState<ProjectRecord[]>(() => loadProjectHistory());
@@ -1444,7 +1449,35 @@ export default function CreativeBeadStudio() {
               </label>
               <label className="text-sm font-medium">
                 核心元素
-                <input value={element} onChange={(event) => setElement(event.target.value)} className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2" />
+                <input
+                  list="culture-element-options"
+                  value={element}
+                  onChange={(event) => setElement(event.target.value)}
+                  className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2"
+                />
+                <datalist id="culture-element-options">
+                  {(selectedCultureTheme?.elements ?? []).map((item) => (
+                    <option key={item} value={item} />
+                  ))}
+                </datalist>
+                {selectedCultureTheme && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {selectedCultureTheme.elements.map((item) => (
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => setElement(item)}
+                        className={`rounded-full border px-3 py-1 text-xs transition ${
+                          element === item
+                            ? "border-[#8f1d21] bg-[#8f1d21] text-white"
+                            : "border-stone-200 bg-stone-50 text-stone-600 hover:border-stone-400"
+                        }`}
+                      >
+                        {item}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </label>
               <label className="text-sm font-medium">
                 文化叙述

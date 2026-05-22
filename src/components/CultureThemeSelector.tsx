@@ -24,6 +24,9 @@ export default function CultureThemeSelector({
   onMeaningChange,
   onProductChange,
 }: Props) {
+  const selectedTheme = cultureThemes.find((item) => item.name === theme || item.id === theme);
+  const elementOptions = selectedTheme?.elements ?? [];
+
   return (
     <section className="space-y-5">
       <div>
@@ -38,7 +41,7 @@ export default function CultureThemeSelector({
 
       <div>
         <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">快速示例</p>
-        <div className="mt-2 grid grid-cols-2 gap-2">
+        <div className="mt-2 grid max-h-72 grid-cols-2 gap-2 overflow-y-auto pr-1">
           {cultureThemes.map((item) => (
             <button
               key={item.id}
@@ -59,11 +62,35 @@ export default function CultureThemeSelector({
       <div>
         <label className="text-sm font-semibold text-slate-700 dark:text-slate-200">核心元素</label>
         <input
+          list="culture-element-options"
           value={element}
           onChange={(event) => onElementChange(event.target.value)}
           placeholder="例如：莲花、青铜面具、飞天、云纹、神兽"
           className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
         />
+        <datalist id="culture-element-options">
+          {elementOptions.map((item) => (
+            <option key={item} value={item} />
+          ))}
+        </datalist>
+        {elementOptions.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {elementOptions.map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => onElementChange(item)}
+                className={`rounded-full border px-3 py-1 text-xs transition ${
+                  element === item
+                    ? "border-[#8f1d21] bg-[#8f1d21] text-white"
+                    : "border-slate-200 bg-white text-slate-600 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+                }`}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div>

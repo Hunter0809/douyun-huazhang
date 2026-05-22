@@ -1,9 +1,6 @@
-# 任务进度
+# Task Progress
 
-## 需完成的修改
-
-- [x] **问题1：** 在「创作结果」部分增加「AI 自动主体识别」按钮，点击后调用 AI 自动识别主体并生成蒙版
-- [x] **问题2：** 修复制作方案中的时间消耗计算 — 各部分分解单位应该是「分钟」而不是「秒」，且各部分之和应与总时长一致
-- [x] **问题3：** 制作方案部分像第二部分一样显示给 AI 的提示词，并且让 AI 根据再创作图像生成文案（而不是使用预设文案）
-
-
+- [x] Analyze the AI chat image persistence issue - found root cause
+- [ ] Fix `getPersistableImageUrl` to store data URLs (base64 images from Ark API)
+- [ ] Verify the fix works end-to-end
+- [ ] Commit all changes to master

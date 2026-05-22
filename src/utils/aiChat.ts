@@ -12,7 +12,8 @@ const HISTORY_LIMIT = 30;
 
 function getPersistableImageUrl(imageUrl: unknown): string | undefined {
   if (typeof imageUrl !== "string") return undefined;
-  if (imageUrl.startsWith("data:")) return undefined;
+  // data: URLs (base64 images) will be stored in localStorage.
+  // The save function handles localStorage quota errors gracefully.
   return imageUrl;
 }
 
