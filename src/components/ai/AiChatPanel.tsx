@@ -77,7 +77,6 @@ function renderMarkdown(content: string): ReactNode {
 //   - Returning to the AI page and still seeing the results
 //   - Interrupting a request that was started before navigating away
 let _pendingAbortController: AbortController | null = null;
-let _pendingRequestId = 0;
 
 export default function AiChatPanel({ isOpen = true, onClose, resetToken = 0, embedded = false }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>(() => loadAiChatHistory());
