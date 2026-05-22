@@ -131,7 +131,6 @@ const showcase = [
     element: "脸谱",
     meaning: "以京剧脸谱的对称结构和红、黑、白高对比色表达戏曲人物符号，适合做识别度强的拼豆图纸。",
     colors: ["#FFFFFF", "#E7002F", "#000000", "#FFDA45"],
-    previewImage: "/showcase/opera-mask-draft.png",
   },
   {
     title: "山海瑞兽",
@@ -139,7 +138,6 @@ const showcase = [
     element: "瑞兽",
     meaning: "围绕山海经瑞兽意象组织羽翼、山纹与日月符号，用墨黑、朱红、青绿和金黄形成神话感轮廓。",
     colors: ["#1D1414", "#D30022", "#166F41", "#FFC830"],
-    previewImage: "/showcase/shanhai-beast-draft.png",
   },
 ];
 
