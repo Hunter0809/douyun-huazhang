@@ -182,34 +182,93 @@ export function saveApiConfig(config: ApiConfig): void {
 /* ──────── 项目历史 ──────── */
 
 const ANONYMOUS_PROJECT_KEY = `${PROJECT_HISTORY_KEY}:__anonymous__`;
-const MAX_INLINE_IMAGE_BYTES = 280_000;
-const MAX_PATTERN_DATA_BYTES = 240_000;
+const PROJECT_DB_NAME = "douyun_project_history_db";
+const PROJECT_DB_VERSION = 1;
+const PROJECT_STORE_NAME = "projects";
+const PROJECT_OWNER_INDEX = "by_owner";
+const MAX_PROJECT_HISTORY = 100;
+
+interface StoredProjectEntry {
+  storageId: string;
+  ownerKey: string;
+  record: ProjectRecord;
+  updatedAt: number;
+}
 
 function getProjectHistoryKey(): string {
   const username = loadCurrentUser();
   return username ? `${PROJECT_HISTORY_KEY}:${username}` : ANONYMOUS_PROJECT_KEY;
 }
 
-function keepSmallDataUrl(value: string | null | undefined, maxBytes = MAX_INLINE_IMAGE_BYTES): string | null {
-  if (!value) return null;
-  return value.length <= maxBytes ? value : null;
+function isIndexedDbAvailable(): boolean {
+  return typeof window !== "undefined" && typeof indexedDB !== "undefined";
 }
 
-function compactProjectRecord(record: ProjectRecord): ProjectRecord {
-  const compactPatternUrl = keepSmallDataUrl(record.cleanPatternUrl)
-    ?? keepSmallDataUrl(record.patternUrl)
-    ?? keepSmallDataUrl(record.mockupUrl);
+function requestToPromise<T>(request: IDBRequest<T>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
 
-  return {
-    ...record,
-    sourceImageUrl: null,
-    extractedImageUrl: keepSmallDataUrl(record.extractedImageUrl, Math.floor(MAX_INLINE_IMAGE_BYTES * 0.7)),
-    patternData: record.patternData && record.patternData.length <= MAX_PATTERN_DATA_BYTES ? record.patternData : null,
-    patternUrl: compactPatternUrl,
-    cleanPatternUrl: keepSmallDataUrl(record.cleanPatternUrl, Math.floor(MAX_INLINE_IMAGE_BYTES * 0.8)),
-    mockupUrl: null,
-    productSceneUrl: null,
-  };
+function transactionDone(transaction: IDBTransaction): Promise<void> {
+  return new Promise((resolve, reject) => {
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
+    transaction.onabort = () => reject(transaction.error);
+  });
+}
+
+function openProjectDb(): Promise<IDBDatabase> {
+  if (!isIndexedDbAvailable()) return Promise.reject(new Error("indexeddb_unavailable"));
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(PROJECT_DB_NAME, PROJECT_DB_VERSION);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      const store = db.objectStoreNames.contains(PROJECT_STORE_NAME)
+        ? request.transaction!.objectStore(PROJECT_STORE_NAME)
+        : db.createObjectStore(PROJECT_STORE_NAME, { keyPath: "storageId" });
+      if (!store.indexNames.contains(PROJECT_OWNER_INDEX)) {
+        store.createIndex(PROJECT_OWNER_INDEX, "ownerKey", { unique: false });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+    request.onblocked = () => reject(new Error("indexeddb_open_blocked"));
+  });
+}
+
+async function getProjectEntries(db: IDBDatabase, ownerKey: string): Promise<StoredProjectEntry[]> {
+  const transaction = db.transaction(PROJECT_STORE_NAME, "readonly");
+  const index = transaction.objectStore(PROJECT_STORE_NAME).index(PROJECT_OWNER_INDEX);
+  const entries = await requestToPromise(index.getAll(ownerKey) as IDBRequest<StoredProjectEntry[]>);
+  return entries.sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+async function migrateLegacyProjectHistory(db: IDBDatabase, ownerKey: string): Promise<void> {
+  if (!isAvailable()) return;
+  const raw = localStorage.getItem(ownerKey) ?? localStorage.getItem(PROJECT_HISTORY_KEY);
+  if (!raw) return;
+
+  const existingEntries = await getProjectEntries(db, ownerKey);
+  if (existingEntries.length > 0) return;
+
+  const records = JSON.parse(raw) as ProjectRecord[];
+  if (!Array.isArray(records) || records.length === 0) return;
+
+  const transaction = db.transaction(PROJECT_STORE_NAME, "readwrite");
+  const store = transaction.objectStore(PROJECT_STORE_NAME);
+  records.slice(0, MAX_PROJECT_HISTORY).forEach((record) => {
+    const updatedAt = record.updatedAt || Date.now();
+    const entry: StoredProjectEntry = {
+      storageId: `${ownerKey}:${record.id}`,
+      ownerKey,
+      record: { ...record, updatedAt },
+      updatedAt,
+    };
+    store.put(entry);
+  });
+  await transactionDone(transaction);
 }
 
 export function loadProjectHistory(): ProjectRecord[] {
@@ -233,59 +292,88 @@ export function loadProjectHistory(): ProjectRecord[] {
   }
 }
 
-export function saveProjectRecord(record: ProjectRecord): boolean {
-  if (!isAvailable()) return false;
+export async function loadProjectHistoryAsync(): Promise<ProjectRecord[]> {
   const key = getProjectHistoryKey();
-  if (!key) return false;
+  if (!key) return [];
+  let db: IDBDatabase | null = null;
   try {
-    const list = loadProjectHistory();
-    const idx = list.findIndex((p) => p.id === record.id);
-    if (idx >= 0) {
-      list[idx] = { ...record, updatedAt: Date.now() };
-    } else {
-      list.unshift(record);
-    }
-    const nextList = list.slice(0, 100);
-    try {
-      localStorage.setItem(key, JSON.stringify(nextList));
-      return true;
-    } catch {
-      const compactedList = nextList.map(compactProjectRecord);
-      for (let count = compactedList.length; count >= 1; count -= 1) {
-        try {
-          const trimmedList = compactedList.slice(0, count);
-          localStorage.setItem(key, JSON.stringify(trimmedList));
-          return trimmedList.some((item) => item.id === record.id);
-        } catch {
-          // keep shrinking until the list fits into storage
-        }
-      }
-      throw new Error("project_history_quota_exceeded");
-    }
+    db = await openProjectDb();
+    await migrateLegacyProjectHistory(db, key);
+    const entries = await getProjectEntries(db, key);
+    return entries.map((entry) => entry.record);
   } catch (e) {
-    console.error("保存项目记录失败:", e);
-    return false;
+    console.error("加载项目记录失败:", e);
+    return loadProjectHistory();
+  } finally {
+    db?.close();
   }
 }
 
-export function deleteProjectRecord(id: string): void {
-  if (!isAvailable()) return;
+export async function saveProjectRecord(record: ProjectRecord): Promise<boolean> {
+  const key = getProjectHistoryKey();
+  if (!key) return false;
+  let db: IDBDatabase | null = null;
+  try {
+    db = await openProjectDb();
+    await migrateLegacyProjectHistory(db, key);
+    const updatedAt = Date.now();
+    const nextRecord = { ...record, updatedAt };
+
+    const transaction = db.transaction(PROJECT_STORE_NAME, "readwrite");
+    const store = transaction.objectStore(PROJECT_STORE_NAME);
+    store.put({
+      storageId: `${key}:${record.id}`,
+      ownerKey: key,
+      record: nextRecord,
+      updatedAt,
+    } satisfies StoredProjectEntry);
+    await transactionDone(transaction);
+
+    const entries = await getProjectEntries(db, key);
+    if (entries.length > MAX_PROJECT_HISTORY) {
+      const trimTransaction = db.transaction(PROJECT_STORE_NAME, "readwrite");
+      const trimStore = trimTransaction.objectStore(PROJECT_STORE_NAME);
+      entries.slice(MAX_PROJECT_HISTORY).forEach((entry) => trimStore.delete(entry.storageId));
+      await transactionDone(trimTransaction);
+    }
+    return true;
+  } catch (e) {
+    console.error("保存项目记录失败:", e);
+    return false;
+  } finally {
+    db?.close();
+  }
+}
+
+export async function deleteProjectRecord(id: string): Promise<void> {
   const key = getProjectHistoryKey();
   if (!key) return;
+  let db: IDBDatabase | null = null;
   try {
-    const list = loadProjectHistory().filter((p) => p.id !== id);
-    localStorage.setItem(key, JSON.stringify(list));
+    db = await openProjectDb();
+    const transaction = db.transaction(PROJECT_STORE_NAME, "readwrite");
+    transaction.objectStore(PROJECT_STORE_NAME).delete(`${key}:${id}`);
+    await transactionDone(transaction);
   } catch { /* ignore */ }
+  finally {
+    db?.close();
+  }
 }
 
 /** 批量删除项目记录 */
-export function deleteProjectRecords(ids: string[]): void {
-  if (!isAvailable() || ids.length === 0) return;
+export async function deleteProjectRecords(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
   const key = getProjectHistoryKey();
   if (!key) return;
+  let db: IDBDatabase | null = null;
   try {
-    const idSet = new Set(ids);
-    const list = loadProjectHistory().filter((p) => !idSet.has(p.id));
-    localStorage.setItem(key, JSON.stringify(list));
+    db = await openProjectDb();
+    const transaction = db.transaction(PROJECT_STORE_NAME, "readwrite");
+    const store = transaction.objectStore(PROJECT_STORE_NAME);
+    ids.forEach((id) => store.delete(`${key}:${id}`));
+    await transactionDone(transaction);
   } catch { /* ignore */ }
+  finally {
+    db?.close();
+  }
 }

@@ -8,7 +8,7 @@ import SubjectMaskEditor, { type MaskMode } from "@/components/SubjectMaskEditor
 import LoginModal from "@/components/LoginModal";
 import AiChatPanel from "@/components/ai/AiChatPanel";
 import { clearAiChatHistory } from "@/utils/aiChat";
-import { deleteProjectRecord, loadProjectHistory, saveProjectRecord, loadCurrentUserProfile, loadApiConfig, DEFAULT_AUTO_SAVE_INTERVAL_SECONDS, normalizeAutoSaveIntervalSeconds, type StoredUser } from "@/utils/profileStorage";
+import { deleteProjectRecord, loadProjectHistoryAsync, saveProjectRecord, loadCurrentUserProfile, loadApiConfig, DEFAULT_AUTO_SAVE_INTERVAL_SECONDS, normalizeAutoSaveIntervalSeconds, type StoredUser } from "@/utils/profileStorage";
 import { fetchCommunityPosts, publishCommunityPost } from "@/utils/communityForum";
 import type { ProjectRecord } from "@/types/projectTypes";
 import type { CommunityPost as CloudCommunityPost } from "@/types/community";
@@ -418,7 +418,7 @@ const helpData: HelpSection[] = [
       },
       {
         title: "项目会如何保存和恢复？",
-        content: "项目记录会保存在浏览器本地存储中，并按当前登录用户区分。项目页会显示最近设计，支持搜索标题、主题、元素和作品形式。点击继续编辑会恢复主题、参数、源图、提取图、图纸数据、图纸预览和当前步骤等状态；点击删除会移除该项目记录；点击红色加号会清空当前进度并进入新建创作。论坛导入的作品也会先保存为项目，再进入编辑状态。需要注意，本地存储可能受到浏览器缓存清理、隐私模式或设备更换影响，所以重要作品仍建议导出PNG、CSV和制作方案到本地文件。",
+        content: "项目记录会保存在浏览器项目库中，并按当前登录用户区分。项目页会显示最近设计，支持搜索标题、主题、元素和作品形式。点击继续编辑会恢复主题、参数、源图、提取图、图纸数据、图纸预览和当前步骤等状态；点击删除会移除该项目记录；点击红色加号会清空当前进度并进入新建创作。论坛导入的作品也会先保存为项目，再进入编辑状态。需要注意，浏览器数据可能受到缓存清理、隐私模式或设备更换影响，所以重要作品仍建议导出PNG、CSV和制作方案到本地文件。",
       },
       {
         title: "论坛分享和模板导入如何配合项目使用？",
@@ -449,7 +449,7 @@ const helpData: HelpSection[] = [
       },
       {
         title: "我的作品保存在哪里？换设备或清缓存会丢失吗？",
-        content: "所有作品记录、AI聊天历史和API配置都保存在当前浏览器的本地存储（localStorage）中，不会上传到云端服务器。因此如果清理浏览器缓存、使用无痕模式或更换设备登录，这些数据都会丢失。重要作品建议通过图纸PNG、材料清单CSV和制作方案文本导出到本地文件保存。发布到论坛的作品会存储在云端，其他人可以看到你的分享，但项目编辑状态仍保存在本地。",
+        content: "作品记录保存在当前浏览器的项目库中，AI聊天历史和API配置保存在当前浏览器本地，不会上传到云端服务器。因此如果清理浏览器缓存、使用无痕模式或更换设备登录，这些数据都可能丢失。重要作品建议通过图纸PNG、材料清单CSV和制作方案文本导出到本地文件保存。发布到论坛的作品会存储在云端，其他人可以看到你的分享，但项目编辑状态仍保存在本地。",
       },
       {
         title: "生图按钮点了没反应或提示出错怎么办？",
@@ -862,7 +862,7 @@ export default function CreativeBeadStudio() {
 
   const [currentUser, setCurrentUser] = useState<StoredUser | null>(() => loadCurrentUserProfile());
   const [projectQuery, setProjectQuery] = useState("");
-  const [projectRecords, setProjectRecords] = useState<ProjectRecord[]>(() => loadProjectHistory());
+  const [projectRecords, setProjectRecords] = useState<ProjectRecord[]>([]);
   const [communityQuery, setCommunityQuery] = useState("");
   const [communityRefresh, setCommunityRefresh] = useState(0);
   const [selectedCommunityPost, setSelectedCommunityPost] = useState<CommunityPost | null>(null);
@@ -900,9 +900,13 @@ export default function CreativeBeadStudio() {
     );
   }, [projectQuery, projectRecords]);
 
-  const refreshProjectRecords = useCallback(() => {
-    setProjectRecords(loadProjectHistory());
+  const refreshProjectRecords = useCallback(async () => {
+    setProjectRecords(await loadProjectHistoryAsync());
   }, []);
+
+  useEffect(() => {
+    void refreshProjectRecords();
+  }, [refreshProjectRecords]);
 
   const restoringRef = useRef(false);
   const currentProjectIdRef = useRef<string | null>(null);
@@ -2339,7 +2343,9 @@ export default function CreativeBeadStudio() {
                 <button
                   type="button"
                   onClick={() => {
-                    if (saveCurrentProject()) setView("projects");
+                    void saveCurrentProject().then((saved) => {
+                      if (saved) setView("projects");
+                    });
                   }}
                   disabled={!sourceImageUrl && !pattern && !patternUrl}
                   className="rounded-md border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-700 disabled:opacity-50"
@@ -2349,7 +2355,9 @@ export default function CreativeBeadStudio() {
                 <button
                   type="button"
                   onClick={() => {
-                    if (saveCurrentProject()) setView("profile");
+                    void saveCurrentProject().then((saved) => {
+                      if (saved) setView("profile");
+                    });
                   }}
                   disabled={!sourceImageUrl && !pattern && !patternUrl}
                   className="rounded-md border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-700 disabled:opacity-50"
@@ -2483,10 +2491,10 @@ export default function CreativeBeadStudio() {
       return;
     }
     const record = buildCurrentProjectRecord(projectTitleDraft.trim() || undefined);
-    const saved = saveProjectRecord(record);
+    const saved = await saveProjectRecord(record);
     if (!saved) {
       setToastType("warning");
-      setToastMsg("项目保存失败，当前项目数据过大，无法写入本地存储。");
+      setToastMsg("项目保存失败，浏览器项目库暂时不可用。");
       return;
     }
     refreshProjectRecords();
@@ -2507,7 +2515,7 @@ export default function CreativeBeadStudio() {
     }
   }, [buildCurrentProjectRecord, currentUser, forcedColors, pattern, patternUrl, projectTitleDraft, refreshProjectRecords, sourceImageUrl]);
 
-  const saveCurrentProject = useCallback(() => {
+  const saveCurrentProject = useCallback(async () => {
     if (!sourceImageUrl && !pattern && !patternUrl) {
       setToastType("warning");
       setToastMsg("请先完成当前创作内容，再保存项目。");
@@ -2515,10 +2523,10 @@ export default function CreativeBeadStudio() {
     }
 
     const record = buildCurrentProjectRecord(projectTitleDraft.trim() || undefined);
-    const saved = saveProjectRecord(record);
+    const saved = await saveProjectRecord(record);
     if (!saved) {
       setToastType("warning");
-      setToastMsg("项目保存失败，当前项目数据过大，无法写入本地存储。");
+      setToastMsg("项目保存失败，浏览器项目库暂时不可用。");
       return false;
     }
     lastAutoSaveSignatureRef.current = buildCurrentProjectSignature();
@@ -2530,7 +2538,7 @@ export default function CreativeBeadStudio() {
     return true;
   }, [buildCurrentProjectRecord, buildCurrentProjectSignature, defaultProjectTitle, pattern, patternUrl, projectTitleDraft, refreshProjectRecords, sourceImageUrl]);
 
-  const importCommunityPost = useCallback((post: CommunityPost) => {
+  const importCommunityPost = useCallback(async (post: CommunityPost) => {
     if (post.record) {
       const cloned: ProjectRecord = {
         ...post.record,
@@ -2540,10 +2548,10 @@ export default function CreativeBeadStudio() {
         updatedAt: Date.now(),
         completed: false,
       };
-      const saved = saveProjectRecord(cloned);
+      const saved = await saveProjectRecord(cloned);
       if (!saved) {
         setToastType("warning");
-        setToastMsg("社区作品导入失败，当前项目数据过大，无法写入本地存储。");
+        setToastMsg("社区作品导入失败，浏览器项目库暂时不可用。");
         return;
       }
       refreshProjectRecords();
@@ -2584,10 +2592,10 @@ export default function CreativeBeadStudio() {
       mockupUrl: null,
       productSceneUrl: null,
     };
-    const saved = saveProjectRecord(record);
+    const saved = await saveProjectRecord(record);
     if (!saved) {
       setToastType("warning");
-      setToastMsg("社区模板导入失败，当前项目数据过大，无法写入本地存储。");
+      setToastMsg("社区模板导入失败，浏览器项目库暂时不可用。");
       return;
     }
     refreshProjectRecords();
@@ -2605,17 +2613,19 @@ export default function CreativeBeadStudio() {
     }
     const intervalMs = normalizeAutoSaveIntervalSeconds(autoSaveIntervalSeconds) * 1000;
     const timer = setInterval(() => {
-      if (view !== "start") return;
-      const signature = buildCurrentProjectSignature();
-      if (signature === lastAutoSaveSignatureRef.current) return;
-      const record = buildCurrentProjectRecord();
-      const saved = saveProjectRecord(record);
-      if (saved) {
-        lastAutoSaveSignatureRef.current = signature;
-        refreshProjectRecords();
-        setToastType("success");
-        setToastMsg("已自动保存当前项目进度");
-      }
+      void (async () => {
+        if (view !== "start") return;
+        const signature = buildCurrentProjectSignature();
+        if (signature === lastAutoSaveSignatureRef.current) return;
+        const record = buildCurrentProjectRecord();
+        const saved = await saveProjectRecord(record);
+        if (saved) {
+          lastAutoSaveSignatureRef.current = signature;
+          void refreshProjectRecords();
+          setToastType("success");
+          setToastMsg("已自动保存当前项目进度");
+        }
+      })();
     }, intervalMs);
 
     return () => clearInterval(timer);
@@ -2628,10 +2638,11 @@ export default function CreativeBeadStudio() {
     const signature = buildCurrentProjectSignature();
     if (signature === lastAutoSaveSignatureRef.current) return;
     const record = buildCurrentProjectRecord();
-    const saved = saveProjectRecord(record);
-    if (!saved) return;
-    lastAutoSaveSignatureRef.current = signature;
-    refreshProjectRecords();
+    void saveProjectRecord(record).then((saved) => {
+      if (!saved) return;
+      lastAutoSaveSignatureRef.current = signature;
+      void refreshProjectRecords();
+    });
   }, [buildCurrentProjectRecord, buildCurrentProjectSignature, refreshProjectRecords, view]);
 
   // 帮助页面：当 details 离开视口时自动收起
@@ -2890,8 +2901,7 @@ export default function CreativeBeadStudio() {
                     <button
                       type="button"
                       onClick={() => {
-                        deleteProjectRecord(record.id);
-                        refreshProjectRecords();
+                        void deleteProjectRecord(record.id).then(refreshProjectRecords);
                       }}
                       className="rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700"
                     >

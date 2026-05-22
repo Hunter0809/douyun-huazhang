@@ -6,7 +6,7 @@ import { TEXT_MODEL_OPTIONS, IMAGE_MODEL_OPTIONS, VISION_MODEL_OPTIONS } from "@
 import {
   loadApiConfig,
   saveApiConfig,
-  loadProjectHistory,
+  loadProjectHistoryAsync,
   deleteProjectRecord,
   deleteProjectRecords,
   loadCurrentUserProfile,
@@ -43,7 +43,7 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout, onApiC
   const [nicknameDraft, setNicknameDraft] = useState(profile.nickname);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [cropperFile, setCropperFile] = useState<File | null>(null);
-  const [history, setHistory] = useState(() => loadProjectHistory());
+  const [history, setHistory] = useState<ProjectRecord[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [batchMode, setBatchMode] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -68,14 +68,23 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout, onApiC
     }
   }, [history, selectedIds.size]);
 
+  const refreshHistory = useCallback(async () => {
+    setHistory(await loadProjectHistoryAsync());
+  }, []);
+
+  useEffect(() => {
+    void refreshHistory();
+  }, [refreshHistory]);
+
   const batchDelete = useCallback(() => {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
     if (!confirm(`确定删除选中的 ${ids.length} 条作品记录？此操作不可撤销。`)) return;
-    deleteProjectRecords(ids);
-    setHistory(loadProjectHistory());
-    setSelectedIds(new Set());
-  }, [selectedIds]);
+    void deleteProjectRecords(ids).then(() => {
+      void refreshHistory();
+      setSelectedIds(new Set());
+    });
+  }, [refreshHistory, selectedIds]);
 
   const batchExport = useCallback(() => {
     const records = history.filter(r => selectedIds.has(r.id));
@@ -205,21 +214,21 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout, onApiC
 
   const handleLoggedIn = useCallback((user: StoredUser) => {
     setProfile(user);
-    setHistory(loadProjectHistory());
+    void refreshHistory();
     setShowLoginModal(false);
-  }, []);
+  }, [refreshHistory]);
 
   const confirmLogout = useCallback(() => {
     logoutUser();
     saveApiConfig({ textModelApiKey: "", textModelName: "", imageModelApiKey: "", imageModelName: "", visionModelApiKey: "", visionModelName: "", autoSaveIntervalSeconds: DEFAULT_AUTO_SAVE_INTERVAL_SECONDS, useDefaultModel: true });
     setProfile({ nickname: "韵豆用户", avatarUrl: "", createdAt: Date.now() });
     setApiConfig({ textModelApiKey: "", textModelName: "", imageModelApiKey: "", imageModelName: "", visionModelApiKey: "", visionModelName: "", autoSaveIntervalSeconds: DEFAULT_AUTO_SAVE_INTERVAL_SECONDS, useDefaultModel: true });
-    setHistory(loadProjectHistory());
+    void refreshHistory();
     setSelectedIds(new Set());
     setBatchMode(false);
     setShowLogoutConfirm(false);
     onLogout?.();
-  }, [onLogout]);
+  }, [onLogout, refreshHistory]);
 
   return (
     <main className="min-h-screen bg-[#f8f5ef] text-stone-950">
@@ -511,7 +520,7 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout, onApiC
                     onRestore={() => { if (!batchMode) onRestoreProject(record); }}
                     onExport={(f) => handleExport(record, f)}
                     onPublish={() => handlePublish(record)}
-                    onDelete={() => { deleteProjectRecord(record.id); setHistory(loadProjectHistory()); }}
+                    onDelete={() => { void deleteProjectRecord(record.id).then(refreshHistory); }}
                   />
                 ))}
               </div>
