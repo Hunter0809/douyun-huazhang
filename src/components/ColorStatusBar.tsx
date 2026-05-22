@@ -9,17 +9,20 @@ interface ColorStatusBarProps {
     completed: number;
   };
   progressPercentage: number;
+  language?: 'zh' | 'en';
 }
 
 const ColorStatusBar: React.FC<ColorStatusBarProps> = ({
   currentColor,
   colorInfo,
-  progressPercentage
+  progressPercentage,
+  language = 'zh'
 }) => {
+  const L = (zh: string, en: string) => language === 'en' ? en : zh;
   if (!colorInfo) {
     return (
       <div className="h-12 bg-white border-b border-gray-200 px-4 py-2 flex items-center">
-        <div className="text-gray-500">请选择颜色</div>
+        <div className="text-gray-500">{L('请选择颜色', 'Select a color')}</div>
       </div>
     );
   }
@@ -41,7 +44,7 @@ const ColorStatusBar: React.FC<ColorStatusBarProps> = ({
             {colorInfo.completed}/{colorInfo.total}
           </div>
           <div className="text-xs text-gray-500">
-            预计还需 {estimatedTime}分钟
+            {L('预计还需', 'About')} {estimatedTime}{L('分钟', ' min left')}
           </div>
         </div>
       </div>

@@ -9,12 +9,15 @@ interface ProgressBarProps {
     total: number;
     completed: number;
   };
+  language?: 'zh' | 'en';
 }
 
 const ProgressBar: React.FC<ProgressBarProps> = ({
   progressPercentage,
-  recommendedCell
+  recommendedCell,
+  language = 'zh'
 }) => {
+  const L = (zh: string, en: string) => language === 'en' ? en : zh;
   // 生成7个圆点来表示进度
   const progressDots = Array.from({ length: 7 }, (_, index) => {
     const threshold = (index + 1) * (100 / 7);
@@ -41,9 +44,9 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
       
       <div className="text-xs text-gray-500">
         {recommendedCell ? (
-          <span>下一块 → {recommendedCell.row + 1},{recommendedCell.col + 1}</span>
+          <span>{L('下一块', 'Next block')} → {recommendedCell.row + 1},{recommendedCell.col + 1}</span>
         ) : (
-          <span>已完成当前颜色</span>
+          <span>{L('已完成当前颜色', 'Current color complete')}</span>
         )}
       </div>
     </div>

@@ -7,6 +7,7 @@ import {
   type SubjectAnalysis,
   type SubjectMask,
 } from "@/utils/subjectAnalysis";
+import type { AppLanguage } from "@/utils/language";
 
 export type MaskMode = "select" | "add" | "subtract" | "box";
 type MaskPoint = { x: number; y: number };
@@ -18,6 +19,7 @@ type Props = {
   autoDetect?: boolean;
   showHeader?: boolean;
   mode?: MaskMode;
+  language?: AppLanguage;
   savedMask?: SubjectMask | null;
   onSubjectChange: (analysis: SubjectAnalysis) => void;
   onModeChange?: (mode: MaskMode) => void;
@@ -210,6 +212,7 @@ export default function SubjectMaskEditor({
   autoDetect = true,
   showHeader = true,
   mode,
+  language = "zh",
   savedMask,
   onSubjectChange,
   onModeChange,
@@ -227,6 +230,7 @@ export default function SubjectMaskEditor({
   const [analysis, setAnalysis] = useState<SubjectAnalysis | null>(null);
   const activeMode = mode ?? internalMode;
   const setActiveMode = onModeChange ?? setInternalMode;
+  const L = useCallback((zh: string, en: string) => (language === "en" ? en : zh), [language]);
 
   useEffect(() => {
     savedMaskRef.current = savedMask ?? null;
@@ -550,19 +554,22 @@ export default function SubjectMaskEditor({
       <div className="flex flex-wrap items-start justify-between gap-3">
         {showHeader ? (
           <div>
-            <h2 className="text-xl font-semibold">交互式主体识别</h2>
+            <h2 className="text-xl font-semibold">{L("交互式主体识别", "Interactive Subject Selection")}</h2>
             <p className="mt-1 text-sm text-stone-500">
-              请点击图像中的主体。绿色蒙版表示将进入拼豆化的主体范围；识别不准时，可切换增加或减少并用画笔修正。
+              {L(
+                "请点击图像中的主体。绿色蒙版表示将进入拼豆化的主体范围；识别不准时，可切换增加或减少并用画笔修正。",
+                "Click the subject in the image. The green mask marks the area that will be converted into a bead pattern; switch tools to add, subtract, or box-select when needed.",
+              )}
             </p>
           </div>
         ) : <div />}
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex overflow-hidden rounded-md border border-stone-300">
             {[
-              { id: "select", label: "鼠标" },
-              { id: "add", label: "增加" },
-              { id: "subtract", label: "减少" },
-              { id: "box", label: "框选" },
+              { id: "select", label: L("鼠标", "Select") },
+              { id: "add", label: L("增加", "Add") },
+              { id: "subtract", label: L("减少", "Subtract") },
+              { id: "box", label: L("框选", "Box") },
             ].map((item) => (
               <button
                 key={item.id}
@@ -577,7 +584,7 @@ export default function SubjectMaskEditor({
             ))}
           </div>
           <label className="flex min-w-40 items-center gap-2 text-xs text-stone-500">
-            <span>画笔</span>
+            <span>{L("画笔", "Brush")}</span>
             <input
               type="range"
               min={BRUSH_SIZES[0]}
@@ -591,7 +598,7 @@ export default function SubjectMaskEditor({
             <span className="w-9 tabular-nums">{brushSize}px</span>
           </label>
           <button type="button" onClick={resetMask} disabled={!imageUrl || loading} className="rounded-md border border-stone-300 bg-white px-3 py-1.5 text-xs font-semibold text-stone-600 disabled:opacity-50">
-            重置识别
+            {L("重置识别", "Reset")}
           </button>
         </div>
       </div>
@@ -635,16 +642,16 @@ export default function SubjectMaskEditor({
             )}
           </>
         ) : (
-          <div className="grid min-h-[320px] place-items-center text-sm text-stone-400">暂无图片</div>
+          <div className="grid min-h-[320px] place-items-center text-sm text-stone-400">{L("暂无图片", "No image")}</div>
         )}
         {imageUrl && !ready && (
-          <div className="grid min-h-[120px] place-items-center text-sm text-stone-400">{autoDetect ? "正在识别主体..." : "正在加载图像..."}</div>
+          <div className="grid min-h-[120px] place-items-center text-sm text-stone-400">{autoDetect ? L("正在识别主体...", "Detecting subject...") : L("正在加载图像...", "Loading image...")}</div>
         )}
       </div>
 
       {analysis && analysis.colors.length > 0 && (
         <div className="mt-4 rounded-md border border-stone-200 bg-stone-50 p-3">
-          <p className="text-xs font-semibold text-stone-600">主体颜色占比</p>
+          <p className="text-xs font-semibold text-stone-600">{L("主体颜色占比", "Subject Color Ratio")}</p>
           <div className="mt-3 space-y-2">
             {analysis.colors.map((color) => {
               const percent = color.ratio * 100;

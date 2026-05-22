@@ -165,6 +165,45 @@ const formLabels = [
   { id: "bag_charm", label: "随身牌底稿" },
 ];
 
+const formLabelEn: Record<string, string> = {
+  coaster: "Coaster Draft",
+  keychain: "Keychain Draft",
+  magnet: "Fridge Magnet Draft",
+  brooch: "Brooch Draft",
+  pendant: "Pendant Draft",
+  bag_charm: "Bag Charm Draft",
+};
+
+const studioStepEn: Record<StudioStep, { label: string; desc: string }> = {
+  config: { label: "Configure", desc: "Choose theme, product type, grid size, color count, and available colors." },
+  extract: { label: "Extract and Recreate", desc: "Extract the main subject, review color ratios, and recreate it in a cultural visual style." },
+  pattern: { label: "Bead Pattern", desc: "Pixelate the design, clean outer light artifacts, generate color-coded grids, and count materials." },
+  preview: { label: "Making Plan", desc: "Generate materials, tools, bead placement, ironing steps, and export files." },
+};
+
+const themeEn: Record<string, { name: string; meaning: string; elements: Record<string, string> }> = {
+  dunhuang: { name: "Dunhuang Culture", meaning: "Dunhuang culture blends Buddhist art, Silk Road civilization, and Chinese ornament, making it suitable for high-contrast bead patterns.", elements: { "飞天": "Flying Apsaras", "藻井": "Caisson Ceiling", "祥云": "Auspicious Clouds", "莲花纹": "Lotus Pattern", "九色鹿": "Nine-Colored Deer" } },
+  blue_porcelain: { name: "Blue-and-White Porcelain", meaning: "Blue-and-white porcelain expresses Chinese ceramic aesthetics through crisp blue-white contrast and elegant ornament.", elements: { "莲花": "Lotus", "缠枝纹": "Scroll Pattern", "云纹": "Cloud Pattern", "瓷瓶": "Porcelain Vase", "海水纹": "Wave Pattern" } },
+  opera_mask: { name: "Peking Opera Masks", meaning: "Peking opera masks use color to symbolize character and theatrical culture, ideal for symmetrical bead designs.", elements: { "关羽": "Guan Yu", "张飞": "Zhang Fei", "曹操": "Cao Cao", "包拯": "Bao Zheng", "对称脸谱": "Symmetric Mask" } },
+  shanhaijing: { name: "Classic of Mountains and Seas", meaning: "Shanhaijing imagery emphasizes imagination and Eastern mythology, suitable for strong silhouettes and decorative accessories.", elements: { "神兽": "Mythic Beast", "羽翼": "Wings", "山纹": "Mountain Pattern", "日月": "Sun and Moon", "瑞兽": "Auspicious Beast" } },
+  solar_terms: { name: "Twenty-Four Solar Terms", meaning: "The solar terms connect seasons, farming, and life aesthetics, suitable for seasonal craft pieces.", elements: { "立春": "Start of Spring", "清明": "Qingming", "小满": "Grain Buds", "白露": "White Dew", "冬至": "Winter Solstice" } },
+  oracle_bone: { name: "Oracle Bone Script", meaning: "Oracle bone script turns the origins of Chinese characters into concise symbols for low-resolution grids.", elements: { "日": "Sun", "月": "Moon", "山": "Mountain", "水": "Water", "人": "Person" } },
+  sanxingdui: { name: "Sanxingdui Bronze Culture", meaning: "Sanxingdui bronze culture centers on mysterious masks, sacred trees, and sun worship.", elements: { "青铜面具": "Bronze Mask", "纵目面具": "Protruding-Eye Mask", "神树": "Sacred Tree", "太阳轮": "Sun Wheel", "金杖纹": "Gold Staff Pattern" } },
+  forbidden_city: { name: "Forbidden City Court Patterns", meaning: "Forbidden City court patterns combine royal architecture, ceremonial colors, and auspicious ornament.", elements: { "宫墙": "Palace Wall", "琉璃瓦": "Glazed Tile", "龙纹": "Dragon Pattern", "海水江崖": "Sea-and-Cliff Pattern", "如意纹": "Ruyi Pattern" } },
+  auspicious_animals: { name: "Traditional Auspicious Animals", meaning: "Auspicious animals carry blessing, protection, and good fortune symbolism.", elements: { "麒麟": "Qilin", "貔貅": "Pixiu", "凤凰": "Phoenix", "龙": "Dragon", "狮子": "Lion" } },
+  zodiac: { name: "Chinese Zodiac", meaning: "The zodiac combines folk calendar culture and blessings, suitable for festive charms and family crafts.", elements: { "鼠": "Rat", "牛": "Ox", "虎": "Tiger", "兔": "Rabbit", "龙": "Dragon", "蛇": "Snake", "马": "Horse", "羊": "Goat", "猴": "Monkey", "鸡": "Rooster", "狗": "Dog", "猪": "Pig" } },
+};
+
+const beadUsageEn: Record<string, string> = {
+  "轮廓": "Outline",
+  "留白": "Blank",
+  "过渡": "Transition",
+  "主纹样": "Main Motif",
+  "强调": "Accent",
+  "装饰": "Decoration",
+  "填充": "Fill",
+};
+
 const productConfigDefaults: Record<string, ProductConfigDefault> = {
   coaster: { aspectRatio: "1:1", gridSize: 48, colorCount: 12 },
   keychain: { aspectRatio: "1:1", gridSize: 32, colorCount: 8 },
@@ -499,6 +538,128 @@ const helpData: HelpSection[] = [
   },
 ];
 
+const showcaseEn = [
+  {
+    title: "Blue Porcelain Lotus",
+    theme: "Blue-and-White Porcelain",
+    element: "Lotus",
+    meaning: "A clean blue-white lotus design inspired by porcelain aesthetics, suited to a simple coaster draft with clear negative space.",
+    author: "Celadon Studio",
+    avatar: "Ce",
+  },
+  {
+    title: "Dunhuang Apsaras",
+    theme: "Dunhuang",
+    element: "Flying Apsaras",
+    meaning: "A Silk Road inspired decorative motif using ribbons, music, mural colors, ochre red, earth yellow, and blue-green accents.",
+    author: "Dunhuang Palette",
+    avatar: "Du",
+  },
+  {
+    title: "Palace Wall Dragon",
+    theme: "Forbidden City Court Patterns",
+    element: "Palace Wall",
+    meaning: "A dignified court-style design combining royal architecture, ceremonial color, and auspicious ornament.",
+    author: "Palace Craft",
+    avatar: "Pa",
+  },
+  {
+    title: "Auspicious Beast",
+    theme: "Classic of Mountains and Seas",
+    element: "Auspicious Beast",
+    meaning: "A mythic silhouette built from wings, mountain patterns, sun and moon symbols, black, vermilion, green, and gold.",
+    author: "Mythic Studio",
+    avatar: "My",
+  },
+];
+
+const helpSidebarNavEn = [
+  { id: "purpose", label: "Purpose", icon: "Goal", subs: [] as { label: string; anchor: string }[] },
+  {
+    id: "guide",
+    label: "Guide",
+    icon: "Guide",
+    subs: [
+      { label: "Theme Setup", anchor: "guide-theme" },
+      { label: "Image and Extraction", anchor: "guide-upload" },
+      { label: "Palette and Pattern", anchor: "guide-mapping" },
+      { label: "Making and Export", anchor: "guide-export" },
+    ],
+  },
+  { id: "common-issues", label: "FAQ", icon: "FAQ", subs: [] as { label: string; anchor: string }[] },
+  { id: "usage-tips", label: "Tips", icon: "Tips", subs: [] as { label: string; anchor: string }[] },
+];
+
+const helpDataEn: HelpSection[] = [
+  {
+    id: "purpose",
+    title: "Purpose",
+    icon: "Goal",
+    subs: [
+      { title: "What does DouYun solve?", content: "DouYun is a complete workflow for traditional-culture bead art: choose a theme, generate or upload imagery, identify the subject, convert it to a bead pattern, count materials, save projects, and import community templates." },
+      { title: "How is it different from a normal pixel tool?", content: "It combines image generation, editable subject identification, cultural recreation, bead color mapping, material counting, project persistence, and community import in one workflow designed for real making." },
+    ],
+  },
+  {
+    id: "guide-theme",
+    title: "Theme Setup",
+    icon: "Theme",
+    subs: [
+      { title: "How do I start?", content: "Use Create to configure a traditional theme, core element, product type, aspect ratio, grid size, color limit, grid display, smoothing, isolated-block connection, and available colors." },
+      { title: "How do built-in examples work?", content: "Home and Forum examples provide starting themes and recommended colors. You can import them, then adjust all parameters before generating a final bead pattern." },
+    ],
+  },
+  {
+    id: "guide-upload",
+    title: "Image and Extraction",
+    icon: "Image",
+    subs: [
+      { title: "How does DouYun AI generate images?", content: "DouYun AI is a separate image-generation page. Its generated image history is persisted locally so refreshes keep generated images visible." },
+      { title: "How does subject identification work?", content: "After upload, the browser creates a green subject mask. You can click, add, subtract, or box-select areas, then AI generates editable structured subject information." },
+      { title: "Why does recreation use subject JSON?", content: "Recreation uses the confirmed subject identification rather than guessing from the original image again. This lets you correct the subject before AI creates the cultural pattern." },
+    ],
+  },
+  {
+    id: "guide-mapping",
+    title: "Palette and Pattern",
+    icon: "Palette",
+    subs: [
+      { title: "How do color limit and selected colors affect the pattern?", content: "The color limit controls final complexity. Manually selected colors are prioritized during mapping, while extra selected colors beyond the limit are ignored." },
+      { title: "How do I use color highlighting?", content: "Click a pattern cell or count-table row to highlight all cells of that color. Enable cell editing only when you need to change specific cells." },
+    ],
+  },
+  {
+    id: "guide-export",
+    title: "Making and Export",
+    icon: "Export",
+    subs: [
+      { title: "What can I export?", content: "You can export a labeled pattern PNG, clean pattern PNG, materials CSV, and making plan text based on the current pattern state." },
+      { title: "How are time and cost estimated?", content: "The plan estimates bead placement time from total beads and color changes, then adds a fixed ironing allowance and a material cost range." },
+      { title: "How are projects saved?", content: "Projects are saved in the browser project library by user. The Projects page can restore theme, parameters, images, pattern data, preview, and current step." },
+    ],
+  },
+  {
+    id: "common-issues",
+    title: "FAQ",
+    icon: "FAQ",
+    subs: [
+      { title: "Will generated images remain after refresh?", content: "Yes. DouYun AI generated images are saved in local browser storage and remain visible after refresh unless browser data is cleared." },
+      { title: "What if image generation is slow?", content: "Image generation can take several seconds or longer. Wait for the request to finish or stop it and retry if it stalls." },
+      { title: "Where are my works saved?", content: "Projects and AI chat history are stored in the current browser. Export important PNG, CSV, and plan files for offline backup." },
+    ],
+  },
+  {
+    id: "usage-tips",
+    title: "Tips",
+    icon: "Tips",
+    subs: [
+      { title: "How do I make the pattern more refined?", content: "Increase grid size for more detail, but expect more beads. Reduce color count for simpler small items and increase it for larger decorative pieces." },
+      { title: "How do I correct subject identification?", content: "Adjust the mask with select, add, subtract, or box tools, run AI subject identification, then edit the structured result before recreation." },
+      { title: "How do I switch between works?", content: "Open Projects, search by title, theme, element, or product type, then continue editing any saved record." },
+    ],
+  },
+];
+
 function downloadUrl(url: string, filename: string): void {
   const link = document.createElement("a");
   link.href = url;
@@ -552,15 +713,15 @@ function estimateMaterialCost(totalBeads: number, colorKinds: number): { min: nu
   };
 }
 
-function formatPostTime(timestamp: number): string {
+function formatPostTime(timestamp: number, language: AppLanguage = "zh"): string {
   const diff = Date.now() - timestamp;
   const minutes = Math.max(1, Math.floor(diff / 60000));
-  if (minutes < 60) return `${minutes} 分钟前`;
+  if (minutes < 60) return language === "en" ? `${minutes} min ago` : `${minutes} 分钟前`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} 小时前`;
+  if (hours < 24) return language === "en" ? `${hours} hr ago` : `${hours} 小时前`;
   const days = Math.floor(hours / 24);
-  if (days < 30) return `${days} 天前`;
-  return new Date(timestamp).toLocaleDateString("zh-CN");
+  if (days < 30) return language === "en" ? `${days} days ago` : `${days} 天前`;
+  return new Date(timestamp).toLocaleDateString(language === "en" ? "en-US" : "zh-CN");
 }
 
 function PatternMiniature({ colors }: { colors: string[] }) {
@@ -580,10 +741,11 @@ function PatternMiniature({ colors }: { colors: string[] }) {
   );
 }
 
-function CraftSection({ setView }: { setView: (v: SiteView) => void }) {
+function CraftSection({ setView, language }: { setView: (v: SiteView) => void; language: AppLanguage }) {
   const sectionRef = useRef<HTMLElement>(null);
   const [visible, setVisible] = useState(false);
-  const subtitleText = "从文化意象到拼豆底稿";
+  const L = useCallback((zh: string, en: string) => (language === "en" ? en : zh), [language]);
+  const subtitleText = L("从文化意象到拼豆底稿", "From Cultural Image to Bead Draft");
   const [typedSub, setTypedSub] = useState("");
 
   // IntersectionObserver — 每次滚动进/出视口都重新触发
@@ -617,12 +779,12 @@ function CraftSection({ setView }: { setView: (v: SiteView) => void }) {
       if (index >= subtitleText.length) clearInterval(t);
     }, 60);
     return () => clearInterval(t);
-  }, [visible]);
+  }, [subtitleText, visible]);
 
   return (
     <section ref={sectionRef} className="bg-[#fffdf7] py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <p className="text-sm font-semibold text-[#8f1d21]">制作流程</p>
+        <p className="text-sm font-semibold text-[#8f1d21]">{L("制作流程", "Making Workflow")}</p>
         <h2 className="mt-2 min-h-[1.2em] text-3xl font-semibold tracking-tight">
           {typedSub}
           {visible && typedSub.length < subtitleText.length && (
@@ -630,7 +792,7 @@ function CraftSection({ setView }: { setView: (v: SiteView) => void }) {
           )}
         </h2>
         <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          {craftSteps.map((item, i) => (
+          {(language === "en" ? helpDataEn.slice(1, 5).map((section) => ({ anchor: section.id, title: section.title, text: String(section.subs[0]?.content ?? "") })) : craftSteps).map((item, i) => (
             <button
               key={item.title}
               type="button"
@@ -663,13 +825,15 @@ function CraftSection({ setView }: { setView: (v: SiteView) => void }) {
   );
 }
 
-function HomeCommunitySection({ setView }: { setView: (v: SiteView) => void }) {
+function HomeCommunitySection({ setView, language }: { setView: (v: SiteView) => void; language: AppLanguage }) {
   const sectionRef = useRef<HTMLElement>(null);
   const [visible, setVisible] = useState(false);
   const [forumText, setForumText] = useState("");
   const [faqText, setFaqText] = useState("");
-  const forumTitle = "社区论坛";
-  const faqTitle = "疑问解答";
+  const L = useCallback((zh: string, en: string) => (language === "en" ? en : zh), [language]);
+  const forumTitle = L("社区论坛", "Community Forum");
+  const faqTitle = L("疑问解答", "Questions and Answers");
+  const nav = language === "en" ? helpSidebarNavEn : helpSidebarNav;
 
   useEffect(() => {
     const el = sectionRef.current;
@@ -702,14 +866,14 @@ function HomeCommunitySection({ setView }: { setView: (v: SiteView) => void }) {
       clearInterval(forumTimer);
       if (faqTimer) clearInterval(faqTimer);
     };
-  }, [visible]);
+  }, [faqTitle, forumTitle, visible]);
 
   return (
     <section ref={sectionRef} className="bg-[#f8f5ef] py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="space-y-12">
           <div>
-            <p className="text-sm font-semibold text-[#8f1d21]">作品分享</p>
+            <p className="text-sm font-semibold text-[#8f1d21]">{L("作品分享", "Work Sharing")}</p>
             <h2 className="mt-2 min-h-[1.2em] text-3xl font-semibold tracking-tight">
               {forumText}
               {visible && forumText.length < forumTitle.length && <span className="ml-0.5 inline-block h-[0.9em] w-[2px] animate-pulse bg-[#8f1d21] align-middle" />}
@@ -726,18 +890,18 @@ function HomeCommunitySection({ setView }: { setView: (v: SiteView) => void }) {
                   </div>
                 ))}
               </div>
-              <h3 className="mt-4 text-xl font-semibold">进入论坛</h3>
-              <p className="mt-2 text-sm leading-6 text-stone-600">浏览大家发布的拼豆作品，搜索主题关键词，一键导入喜欢的模板继续创作。</p>
+              <h3 className="mt-4 text-xl font-semibold">{L("进入论坛", "Enter Forum")}</h3>
+              <p className="mt-2 text-sm leading-6 text-stone-600">{L("浏览大家发布的拼豆作品，搜索主题关键词，一键导入喜欢的模板继续创作。", "Browse published bead works, search by theme, and import favorite templates for further creation.")}</p>
             </button>
           </div>
           <div>
-            <p className="text-sm font-semibold text-[#8f1d21]">疑问解答</p>
+            <p className="text-sm font-semibold text-[#8f1d21]">{L("疑问解答", "Help")}</p>
             <h2 className="mt-2 min-h-[1.2em] text-3xl font-semibold tracking-tight">
               {faqText}
               {visible && forumText.length >= forumTitle.length && faqText.length < faqTitle.length && <span className="ml-0.5 inline-block h-[0.9em] w-[2px] animate-pulse bg-[#8f1d21] align-middle" />}
             </h2>
             <div className={`mt-8 grid gap-4 md:grid-cols-2 transition-all delay-200 duration-700 ${visible ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"}`}>
-              {helpSidebarNav.map((section) => (
+              {nav.map((section) => (
                 <button
                   key={section.id}
                   type="button"
@@ -752,7 +916,7 @@ function HomeCommunitySection({ setView }: { setView: (v: SiteView) => void }) {
                   <span className="text-2xl">{section.icon}</span>
                   <h3 className="mt-3 text-xl font-semibold text-stone-950">{section.label}</h3>
                   <p className="mt-2 text-sm leading-6 text-stone-600">
-                    {section.subs.length > 0 ? section.subs.map((sub) => sub.label).join(" / ") : "查看对应模块的完整说明。"}
+                    {section.subs.length > 0 ? section.subs.map((sub) => sub.label).join(" / ") : L("查看对应模块的完整说明。", "View the full guide for this module.")}
                   </p>
                 </button>
               ))}
@@ -802,6 +966,7 @@ export default function CreativeBeadStudio() {
       : "云端同步不同用户发布的拼豆作品，按主题、作者或作品名称搜索。点击作品进入预览后，可一键导入为自己的创作进度。",
     publishCurrent: language === "en" ? "Publish Current Work" : "发布当前作品",
   };
+  const L = useCallback((zh: string, en: string) => (language === "en" ? en : zh), [language]);
 
   useEffect(() => {
     saveAppLanguage(language);
@@ -840,7 +1005,8 @@ export default function CreativeBeadStudio() {
   const directOutputRef = useRef(false);
 
   const product = getProductTemplate(productId);
-  const formLabel = formLabels.find((item) => item.id === productId)?.label ?? "拼豆底稿";
+  const rawFormLabel = formLabels.find((item) => item.id === productId)?.label ?? "拼豆底稿";
+  const formLabel = language === "en" ? formLabelEn[productId] ?? rawFormLabel : rawFormLabel;
   const options = useMemo(
     () => ({
       theme,
@@ -851,8 +1017,9 @@ export default function CreativeBeadStudio() {
       aspectRatio,
       gridSize,
       colorCount,
+      language,
     }),
-    [aspectRatio, colorCount, element, formLabel, gridSize, meaning, product.aiPrompt, theme],
+    [aspectRatio, colorCount, element, formLabel, gridSize, language, meaning, product.aiPrompt, theme],
   );
 
   const paletteColors = useMemo(() => {
@@ -877,10 +1044,50 @@ export default function CreativeBeadStudio() {
     () => cultureThemes.find((item) => item.name === theme || item.id === theme),
     [theme],
   );
+  const displayThemeName = useCallback((item: { id: string; name: string }) => (
+    language === "en" ? themeEn[item.id]?.name ?? item.id.replaceAll("_", " ") : item.name
+  ), [language]);
+  const displayElementName = useCallback((value: string) => {
+    if (language !== "en") return value;
+    const elementMap = selectedCultureTheme ? themeEn[selectedCultureTheme.id]?.elements : undefined;
+    return elementMap?.[value] ?? value;
+  }, [language, selectedCultureTheme]);
+  const displayMeaning = useCallback((value: string) => {
+    if (language !== "en") return value;
+    return selectedCultureTheme ? themeEn[selectedCultureTheme.id]?.meaning ?? value : value;
+  }, [language, selectedCultureTheme]);
+  const displayFormLabel = useCallback((id: string, label: string) => (
+    language === "en" ? formLabelEn[id] ?? label : label
+  ), [language]);
+  const displayStep = useCallback((item: { id: StudioStep; label: string; desc: string }) => (
+    language === "en" ? studioStepEn[item.id] : { label: item.label, desc: item.desc }
+  ), [language]);
+  const formatDurationLocal = useCallback((minutes: number) => {
+    if (language !== "en") return formatDuration(minutes);
+    if (minutes <= 0) return "-";
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hours === 0) return `${mins} min`;
+    if (mins === 0) return `${hours} hr`;
+    return `${hours} hr ${mins} min`;
+  }, [language]);
+  const formatSubjectIdentificationLocal = useCallback((identification: SubjectIdentification) => {
+    if (language !== "en") return formatSubjectIdentification(identification);
+    return [
+      `Subject: ${identification.subject || "-"}`,
+      `Category: ${identification.category || "-"}`,
+      `Confidence: ${Number.isFinite(identification.confidence) ? `${Math.round(identification.confidence * 100)}%` : "-"}`,
+      `Evidence: ${identification.evidence.length ? identification.evidence.join("; ") : "-"}`,
+      `Alternatives: ${identification.alternatives.length ? identification.alternatives.join("; ") : "-"}`,
+      `Summary: ${identification.visualSummary || "-"}`,
+    ].join("\n");
+  }, [language]);
   const defaultProjectTitle = useMemo(
     () => buildDefaultProjectTitle(theme, element, formLabel),
     [element, formLabel, theme],
   );
+  const activeHelpSidebarNav = language === "en" ? helpSidebarNavEn : helpSidebarNav;
+  const activeHelpData = language === "en" ? helpDataEn : helpData;
 
   const [currentUser, setCurrentUser] = useState<StoredUser | null>(() => loadCurrentUserProfile());
   const [projectQuery, setProjectQuery] = useState("");
@@ -910,6 +1117,28 @@ export default function CreativeBeadStudio() {
       }));
     return [...cloudPosts, ...templatePosts].sort((a, b) => b.createdAt - a.createdAt);
   }, [cloudCommunityPosts, communityQuery]);
+
+  const displayCommunityPost = useCallback((post: CommunityPost) => {
+    if (language !== "en" || post.type !== "template") return post;
+    const index = Number(post.id.replace("template_", ""));
+    const text = Number.isFinite(index) ? showcaseEn[index] : undefined;
+    if (!text) return post;
+    return {
+      ...post,
+      title: text.title,
+      author: text.author,
+      avatar: text.avatar,
+      theme: text.theme,
+      element: text.element,
+      meaning: text.meaning,
+    };
+  }, [language]);
+
+  const displayProjectTheme = useCallback((value: string) => {
+    if (language !== "en") return value;
+    const themeItem = cultureThemes.find((item) => item.name === value || item.id === value);
+    return themeItem ? displayThemeName(themeItem) : value;
+  }, [displayThemeName, language]);
 
   const filteredProjectRecords = useMemo(() => {
     const query = projectQuery.trim().toLowerCase();
@@ -971,8 +1200,11 @@ export default function CreativeBeadStudio() {
 
 
   // 首页打字机动画状态
-  const homeTypingLine1 = "方寸之间，粒粒皆可触摸的东方诗篇";
-  const homeTypingLine2 = "从传统纹样中拾取一片色彩，让古老的审美以新的温度落回掌心。豆韵以AI为笔，将文化意象织入像素网格——选题、生成、映射、成稿，每一步皆是对传统的再创作，也是献给手作时光的一封情书。";
+  const homeTypingLine1 = L("方寸之间，粒粒皆可触摸的东方诗篇", "An Eastern poem you can touch, bead by bead");
+  const homeTypingLine2 = L(
+    "从传统纹样中拾取一片色彩，让古老的审美以新的温度落回掌心。豆韵以AI为笔，将文化意象织入像素网格——选题、生成、映射、成稿，每一步皆是对传统的再创作，也是献给手作时光的一封情书。",
+    "Pick a color from traditional patterns and bring old aesthetics back into your hands. DouYun uses AI to weave cultural imagery into pixel grids: choose a theme, generate imagery, map colors, and export a craft-ready pattern."
+  );
   const [typedLine1, setTypedLine1] = useState("");
   const [typedLine2, setTypedLine2] = useState("");
   const [typingDone, setTypingDone] = useState(false);
@@ -1017,7 +1249,7 @@ export default function CreativeBeadStudio() {
     }, 80);
 
     return () => clearInterval(timer);
-  }, [view]);
+  }, [homeTypingLine1, homeTypingLine2, view]);
 
   // Toast 自动消失
   useEffect(() => {
@@ -1077,12 +1309,12 @@ export default function CreativeBeadStudio() {
   const generateCultureText = useCallback(async () => {
     if (!pattern || beadCounts.length === 0) {
       setToastType("warning");
-      setToastMsg("请先生成拼豆图纸。");
+      setToastMsg(L("请先生成拼豆图纸。", "Generate the bead pattern first."));
       return;
     }
     if (!extractedImageUrl) {
       setToastType("warning");
-      setToastMsg("请先生成或上传再创作图像。");
+      setToastMsg(L("请先生成或上传再创作图像。", "Generate or upload the recreated image first."));
       return;
     }
     setCultureTextLoading(true);
@@ -1099,10 +1331,11 @@ export default function CreativeBeadStudio() {
           beadCounts,
           imageUrl: extractedImageUrl,
           subjectIdentification,
+          language,
         }),
       });
       const result = await response.json();
-      if (!response.ok) throw new Error(result?.error ?? "文化文案生成失败");
+      if (!response.ok) throw new Error(result?.error ?? L("文化文案生成失败", "Failed to generate cultural copy"));
       if (result.copy) {
         setAiCultureCopy(result.copy);
       }
@@ -1110,11 +1343,11 @@ export default function CreativeBeadStudio() {
         setCulturePrompt(result.prompt);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "文化文案生成失败");
+      setError(err instanceof Error ? err.message : L("文化文案生成失败", "Failed to generate cultural copy"));
     } finally {
       setCultureTextLoading(false);
     }
-  }, [pattern, beadCounts, formLabel, gridSize, colorCount, extractedImageUrl, subjectIdentification]);
+  }, [pattern, beadCounts, formLabel, gridSize, colorCount, extractedImageUrl, subjectIdentification, language, L]);
 
   useEffect(() => {
     setAiCultureCopy(null);
@@ -1189,7 +1422,7 @@ export default function CreativeBeadStudio() {
       clearPatternArtifacts();
       setStep("extract");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "图片处理失败");
+      setError(err instanceof Error ? err.message : L("图片处理失败", "Image processing failed"));
     } finally {
       setLoading(false);
       setConfirmNew(null);
@@ -1231,21 +1464,21 @@ export default function CreativeBeadStudio() {
     if (!extractedImageUrl) {
     setError(null);
     setToastType("warning");
-    setToastMsg("请先完成主题提取，再生成拼豆图纸。");
+    setToastMsg(L("请先完成主题提取，再生成拼豆图纸。", "Complete subject extraction before generating the bead pattern."));
     setStep("extract");
       return;
     }
     if (!resultSubjectAnalysis) {
       setError(null);
       setToastType("warning");
-      setToastMsg("请先在创作结果中点击主体，或使用增加/减少画笔指定要拼豆化的主体区域。");
+      setToastMsg(L("请先在创作结果中点击主体，或使用增加/减少画笔指定要拼豆化的主体区域。", "Click the subject in the result, or use the add/subtract brush to mark the area for bead conversion."));
       setStep("extract");
       return;
     }
     if (!directOutputRef.current && subjectDirty) {
       setError(null);
       setToastType("warning");
-      setToastMsg("主体区域已变化，请先点击 AI 再创作生成新的输出图像。");
+      setToastMsg(L("主体区域已变化，请先点击 AI 再创作生成新的输出图像。", "The subject area changed. Run AI recreation before generating the bead pattern."));
       setStep("extract");
       return;
     }
@@ -1262,7 +1495,7 @@ export default function CreativeBeadStudio() {
       setPattern(next);
       setStep("pattern");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "拼豆图纸生成失败");
+      setError(err instanceof Error ? err.message : L("拼豆图纸生成失败", "Failed to generate bead pattern"));
     } finally {
       setLoading(false);
     }
@@ -1303,7 +1536,7 @@ export default function CreativeBeadStudio() {
         body: JSON.stringify(options),
       });
       const result = await response.json();
-      if (!response.ok) throw new Error(result?.error ?? "AI 图案生成失败");
+      if (!response.ok) throw new Error(result?.error ?? L("AI 图案生成失败", "AI pattern generation failed"));
       resetAutoSaveTracking();
       directOutputRef.current = true;
       setForcedColors(selectedCultureTheme?.paletteHints ?? []);
@@ -1318,7 +1551,7 @@ export default function CreativeBeadStudio() {
       clearPatternArtifacts();
       setStep("extract");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "AI 图案生成失败");
+      setError(err instanceof Error ? err.message : L("AI 图案生成失败", "AI pattern generation failed"));
     } finally {
       setLoading(false);
     }
@@ -1347,7 +1580,7 @@ export default function CreativeBeadStudio() {
   const identifySubject = useCallback(async () => {
     if (!subjectAnalysis) {
       setToastType("warning");
-      setToastMsg("请先在左侧完成主体区域选择。");
+      setToastMsg(L("请先在左侧完成主体区域选择。", "Select the subject area on the left first."));
       return;
     }
 
@@ -1360,31 +1593,32 @@ export default function CreativeBeadStudio() {
         body: JSON.stringify({
           imageUrl: subjectAnalysis.subjectImageUrl,
           config: loadApiConfig(),
+          language,
         }),
       });
       const result = await response.json();
-      if (!response.ok) throw new Error(result?.error ?? "主体识别失败");
+      if (!response.ok) throw new Error(result?.error ?? L("主体识别失败", "Subject identification failed"));
       setSubjectIdentification(result.identification);
       setSubjectIdentificationPrompt(result.prompt ?? null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "主体识别失败");
+      setError(err instanceof Error ? err.message : L("主体识别失败", "Subject identification failed"));
     } finally {
       setSubjectIdentificationLoading(false);
     }
-  }, [subjectAnalysis]);
+  }, [language, L, subjectAnalysis]);
 
   const generateSubjectRecreation = useCallback(async () => {
     if (directOutputRef.current) return;
     if (!subjectAnalysis) {
       setError(null);
       setToastType("warning");
-      setToastMsg("请先在左侧完成主体区域选择。");
+      setToastMsg(L("请先在左侧完成主体区域选择。", "Select the subject area on the left first."));
       return;
     }
     if (!subjectIdentification) {
       setError(null);
       setToastType("warning");
-      setToastMsg("请先完成主体识别，确认或修改识别结果后再进行 AI 再创作。");
+      setToastMsg(L("请先完成主体识别，确认或修改识别结果后再进行 AI 再创作。", "Identify the subject, then confirm or edit the result before AI recreation."));
       return;
     }
     setLoading(true);
@@ -1399,21 +1633,22 @@ export default function CreativeBeadStudio() {
           product: formLabel,
           productPrompt: product.aiPrompt,
           aspectRatio,
+          language,
         }),
       });
       const result = await response.json();
-      if (!response.ok) throw new Error(result?.error ?? "主体提取失败");
+      if (!response.ok) throw new Error(result?.error ?? L("主体提取失败", "Subject recreation failed"));
       setExtractedImageUrl(result.imageUrl);
       clearResultSubjectSelection();
       setExtractPrompt(result.prompt);
       clearPatternArtifacts();
       setSubjectDirty(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "抠图结果转传统文创图案失败");
+      setError(err instanceof Error ? err.message : L("抠图结果转传统文创图案失败", "Failed to turn the subject into a cultural pattern"));
     } finally {
       setLoading(false);
     }
-  }, [aspectRatio, clearPatternArtifacts, clearResultSubjectSelection, formLabel, product.aiPrompt, subjectAnalysis, subjectIdentification]);
+  }, [aspectRatio, clearPatternArtifacts, clearResultSubjectSelection, formLabel, language, L, product.aiPrompt, subjectAnalysis, subjectIdentification]);
 
   const renderImageBox = (url: string | null, alt: string) => (
     <div className="aspect-square overflow-hidden rounded-md border border-stone-200 bg-stone-50">
@@ -1421,7 +1656,7 @@ export default function CreativeBeadStudio() {
         // eslint-disable-next-line @next/next/no-img-element
         <img src={url} alt={alt} className="h-full w-full object-contain" />
       ) : (
-        <div className="grid h-full place-items-center text-sm text-stone-400">暂无图像</div>
+        <div className="grid h-full place-items-center text-sm text-stone-400">{L("暂无图像", "No image")}</div>
       )}
     </div>
   );
@@ -1435,11 +1670,11 @@ export default function CreativeBeadStudio() {
       <section className="rounded-lg border border-stone-200 bg-white p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-xl font-semibold">{context === "extract" ? "主体识别结果" : "文化说明识别依据"}</h2>
+            <h2 className="text-xl font-semibold">{context === "extract" ? L("主体识别结果", "Subject Identification") : L("文化说明识别依据", "Cultural Copy Evidence")}</h2>
             <p className="mt-1 text-sm leading-6 text-stone-500">
               {context === "extract"
-                ? "AI 先识别主体并生成结构化信息。你可以修改后再用于 AI 再创作。"
-                : "文化说明会同时读取这份主体信息和当前再创作图像。"}
+                ? L("AI 先识别主体并生成结构化信息。你可以修改后再用于 AI 再创作。", "AI identifies the subject and creates structured information. You can edit it before AI recreation.")
+                : L("文化说明会同时读取这份主体信息和当前再创作图像。", "The cultural copy uses this subject information together with the current recreated image.")}
             </p>
           </div>
           {context === "extract" && (
@@ -1449,7 +1684,7 @@ export default function CreativeBeadStudio() {
               disabled={subjectIdentificationLoading || !subjectAnalysis}
               className="rounded-md bg-stone-900 px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
             >
-              {subjectIdentificationLoading ? "识别中..." : subjectIdentification ? "重新识别主体" : "AI 识别主体"}
+              {subjectIdentificationLoading ? L("识别中...", "Identifying...") : subjectIdentification ? L("重新识别主体", "Identify Again") : L("AI 识别主体", "Identify Subject")}
             </button>
           )}
         </div>
@@ -1458,7 +1693,7 @@ export default function CreativeBeadStudio() {
           <div className="mt-4 grid gap-4">
             <div className="grid gap-3 md:grid-cols-2">
               <label className="text-sm font-medium">
-                主体名称
+                {L("主体名称", "Subject Name")}
                 <input
                   value={identification.subject}
                   disabled={!editable}
@@ -1467,7 +1702,7 @@ export default function CreativeBeadStudio() {
                 />
               </label>
               <label className="text-sm font-medium">
-                类别
+                {L("类别", "Category")}
                 <input
                   value={identification.category}
                   disabled={!editable}
@@ -1477,30 +1712,30 @@ export default function CreativeBeadStudio() {
               </label>
             </div>
             <label className="text-sm font-medium">
-              视觉证据
+              {L("视觉证据", "Visual Evidence")}
               <textarea
                 value={identification.evidence.join("\n")}
                 disabled={!editable}
                 rows={4}
                 onChange={(event) => setSubjectIdentification((prev) => ({ ...(prev ?? emptySubjectIdentification), evidence: splitLines(event.target.value) }))}
                 className="mt-2 w-full resize-none rounded-md border border-stone-300 px-3 py-2 disabled:bg-stone-50"
-                placeholder="每行一条证据"
+                placeholder={L("每行一条证据", "One evidence item per line")}
               />
             </label>
             <div className="grid gap-3 md:grid-cols-[1fr_160px]">
               <label className="text-sm font-medium">
-                备选识别
+                {L("备选识别", "Alternatives")}
                 <textarea
                   value={identification.alternatives.join("\n")}
                   disabled={!editable}
                   rows={3}
                   onChange={(event) => setSubjectIdentification((prev) => ({ ...(prev ?? emptySubjectIdentification), alternatives: splitLines(event.target.value) }))}
                   className="mt-2 w-full resize-none rounded-md border border-stone-300 px-3 py-2 disabled:bg-stone-50"
-                  placeholder="每行一个备选"
+                  placeholder={L("每行一个备选", "One alternative per line")}
                 />
               </label>
               <label className="text-sm font-medium">
-                置信度
+                {L("置信度", "Confidence")}
                 <input
                   type="number"
                   min={0}
@@ -1517,7 +1752,7 @@ export default function CreativeBeadStudio() {
               </label>
             </div>
             <label className="text-sm font-medium">
-              视觉摘要
+              {L("视觉摘要", "Visual Summary")}
               <textarea
                 value={identification.visualSummary}
                 disabled={!editable}
@@ -1527,11 +1762,11 @@ export default function CreativeBeadStudio() {
               />
             </label>
             <div className="rounded-md bg-stone-50 p-3 text-xs leading-relaxed text-stone-600 whitespace-pre-wrap">
-              {formatSubjectIdentification(identification)}
+              {formatSubjectIdentificationLocal(identification)}
             </div>
             {context === "extract" && subjectIdentificationPrompt && (
               <details className="rounded-md border border-stone-200 bg-white p-3">
-                <summary className="cursor-pointer text-sm font-medium text-stone-700">查看主体识别提示词</summary>
+                <summary className="cursor-pointer text-sm font-medium text-stone-700">{L("查看主体识别提示词", "View Subject Identification Prompt")}</summary>
                 <div className="mt-3 max-h-36 overflow-y-auto rounded-md bg-stone-50 p-3 text-xs leading-relaxed text-stone-600 font-mono whitespace-pre-wrap">
                   {subjectIdentificationPrompt}
                 </div>
@@ -1541,8 +1776,8 @@ export default function CreativeBeadStudio() {
         ) : (
           <div className="mt-4 rounded-md border border-dashed border-stone-300 bg-stone-50 p-4 text-sm leading-6 text-stone-500">
             {context === "extract"
-              ? "完成左侧主体区域选择后，点击“AI 识别主体”生成主体名称、类别、证据、置信度和备选项。"
-              : "步骤二尚未生成主体识别结果。"}
+              ? L("完成左侧主体区域选择后，点击“AI 识别主体”生成主体名称、类别、证据、置信度和备选项。", "After selecting the subject area on the left, click Identify Subject to generate name, category, evidence, confidence, and alternatives.")
+              : L("步骤二尚未生成主体识别结果。", "Step 2 has not generated subject identification yet.")}
           </div>
         )}
       </section>
@@ -1554,12 +1789,12 @@ export default function CreativeBeadStudio() {
       return (
         <div className="grid gap-6 xl:grid-cols-[1fr_0.9fr]">
           <section className="rounded-lg border border-stone-200 bg-white p-5">
-            <h2 className="text-xl font-semibold">配置传统文化拼豆方案</h2>
-            <p className="mt-1 text-sm leading-6 text-stone-500">选择主题、核心元素、叙述、作品形式、比例与网格参数。</p>
+            <h2 className="text-xl font-semibold">{L("配置传统文化拼豆方案", "Configure Cultural Bead Design")}</h2>
+            <p className="mt-1 text-sm leading-6 text-stone-500">{L("选择主题、核心元素、叙述、作品形式、比例与网格参数。", "Choose the theme, core element, notes, product type, ratio, and grid settings.")}</p>
             {error && <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
             <div className="mt-5 grid gap-4">
               <label className="text-sm font-medium">
-                传统主题
+                {L("传统主题", "Traditional Theme")}
                 <select
                   value={theme}
                   onChange={(event) => handleThemeInput(event.target.value)}
@@ -1567,22 +1802,22 @@ export default function CreativeBeadStudio() {
                 >
                   {cultureThemes.map((item) => (
                     <option key={item.id} value={item.name}>
-                      {item.name}
+                      {displayThemeName(item)}
                     </option>
                   ))}
                 </select>
               </label>
               <label className="text-sm font-medium">
-                核心元素
+                {L("核心元素", "Core Element")}
                 <input
                   list="culture-element-options"
-                  value={element}
+                  value={displayElementName(element)}
                   onChange={(event) => setElement(event.target.value)}
                   className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2"
                 />
                 <datalist id="culture-element-options">
                   {(selectedCultureTheme?.elements ?? []).map((item) => (
-                    <option key={item} value={item} />
+                    <option key={item} value={displayElementName(item)} />
                   ))}
                 </datalist>
                 {selectedCultureTheme && (
@@ -1598,29 +1833,29 @@ export default function CreativeBeadStudio() {
                             : "border-stone-200 bg-stone-50 text-stone-600 hover:border-stone-400"
                         }`}
                       >
-                        {item}
+                        {displayElementName(item)}
                       </button>
                     ))}
                   </div>
                 )}
               </label>
               <label className="text-sm font-medium">
-                文化叙述
-                <textarea value={meaning} onChange={(event) => setMeaning(event.target.value)} rows={4} className="mt-2 w-full resize-none rounded-md border border-stone-300 px-3 py-2" />
+                {L("文化叙述", "Cultural Notes")}
+                <textarea value={displayMeaning(meaning)} onChange={(event) => setMeaning(event.target.value)} rows={4} className="mt-2 w-full resize-none rounded-md border border-stone-300 px-3 py-2" />
               </label>
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="text-sm font-medium">
-                  作品形式
+                  {L("作品形式", "Product Type")}
                   <select value={productId} onChange={(event) => applyProductConfigDefault(event.target.value)} className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2">
                     {formLabels.map((item) => (
                       <option key={item.id} value={item.id}>
-                        {item.label}
+                        {displayFormLabel(item.id, item.label)}
                       </option>
                     ))}
                   </select>
                 </label>
                 <label className="text-sm font-medium">
-                  画面比例
+                  {L("画面比例", "Aspect Ratio")}
                   <select value={aspectRatio} onChange={(event) => setAspectRatio(event.target.value as AspectRatioId)} className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2">
                     {aspectRatios.map((item) => (
                       <option key={item.id} value={item.id}>
@@ -1632,25 +1867,25 @@ export default function CreativeBeadStudio() {
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="text-sm font-medium">
-                  网格尺寸：{gridSize} x {gridSize}
+                  {L("网格尺寸", "Grid Size")}：{gridSize} x {gridSize}
                   <input type="range" min={16} max={128} step={8} value={gridSize} onChange={(event) => setGridSize(Number(event.target.value))} className="mt-3 w-full" />
                 </label>
                 <label className="text-sm font-medium">
-                  颜色上限：{colorCount} 色
+                  {L("颜色上限", "Color Limit")}：{colorCount} {L("色", "colors")}
                   <input type="range" min={2} max={128} step={2} value={colorCount} onChange={(event) => setColorCount(Number(event.target.value))} className="mt-3 w-full" />
                 </label>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
                 <label className="flex items-center justify-between rounded-md border border-stone-200 bg-stone-50 px-3 py-2 text-sm font-medium">
-                  显示网格
+                  {L("显示网格", "Show Grid")}
                   <input type="checkbox" checked={showGrid} onChange={(event) => setShowGrid(event.target.checked)} />
                 </label>
                 <label className="flex items-center justify-between rounded-md border border-stone-200 bg-stone-50 px-3 py-2 text-sm font-medium">
-                  平滑杂点
+                  {L("平滑杂点", "Smooth Speckles")}
                   <input type="checkbox" checked={antiAlias} onChange={(event) => setAntiAlias(event.target.checked)} />
                 </label>
                 <label className="flex items-center justify-between rounded-md border border-stone-200 bg-stone-50 px-3 py-2 text-sm font-medium">
-                  连接孤立色块
+                  {L("连接孤立色块", "Connect Isolated Blocks")}
                   <input type="checkbox" checked={connectIslands} onChange={(event) => setConnectIslands(event.target.checked)} />
                 </label>
               </div>
@@ -1664,7 +1899,7 @@ export default function CreativeBeadStudio() {
                   disabled={loading}
                   className="rounded-md bg-[#8f1d21] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
                 >
-                  {loading ? "生成中..." : "AI 生成图案"}
+                  {loading ? L("生成中...", "Generating...") : L("AI 生成图案", "Generate AI Pattern")}
                 </button>
                 <button
                   type="button"
@@ -1674,10 +1909,10 @@ export default function CreativeBeadStudio() {
                   }}
                   className="rounded-md border border-stone-300 bg-white px-4 py-2 text-sm font-semibold"
                 >
-                  使用内置样例
+                  {L("使用内置样例", "Use Built-in Sample")}
                 </button>
                 <label className="cursor-pointer rounded-md border border-stone-300 bg-white px-4 py-2 text-sm font-semibold">
-                  上传图片
+                  {L("上传图片", "Upload Image")}
                   <input type="file" accept="image/*" className="hidden" onChange={(event) => {
                     const file = event.target.files?.[0];
                     if (!file) return;
@@ -1696,8 +1931,8 @@ export default function CreativeBeadStudio() {
           </section>
 
           <section className="rounded-lg border border-stone-200 bg-white p-5">
-            <h2 className="text-xl font-semibold">调色板</h2>
-            <p className="mt-1 text-sm leading-6 text-stone-500">按色系筛选可用颜色，点击选择要纳入最终色表的颜色，已选颜色会标注选择顺序。</p>
+            <h2 className="text-xl font-semibold">{L("调色板", "Palette")}</h2>
+            <p className="mt-1 text-sm leading-6 text-stone-500">{L("按色系筛选可用颜色，点击选择要纳入最终色表的颜色，已选颜色会标注选择顺序。", "Filter available colors by family. Click colors to include them in the final palette; selected colors show their order.")}</p>
             {forcedColorWarning && <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">{forcedColorWarning}</div>}
             {/* 色系分类菜单 */}
             <div className="mt-3 flex flex-wrap gap-1.5">
@@ -1712,14 +1947,14 @@ export default function CreativeBeadStudio() {
                       : "bg-stone-100 text-stone-600 hover:bg-stone-200"
                   }`}
                 >
-                  {f.icon} {f.key}
+                  {f.icon} {language === "en" ? f.key.replace("全部", "All").replace("红", "Red").replace("橙黄", "Orange/Yellow").replace("绿", "Green").replace("蓝紫", "Blue/Purple").replace("棕", "Brown").replace("黑白灰", "Neutral") : f.key}
                 </button>
               ))}
             </div>
             {/* 已选颜色展示 */}
             {forcedColors.length > 0 && (
               <div className="mt-3 flex flex-wrap items-center gap-1.5 rounded-md bg-stone-50 p-2">
-                <span className="mr-1 text-xs font-medium text-stone-500">已选：</span>
+                <span className="mr-1 text-xs font-medium text-stone-500">{L("已选：", "Selected:")}</span>
                 {forcedColors.map((hex, index) => {
                   const key = getDisplayColorKey(hex);
                   return (
@@ -1738,7 +1973,7 @@ export default function CreativeBeadStudio() {
                   onClick={() => setForcedColors([])}
                   className="ml-1 text-xs text-stone-400 hover:text-red-500"
                 >
-                  清空
+                  {L("清空", "Clear")}
                 </button>
               </div>
             )}
@@ -1751,7 +1986,7 @@ export default function CreativeBeadStudio() {
                   <button
                     key={item.color}
                     type="button"
-                    title={`${selected ? `已选第 ${selectedIndex + 1} 个` : "点击选择"}：${item.key} ${item.color}`}
+                    title={`${selected ? L(`已选第 ${selectedIndex + 1} 个`, `Selected #${selectedIndex + 1}`) : L("点击选择", "Click to select")}：${item.key} ${item.color}`}
                     onClick={() => setForcedColors((prev) => (selected ? prev.filter((hex) => hex !== item.color) : [...prev, item.color]))}
                     className={`relative h-7 w-7 rounded border transition ${selected ? "border-stone-950 ring-2 ring-[#8f1d21]" : "border-stone-200 hover:scale-110"}`}
                     style={{ backgroundColor: item.color }}
@@ -1768,12 +2003,12 @@ export default function CreativeBeadStudio() {
             {/* 滤镜区域 */}
             <div className="mt-3 rounded-md border border-stone-200 bg-stone-50 p-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">滤镜</span>
-                <FilterDropdown value={selectedFilter} onChange={(value) => setSelectedFilter(value)} />
+                <span className="text-sm font-medium">{L("滤镜", "Filter")}</span>
+                <FilterDropdown value={selectedFilter} onChange={(value) => setSelectedFilter(value)} language={language} />
               </div>
               {selectedFilter !== "none" && (
                 <div className="mt-2 text-xs text-stone-500 leading-relaxed">
-                  {IMAGE_FILTER_OPTIONS.find((f) => f.key === selectedFilter)?.desc ?? "保持原始色彩"}
+                  {language === "en" ? "Keep or apply a selected image color filter." : IMAGE_FILTER_OPTIONS.find((f) => f.key === selectedFilter)?.desc ?? "保持原始色彩"}
                 </div>
               )}
             </div>
@@ -1788,9 +2023,9 @@ export default function CreativeBeadStudio() {
         <div className="grid gap-6 lg:grid-cols-2">
           <section className="rounded-lg border border-stone-200 bg-white p-5">
             <div className="mb-4">
-              <h2 className="text-xl font-semibold">原图</h2>
+              <h2 className="text-xl font-semibold">{L("原图", "Source Image")}</h2>
               <p className="mt-1 text-sm text-stone-500">
-                交互式主体识别：请点击图像中的主体。绿色蒙版表示将进入拼豆化的主体范围；识别不准时，可切换增加或减少并用画笔修正。
+                {L("交互式主体识别：请点击图像中的主体。绿色蒙版表示将进入拼豆化的主体范围；识别不准时，可切换增加或减少并用画笔修正。", "Interactive subject selection: click the subject in the image. The green mask marks the area to convert into beads; use add/subtract tools to refine it.")}
               </p>
             </div>
             <SubjectMaskEditor
@@ -1798,6 +2033,7 @@ export default function CreativeBeadStudio() {
               loading={loading}
               autoDetect={true}
               mode={subjectMaskMode}
+              language={language}
               savedMask={subjectMaskSnapshot}
               onModeChange={setSubjectMaskMode}
               onSubjectChange={handleSubjectAnalysis}
@@ -1805,10 +2041,10 @@ export default function CreativeBeadStudio() {
             />
             <div className="mt-4 flex flex-wrap gap-3">
               <button type="button" onClick={handleGenerateAI} disabled={loading} className="rounded-md bg-[#8f1d21] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
-                {loading ? "生成中..." : "重新 AI 生成"}
+                {loading ? L("生成中...", "Generating...") : L("重新 AI 生成", "Regenerate with AI")}
               </button>
               <label className="cursor-pointer rounded-md border border-stone-300 bg-white px-4 py-2 text-sm font-semibold">
-                重新上传
+                {L("重新上传", "Upload Again")}
                 <input type="file" accept="image/*" className="hidden" onChange={(event) => {
                   const file = event.target.files?.[0];
                   if (file) void doUpload(file);
@@ -1821,16 +2057,16 @@ export default function CreativeBeadStudio() {
             {renderSubjectIdentificationEditor("extract")}
             {!directGeneratedImage && (
               <section className="rounded-lg border border-stone-200 bg-white p-5">
-                <h2 className="text-xl font-semibold">AI 再创作</h2>
+                <h2 className="text-xl font-semibold">{L("AI 再创作", "AI Recreation")}</h2>
                 <p className="mt-1 text-sm leading-6 text-stone-500">
-                  左侧主体识别只在本地计算蒙版和裁切主体。点击此按钮后，才会把主体裁切图发送给 AI 生成传统文化风格输出图像。
+                  {L("左侧主体识别只在本地计算蒙版和裁切主体。点击此按钮后，才会把主体裁切图发送给 AI 生成传统文化风格输出图像。", "The left subject selection only computes the mask locally. This button sends the confirmed subject information to AI for a cultural-style recreated image.")}
                 </p>
                 <div className="mt-3 rounded-md border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-600">
-                  当前再创作请求只发送主体识别 JSON，不发送主体图片。
+                  {L("当前再创作请求只发送主体识别 JSON，不发送主体图片。", "This recreation request sends subject identification JSON only, not the subject image.")}
                 </div>
                 {subjectDirty && extractedImageUrl && (
                   <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                    主体区域已变化，需要重新 AI 再创作后再生成拼豆图纸。
+                    {L("主体区域已变化，需要重新 AI 再创作后再生成拼豆图纸。", "The subject area changed. Re-run AI recreation before generating the bead pattern.")}
                   </div>
                 )}
                 <button
@@ -1839,22 +2075,22 @@ export default function CreativeBeadStudio() {
                   disabled={loading || !subjectAnalysis || !subjectIdentification}
                   className="mt-4 rounded-md bg-[#8f1d21] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
                 >
-                  {loading ? "生成中..." : extractedImageUrl ? "重新 AI 再创作" : "AI 再创作"}
+                  {loading ? L("生成中...", "Generating...") : extractedImageUrl ? L("重新 AI 再创作", "Recreate Again") : L("AI 再创作", "AI Recreation")}
                 </button>
               </section>
             )}
             {extractedImageUrl && (
               <section className="rounded-lg border border-stone-200 bg-white p-5">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-semibold">当前 AI 提示词</h2>
+                  <h2 className="text-xl font-semibold">{L("当前 AI 提示词", "Current AI Prompt")}</h2>
                 </div>
                 <div className="mt-3 max-h-40 overflow-y-auto rounded-md bg-stone-50 p-3 text-xs leading-relaxed text-stone-600 font-mono whitespace-pre-wrap">
-                  {extractPrompt || "无"}
+                  {extractPrompt || L("无", "None")}
                 </div>
               </section>
             )}
             <section className="rounded-lg border border-stone-200 bg-white p-5">
-              <h2 className="text-xl font-semibold">创作结果</h2>
+              <h2 className="text-xl font-semibold">{L("创作结果", "Creation Result")}</h2>
               <div className="mt-4">
                 <SubjectMaskEditor
                   key={`${extractedImageUrl ?? "empty"}-${directGeneratedImage ? resultMaskSyncVersion : 0}`}
@@ -1863,6 +2099,7 @@ export default function CreativeBeadStudio() {
                   autoDetect={false}
                   showHeader={false}
                   mode={resultMaskMode}
+                  language={language}
                   savedMask={resultMaskSnapshot}
                   onModeChange={setResultMaskMode}
                   onSubjectChange={setResultSubjectAnalysis}
@@ -1871,7 +2108,7 @@ export default function CreativeBeadStudio() {
               </div>
               <div className="mt-4 flex flex-wrap gap-3">
                 <button type="button" onClick={buildPatternFromExtracted} disabled={loading || !extractedImageUrl || (!directGeneratedImage && subjectDirty)} className="rounded-md bg-stone-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
-                  {loading ? "生成中..." : "生成拼豆图纸"}
+                  {loading ? L("生成中...", "Generating...") : L("生成拼豆图纸", "Generate Bead Pattern")}
                 </button>
               </div>
             </section>
@@ -1947,17 +2184,17 @@ export default function CreativeBeadStudio() {
           <section className="rounded-lg border border-stone-200 bg-white p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="text-xl font-semibold">拼豆图纸</h2>
-                <p className="mt-1 text-sm text-stone-500">当前使用开源传统色号标注，不包含外部供应专属字段。</p>
+                <h2 className="text-xl font-semibold">{L("拼豆图纸", "Bead Pattern")}</h2>
+                <p className="mt-1 text-sm text-stone-500">{L("当前使用开源传统色号标注，不包含外部供应专属字段。", "Uses open heritage color labels and no vendor-specific fields.")}</p>
               </div>
               <div className="flex gap-2">
                 {patternUrl && (
                   <button type="button" onClick={() => downloadUrl(patternUrl, "traditional-bead-pattern.png")} className="rounded-md border border-stone-300 px-3 py-2 text-sm font-semibold">
-                    下载图纸
+                    {L("下载图纸", "Download Pattern")}
                   </button>
                 )}
                 <button type="button" onClick={() => downloadBeadCsv(beadCounts, "traditional-bead-counts.csv")} className="rounded-md border border-stone-300 px-3 py-2 text-sm font-semibold">
-                  下载用量 CSV
+                  {L("下载用量 CSV", "Download Counts CSV")}
                 </button>
               </div>
               </div>
@@ -1972,11 +2209,11 @@ export default function CreativeBeadStudio() {
                         : 'bg-white text-stone-700 border border-stone-300 hover:bg-stone-100'
                     }`}
                   >
-                    {isPainting ? '编辑中' : '点击编辑'}
+                    {isPainting ? L("编辑中", "Editing") : L("点击编辑", "Edit Cells")}
                   </button>
                   {isPainting && (
                     <span className="text-xs text-stone-500 ml-1">
-                      在图纸上点击格子修改颜色 | 当前颜色：
+                      {L("在图纸上点击格子修改颜色 | 当前颜色：", "Click cells on the pattern to change colors | Current color:")}
                     </span>
                   )}
                   {isPainting && (
@@ -2024,9 +2261,9 @@ export default function CreativeBeadStudio() {
                 ) : (
                   <div className="grid min-h-64 place-items-center text-center">
                     <div>
-                      <p className="text-sm text-stone-500">第三阶段会把主题提取图案转换成拼豆网格。</p>
+                      <p className="text-sm text-stone-500">{L("第三阶段会把主题提取图案转换成拼豆网格。", "Stage 3 converts the extracted design into a bead grid.")}</p>
                       <button type="button" onClick={buildPatternFromExtracted} disabled={loading || !extractedImageUrl} className="mt-3 rounded-md bg-[#8f1d21] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
-                        {loading ? "生成中..." : "生成拼豆图纸"}
+                        {loading ? L("生成中...", "Generating...") : L("生成拼豆图纸", "Generate Bead Pattern")}
                       </button>
                     </div>
                   </div>
@@ -2036,33 +2273,33 @@ export default function CreativeBeadStudio() {
 
           <div className="flex flex-col gap-6 overflow-y-auto">
           <section className="rounded-lg border border-stone-200 bg-white p-5">
-            <h2 className="text-xl font-semibold">用量统计</h2>
+            <h2 className="text-xl font-semibold">{L("用量统计", "Material Counts")}</h2>
             <div className="mt-3 grid grid-cols-2 gap-2 text-center md:grid-cols-4">
               <div className="rounded-md bg-stone-100 p-3">
-                <p className="text-xs text-stone-500">总颗数</p>
+                <p className="text-xs text-stone-500">{L("总颗数", "Total Beads")}</p>
                 <p className="text-lg font-bold">{total}</p>
               </div>
               <div className="rounded-md bg-stone-100 p-3">
-                <p className="text-xs text-stone-500">颜色数</p>
+                <p className="text-xs text-stone-500">{L("颜色数", "Colors")}</p>
                 <p className="text-lg font-bold">{beadCounts.length}</p>
               </div>
               <div className="rounded-md bg-stone-100 p-3">
-                <p className="text-xs text-stone-500">网格</p>
+                <p className="text-xs text-stone-500">{L("网格", "Grid")}</p>
                 <p className="text-lg font-bold">{pattern ? `${pattern.width}x${pattern.height}` : "-"}</p>
               </div>
               <div className="rounded-md bg-stone-100 p-3">
-                <p className="text-xs text-stone-500">预估用时</p>
-                <p className="text-lg font-bold">{beadingMinutes} 分钟</p>
+                <p className="text-xs text-stone-500">{L("预估用时", "Estimated Time")}</p>
+                <p className="text-lg font-bold">{formatDurationLocal(beadingMinutes)}</p>
               </div>
             </div>
             <div className="mt-4 max-h-[480px] overflow-auto rounded-md border border-stone-200">
               <table className="w-full text-sm">
                 <thead className="sticky top-0 bg-stone-100 text-left text-stone-600">
                   <tr>
-                    <th className="px-3 py-2">颜色</th>
-                    <th className="px-3 py-2">色号</th>
-                    <th className="px-3 py-2 text-right">数量</th>
-                    <th className="px-3 py-2">用途</th>
+                    <th className="px-3 py-2">{L("颜色", "Color")}</th>
+                    <th className="px-3 py-2">{L("色号", "Code")}</th>
+                    <th className="px-3 py-2 text-right">{L("数量", "Count")}</th>
+                    <th className="px-3 py-2">{L("用途", "Use")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2075,7 +2312,7 @@ export default function CreativeBeadStudio() {
                         setPaintColor(item.rgb);
                         setPaintColorKey(item.brandCode);
                       }}
-                      title="点击选择该颜色作为编辑颜色"
+                      title={L("点击选择该颜色作为编辑颜色", "Click to use this color for editing")}
                     >
                       <td className="px-3 py-2">
                         <span className="mr-2 inline-block h-4 w-4 rounded-sm border border-stone-300 align-middle" style={{ backgroundColor: item.rgb }} />
@@ -2083,7 +2320,7 @@ export default function CreativeBeadStudio() {
                       </td>
                       <td className="px-3 py-2 font-mono">{item.brandCode}</td>
                       <td className="px-3 py-2 text-right">{item.count}</td>
-                      <td className="px-3 py-2">{item.usage}</td>
+                      <td className="px-3 py-2">{language === "en" ? beadUsageEn[item.usage] ?? item.usage : item.usage}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -2092,21 +2329,21 @@ export default function CreativeBeadStudio() {
           </section>
 
           <section className="rounded-lg border border-stone-200 bg-white p-5">
-            <h2 className="text-xl font-semibold">当前配置</h2>
-            <p className="mt-1 text-sm leading-6 text-stone-500">可在此直接调整参数，图纸将实时刷新。</p>
+            <h2 className="text-xl font-semibold">{L("当前配置", "Current Settings")}</h2>
+            <p className="mt-1 text-sm leading-6 text-stone-500">{L("可在此直接调整参数，图纸将实时刷新。", "Adjust settings here; the pattern refreshes automatically.")}</p>
             <div className="mt-3 grid gap-3">
               <label className="text-sm font-medium">
-                作品形式
+                {L("作品形式", "Product Type")}
                 <select value={productId} onChange={(event) => applyProductConfigDefault(event.target.value)} className="mt-1 w-full rounded-md border border-stone-300 px-3 py-2">
                   {formLabels.map((item) => (
                     <option key={item.id} value={item.id}>
-                      {item.label}
+                      {displayFormLabel(item.id, item.label)}
                     </option>
                   ))}
                 </select>
               </label>
               <label className="text-sm font-medium">
-                画面比例
+                {L("画面比例", "Aspect Ratio")}
                 <select value={aspectRatio} onChange={(event) => setAspectRatio(event.target.value as AspectRatioId)} className="mt-1 w-full rounded-md border border-stone-300 px-3 py-2">
                   {aspectRatios.map((item) => (
                     <option key={item.id} value={item.id}>
@@ -2116,31 +2353,31 @@ export default function CreativeBeadStudio() {
                 </select>
               </label>
               <label className="text-sm font-medium">
-                网格尺寸：{gridSize}
+                {L("网格尺寸", "Grid Size")}：{gridSize}
                 <input type="range" min={16} max={128} step={8} value={gridSize} onChange={(event) => setGridSize(Number(event.target.value))} className="mt-2 w-full" />
               </label>
               <label className="text-sm font-medium">
-                颜色上限：{colorCount} 色
+                {L("颜色上限", "Color Limit")}：{colorCount} {L("色", "colors")}
                 <input type="range" min={2} max={128} step={2} value={colorCount} onChange={(event) => setColorCount(Number(event.target.value))} className="mt-2 w-full" />
               </label>
               <div className="grid gap-2 md:grid-cols-2">
                 <label className="flex items-center justify-between rounded-md border border-stone-200 bg-stone-50 px-3 py-2 text-sm font-medium">
-                  显示网格
+                  {L("显示网格", "Show Grid")}
                   <input type="checkbox" checked={showGrid} onChange={(event) => setShowGrid(event.target.checked)} />
                 </label>
                 <label className="flex items-center justify-between rounded-md border border-stone-200 bg-stone-50 px-3 py-2 text-sm font-medium">
-                  平滑杂点
+                  {L("平滑杂点", "Smooth Speckles")}
                   <input type="checkbox" checked={antiAlias} onChange={(event) => setAntiAlias(event.target.checked)} />
                 </label>
               </div>
               <div className="rounded-md border border-stone-200 bg-stone-50 p-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">滤镜</span>
-                  <FilterDropdown value={selectedFilter} onChange={(value) => setSelectedFilter(value)} />
+                  <span className="text-sm font-medium">{L("滤镜", "Filter")}</span>
+                  <FilterDropdown value={selectedFilter} onChange={(value) => setSelectedFilter(value)} language={language} />
                 </div>
                 {selectedFilter !== "none" && (
                   <div className="mt-2 text-xs text-stone-500 leading-relaxed">
-                    {IMAGE_FILTER_OPTIONS.find((f) => f.key === selectedFilter)?.desc ?? "保持原始色彩"}
+                    {language === "en" ? "Keep or apply a selected image color filter." : IMAGE_FILTER_OPTIONS.find((f) => f.key === selectedFilter)?.desc ?? "保持原始色彩"}
                   </div>
                 )}
               </div>
@@ -2156,35 +2393,35 @@ export default function CreativeBeadStudio() {
     const cost = estimateMaterialCost(total, beadCounts.length);
     const workTitle = aiCultureCopy?.title?.trim() || `${element}${formLabel}`;
     const planText = [
-      `${workTitle} 拼豆制作方案`,
+      language === "en" ? `${workTitle} Bead Making Plan` : `${workTitle} 拼豆制作方案`,
       "",
-      `作品形式：${formLabel}`,
-      `网格：${pattern ? `${pattern.width} x ${pattern.height}` : "-"}`,
-      `颜色数：${beadCounts.length}`,
-      `拼豆总数：${total}`,
-      `预估拼豆用时：${formatDuration(beadingMinutes)}`,
-      `预估材料成本：约 ${cost.min}-${cost.max} 元`,
+      language === "en" ? `Product type: ${formLabel}` : `作品形式：${formLabel}`,
+      language === "en" ? `Grid: ${pattern ? `${pattern.width} x ${pattern.height}` : "-"}` : `网格：${pattern ? `${pattern.width} x ${pattern.height}` : "-"}`,
+      language === "en" ? `Colors: ${beadCounts.length}` : `颜色数：${beadCounts.length}`,
+      language === "en" ? `Total beads: ${total}` : `拼豆总数：${total}`,
+      language === "en" ? `Estimated beading time: ${formatDurationLocal(beadingMinutes)}` : `预估拼豆用时：${formatDuration(beadingMinutes)}`,
+      language === "en" ? `Estimated material cost: about RMB ${cost.min}-${cost.max}` : `预估材料成本：约 ${cost.min}-${cost.max} 元`,
       "",
-      "材料选择：",
-      "1. 按材料清单准备对应色号拼豆，建议每种颜色比统计数量多准备 10%-15%。",
-      "2. 优先选择同一规格、同一品牌或尺寸一致的 5mm 拼豆，避免熨烫高度不一致。",
-      "3. 大面积底色可多准备一包，少量点缀色按最小包装购买即可。",
+      L("材料选择：", "Materials:"),
+      L("1. 按材料清单准备对应色号拼豆，建议每种颜色比统计数量多准备 10%-15%。", "1. Prepare beads by the material list; keep 10%-15% extra for each color."),
+      L("2. 优先选择同一规格、同一品牌或尺寸一致的 5mm 拼豆，避免熨烫高度不一致。", "2. Prefer beads of the same size and brand to avoid uneven ironing height."),
+      L("3. 大面积底色可多准备一包，少量点缀色按最小包装购买即可。", "3. Prepare extra packs for large base colors and minimum packs for small accents."),
       "",
-      "工具选择：",
-      "1. 透明方形模板板，尺寸需覆盖当前图纸网格。",
-      "2. 尖头镊子或取豆笔，用于定位小色块和边缘细节。",
-      "3. 熨斗、烘焙纸或专用熨烫纸、平整压板。",
+      L("工具选择：", "Tools:"),
+      L("1. 透明方形模板板，尺寸需覆盖当前图纸网格。", "1. Transparent square pegboard large enough for the full grid."),
+      L("2. 尖头镊子或取豆笔，用于定位小色块和边缘细节。", "2. Fine tweezers or bead pen for small blocks and edges."),
+      L("3. 熨斗、烘焙纸或专用熨烫纸、平整压板。", "3. Iron, parchment or ironing paper, and a flat press board."),
       "",
-      "拼豆步骤：",
-      "1. 从边缘轮廓或最大色块开始摆放，减少整体偏移。",
-      "2. 每完成一种颜色，对照图纸和用量统计检查遗漏。",
-      "3. 小面积颜色最后补齐，避免移动模板时松散。",
+      L("拼豆步骤：", "Beading Steps:"),
+      L("1. 从边缘轮廓或最大色块开始摆放，减少整体偏移。", "1. Start from the outer contour or largest color blocks to reduce drift."),
+      L("2. 每完成一种颜色，对照图纸和用量统计检查遗漏。", "2. After each color, check the pattern and counts for missed cells."),
+      L("3. 小面积颜色最后补齐，避免移动模板时松散。", "3. Add small accent colors last to avoid shifting loose beads."),
       "",
-      "熨烫步骤与注意事项：",
-      "1. 覆盖熨烫纸后使用中低温，不要开蒸汽。",
-      "2. 以小圆周移动熨斗，先轻压 10-15 秒观察融合状态，再逐步补熨。",
-      "3. 豆孔略收缩且相邻豆粒连接即可停止，避免过熨导致图案变形。",
-      "4. 熨完后用平整重物压 2-3 分钟，冷却后再从模板上取下。",
+      L("熨烫步骤与注意事项：", "Ironing Notes:"),
+      L("1. 覆盖熨烫纸后使用中低温，不要开蒸汽。", "1. Cover with ironing paper, use medium-low heat, and turn off steam."),
+      L("2. 以小圆周移动熨斗，先轻压 10-15 秒观察融合状态，再逐步补熨。", "2. Move the iron in small circles; press lightly for 10-15 seconds first, then continue as needed."),
+      L("3. 豆孔略收缩且相邻豆粒连接即可停止，避免过熨导致图案变形。", "3. Stop when holes shrink slightly and neighboring beads connect."),
+      L("4. 熨完后用平整重物压 2-3 分钟，冷却后再从模板上取下。", "4. Press flat for 2-3 minutes after ironing, then remove after cooling."),
     ].join("\n");
 
     return (
@@ -2192,46 +2429,46 @@ export default function CreativeBeadStudio() {
         <section className="space-y-5">
           <div className="rounded-lg border border-stone-200 bg-white p-5">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">制作方案</h2>
+              <h2 className="text-xl font-semibold">{L("制作方案", "Making Plan")}</h2>
             </div>
-            <p className="mt-1 text-sm leading-6 text-stone-500">根据当前图纸用量，提供材料、工具、拼豆和熨烫流程参考。</p>
+            <p className="mt-1 text-sm leading-6 text-stone-500">{L("根据当前图纸用量，提供材料、工具、拼豆和熨烫流程参考。", "Provides materials, tools, bead placement, and ironing guidance from the current pattern counts.")}</p>
             <div className="mt-4 grid gap-3 md:grid-cols-3">
 
               <div className="relative rounded-md bg-stone-100 p-3">
-                <p className="text-xs text-stone-500">预估成本</p>
-                <button type="button" onClick={() => setCostDropdownOpen(!costDropdownOpen)} className="w-full text-left text-lg font-bold hover:text-stone-700">约 {cost.min}-{cost.max} 元</button>
+                <p className="text-xs text-stone-500">{L("预估成本", "Estimated Cost")}</p>
+                <button type="button" onClick={() => setCostDropdownOpen(!costDropdownOpen)} className="w-full text-left text-lg font-bold hover:text-stone-700">{L("约", "About")} {cost.min}-{cost.max} {L("元", "RMB")}</button>
                 {costDropdownOpen && (
                   <div className="absolute left-0 right-0 top-full z-10 mt-1 rounded-md border border-stone-200 bg-white p-3 shadow-lg">
-                    <p className="text-xs font-medium text-stone-500">成本组成</p>
+                    <p className="text-xs font-medium text-stone-500">{L("成本组成", "Cost Breakdown")}</p>
                     <ul className="mt-2 space-y-1 text-xs text-stone-600">
-                      <li className="flex justify-between"><span>拼豆包数</span><span>{Math.max(beadCounts.length, Math.ceil((total * 1.15) / 1000))} 包</span></li>
-                      <li className="flex justify-between"><span>拼豆单价</span><span>3~7 元/包</span></li>
-                      <li className="flex justify-between"><span>模板板</span><span>5~10 元</span></li>
-                      <li className="flex justify-between"><span>熨烫纸</span><span>3~10 元</span></li>
-                      <li className="mt-1 border-t border-stone-100 pt-1 font-medium">合计：{cost.min}~{cost.max} 元</li>
+                      <li className="flex justify-between"><span>{L("拼豆包数", "Bead Packs")}</span><span>{Math.max(beadCounts.length, Math.ceil((total * 1.15) / 1000))} {L("包", "packs")}</span></li>
+                      <li className="flex justify-between"><span>{L("拼豆单价", "Pack Price")}</span><span>3~7 {L("元/包", "RMB/pack")}</span></li>
+                      <li className="flex justify-between"><span>{L("模板板", "Pegboard")}</span><span>5~10 {L("元", "RMB")}</span></li>
+                      <li className="flex justify-between"><span>{L("熨烫纸", "Ironing Paper")}</span><span>3~10 {L("元", "RMB")}</span></li>
+                      <li className="mt-1 border-t border-stone-100 pt-1 font-medium">{L("合计", "Total")}：{cost.min}~{cost.max} {L("元", "RMB")}</li>
                     </ul>
                   </div>
                 )}
               </div>
               <div className="relative rounded-md bg-stone-100 p-3">
-                <p className="text-xs text-stone-500">拼豆用时</p>
-                <button type="button" onClick={() => setTimeDropdownOpen(!timeDropdownOpen)} className="w-full text-left text-lg font-bold hover:text-stone-700">{beadingMinutes} 分钟</button>
+                <p className="text-xs text-stone-500">{L("拼豆用时", "Beading Time")}</p>
+                <button type="button" onClick={() => setTimeDropdownOpen(!timeDropdownOpen)} className="w-full text-left text-lg font-bold hover:text-stone-700">{formatDurationLocal(beadingMinutes)}</button>
                 {timeDropdownOpen && (
                   <div className="absolute left-0 right-0 top-full z-10 mt-1 rounded-md border border-stone-200 bg-white p-3 shadow-lg">
-                    <p className="text-xs font-medium text-stone-500">用时组成</p>
+                    <p className="text-xs font-medium text-stone-500">{L("用时组成", "Time Breakdown")}</p>
                     <ul className="mt-2 space-y-1 text-xs text-stone-600">
-                      <li className="flex justify-between"><span>单颗摆豆时间</span><span>{BEAD_TIME_PER_PIECE} 分钟/颗</span></li>
-                      <li className="flex justify-between"><span>摆豆总计（{total} 颗）</span><span>≈{Math.round(total * BEAD_TIME_PER_PIECE)} 分钟</span></li>
-                      <li className="flex justify-between"><span>换色（{beadCounts.length} 色 × 4 分钟/色）</span><span>{beadCounts.length * 4} 分钟</span></li>
-                      <li className="flex justify-between"><span>熨烫（含预热、熨烫、冷却）</span><span>{IRONING_TIME} 分钟</span></li>
-                      <li className="mt-1 border-t border-stone-100 pt-1 font-medium"><span>合计</span><span>约 {beadingMinutes} 分钟</span></li>
+                      <li className="flex justify-between"><span>{L("单颗摆豆时间", "Per-bead time")}</span><span>{BEAD_TIME_PER_PIECE} {L("分钟/颗", "min/bead")}</span></li>
+                      <li className="flex justify-between"><span>{L("摆豆总计", "Beading total")}（{total} {L("颗", "beads")}）</span><span>≈{formatDurationLocal(Math.round(total * BEAD_TIME_PER_PIECE))}</span></li>
+                      <li className="flex justify-between"><span>{L("换色", "Color changes")}（{beadCounts.length} {L("色", "colors")} × 4 {L("分钟/色", "min/color")}）</span><span>{formatDurationLocal(beadCounts.length * 4)}</span></li>
+                      <li className="flex justify-between"><span>{L("熨烫（含预热、熨烫、冷却）", "Ironing, preheating, and cooling")}</span><span>{formatDurationLocal(IRONING_TIME)}</span></li>
+                      <li className="mt-1 border-t border-stone-100 pt-1 font-medium"><span>{L("合计", "Total")}</span><span>{L("约", "About")} {formatDurationLocal(beadingMinutes)}</span></li>
 
                     </ul>
                   </div>
                 )}
               </div>
               <div className="rounded-md bg-stone-100 p-3">
-                <p className="text-xs text-stone-500">图纸规模</p>
+                <p className="text-xs text-stone-500">{L("图纸规模", "Pattern Size")}</p>
                 <p className="text-lg font-bold">{pattern ? `${pattern.width}x${pattern.height}` : "-"}</p>
               </div>
             </div>
@@ -2239,39 +2476,39 @@ export default function CreativeBeadStudio() {
 
             <>
               <div className="rounded-lg border border-stone-200 bg-white p-5">
-                <h3 className="text-lg font-semibold">材料选择</h3>
+                <h3 className="text-lg font-semibold">{L("材料选择", "Materials")}</h3>
                 <ul className="mt-3 space-y-2 text-sm leading-6 text-stone-600">
-                  <li>按用量统计准备对应色号拼豆，建议每种颜色多备 10%-15%，防止丢豆和色差补充。</li>
-                  <li>优先使用同规格拼豆；同一作品不要混用高度差异明显的材料。</li>
-                  <li>大色块颜色按整包准备，点缀色可按最小包装购买。</li>
+                  <li>{L("按用量统计准备对应色号拼豆，建议每种颜色多备 10%-15%，防止丢豆和色差补充。", "Prepare beads by the count table and keep 10%-15% extra for each color.")}</li>
+                  <li>{L("优先使用同规格拼豆；同一作品不要混用高度差异明显的材料。", "Use beads of the same specification; avoid mixing visibly different heights.")}</li>
+                  <li>{L("大色块颜色按整包准备，点缀色可按最小包装购买。", "Prepare full packs for large color areas and minimum packs for accent colors.")}</li>
                 </ul>
               </div>
 
               <div className="rounded-lg border border-stone-200 bg-white p-5">
-                <h3 className="text-lg font-semibold">工具选择</h3>
+                <h3 className="text-lg font-semibold">{L("工具选择", "Tools")}</h3>
                 <ul className="mt-3 space-y-2 text-sm leading-6 text-stone-600">
-                  <li>模板板：透明方形板更适合对照网格，尺寸需覆盖完整图纸。</li>
-                  <li>定位工具：尖头镊子适合调整边缘和孤立小色块，取豆笔适合大面积铺色。</li>
-                  <li>熨烫工具：熨斗、熨烫纸、平整压板；熨斗需关闭蒸汽。</li>
+                  <li>{L("模板板：透明方形板更适合对照网格，尺寸需覆盖完整图纸。", "Pegboard: a transparent square board works best for checking the grid.")}</li>
+                  <li>{L("定位工具：尖头镊子适合调整边缘和孤立小色块，取豆笔适合大面积铺色。", "Positioning: tweezers handle edges and small blocks; a bead pen helps with large areas.")}</li>
+                  <li>{L("熨烫工具：熨斗、熨烫纸、平整压板；熨斗需关闭蒸汽。", "Ironing: iron, ironing paper, and flat press board; turn off steam.")}</li>
                 </ul>
               </div>
 
               <div className="rounded-lg border border-stone-200 bg-white p-5">
-                <h3 className="text-lg font-semibold">拼豆</h3>
+                <h3 className="text-lg font-semibold">{L("拼豆", "Beading")}</h3>
                 <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-6 text-stone-600">
-                  <li>先摆放外轮廓或最大色块，建立边界后再填内部细节。</li>
-                  <li>按颜色逐项完成，每完成一种颜色就对照用量统计检查遗漏。</li>
-                  <li>细小点缀色最后补齐，避免在大面积移动时被碰偏。</li>
+                  <li>{L("先摆放外轮廓或最大色块，建立边界后再填内部细节。", "Start with the outer contour or largest color blocks, then fill details.")}</li>
+                  <li>{L("按颜色逐项完成，每完成一种颜色就对照用量统计检查遗漏。", "Complete one color at a time and check the count table for missing cells.")}</li>
+                  <li>{L("细小点缀色最后补齐，避免在大面积移动时被碰偏。", "Add small accents last to avoid shifting loose beads.")}</li>
                 </ol>
               </div>
 
               <div className="rounded-lg border border-stone-200 bg-white p-5">
-                <h3 className="text-lg font-semibold">熨烫</h3>
+                <h3 className="text-lg font-semibold">{L("熨烫", "Ironing")}</h3>
                 <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-6 text-stone-600">
-                  <li>覆盖熨烫纸后使用中低温，先轻压并小范围圆周移动。</li>
-                  <li>首次熨烫 10-15 秒后检查豆粒连接状态，再分段补熨。</li>
-                  <li>豆孔略收缩且相邻豆粒已连接即可停止，避免过熨导致图案变形。</li>
-                  <li>熨完用平整重物压 2-3 分钟，完全冷却后再脱板。</li>
+                  <li>{L("覆盖熨烫纸后使用中低温，先轻压并小范围圆周移动。", "Cover with ironing paper, use medium-low heat, and move in small circles.")}</li>
+                  <li>{L("首次熨烫 10-15 秒后检查豆粒连接状态，再分段补熨。", "Check bead fusion after the first 10-15 seconds, then continue in stages.")}</li>
+                  <li>{L("豆孔略收缩且相邻豆粒已连接即可停止，避免过熨导致图案变形。", "Stop once holes shrink slightly and neighboring beads connect.")}</li>
+                  <li>{L("熨完用平整重物压 2-3 分钟，完全冷却后再脱板。", "Press flat for 2-3 minutes and remove after cooling.")}</li>
                 </ol>
               </div>
 
@@ -2279,7 +2516,7 @@ export default function CreativeBeadStudio() {
               {culturePrompt && (
                 <div className="rounded-lg border border-stone-200 bg-white p-5">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-semibold">AI 文化文案提示词</h2>
+                    <h2 className="text-xl font-semibold">{L("AI 文化文案提示词", "AI Cultural Copy Prompt")}</h2>
                   </div>
                   <div className="mt-3 max-h-48 overflow-y-auto rounded-md bg-stone-50 p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap text-stone-600">
                     {culturePrompt}
@@ -2288,21 +2525,21 @@ export default function CreativeBeadStudio() {
               )}
               <div className="rounded-lg border border-stone-200 bg-white p-5">
                 <div className="mb-3 flex items-center justify-between">
-                  <h2 className="text-xl font-semibold">文化说明</h2>
+                  <h2 className="text-xl font-semibold">{L("文化说明", "Cultural Notes")}</h2>
                   <button
                     type="button"
                     onClick={generateCultureText}
                     disabled={cultureTextLoading}
                     className="rounded-md bg-[#8f1d21] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
                   >
-                    {cultureTextLoading ? "AI 生成中..." : "AI 生成文化说明"}
+                    {cultureTextLoading ? L("AI 生成中...", "Generating...") : L("AI 生成文化说明", "Generate Cultural Notes")}
                   </button>
                 </div>
                 {aiCultureCopy ? (
-                  <CultureExplanation copy={aiCultureCopy} />
+                  <CultureExplanation copy={aiCultureCopy} language={language} />
                 ) : (
                   <div className="rounded-md border border-dashed border-stone-300 bg-stone-50 p-4 text-sm leading-6 text-stone-500">
-                    点击 AI 生成文化说明后，系统会读取当前再创作图像，并把作品名称、文化来源、图案寓意、设计说明分别填入对应模块。
+                    {L("点击 AI 生成文化说明后，系统会读取当前再创作图像，并把作品名称、文化来源、图案寓意、设计说明分别填入对应模块。", "Click Generate Cultural Notes and the system will read the current recreated image, then fill in the title, cultural source, meaning, and design notes.")}
                   </div>
                 )}
               </div>
@@ -2312,36 +2549,36 @@ export default function CreativeBeadStudio() {
 
         <section className="space-y-5">
           <div className="rounded-lg border border-stone-200 bg-white p-5">
-            <h2 className="mb-3 text-xl font-semibold">图纸预览</h2>
+            <h2 className="mb-3 text-xl font-semibold">{L("图纸预览", "Pattern Preview")}</h2>
             {patternUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={patternUrl} alt="拼豆图纸" className="max-h-[520px] w-full rounded-md border border-stone-200 object-contain" />
+              <img src={patternUrl} alt={L("拼豆图纸", "Bead Pattern")} className="max-h-[520px] w-full rounded-md border border-stone-200 object-contain" />
             ) : (
-              <div className="grid min-h-64 place-items-center rounded-md bg-stone-50 text-sm text-stone-400">暂无图纸</div>
+              <div className="grid min-h-64 place-items-center rounded-md bg-stone-50 text-sm text-stone-400">{L("暂无图纸", "No pattern")}</div>
             )}
           </div>
           <div className="rounded-lg border border-stone-200 bg-white p-5">
-            <h2 className="mb-3 text-xl font-semibold">方案导出</h2>
+            <h2 className="mb-3 text-xl font-semibold">{L("方案导出", "Export Plan")}</h2>
             <div className="grid gap-2 sm:grid-cols-2">
-              <button type="button" disabled={!patternUrl} onClick={() => patternUrl && downloadUrl(patternUrl, `${workTitle}-拼豆图纸.png`)} className="rounded-md bg-[#8f1d21] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">下载图纸 PNG</button>
-              <button type="button" disabled={!cleanPatternUrl} onClick={() => cleanPatternUrl && downloadUrl(cleanPatternUrl, `${workTitle}-无标注图纸.png`)} className="rounded-md bg-[#8f1d21] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">下载无标注 PNG</button>
-              <button type="button" disabled={beadCounts.length === 0} onClick={() => downloadBeadCsv(beadCounts, `${workTitle}-材料清单.csv`)} className="rounded-md bg-[#8f1d21] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">导出材料 CSV</button>
-              <button type="button" disabled={!pattern} onClick={() => downloadTextFile(planText, `${workTitle}-制作方案.txt`)} className="rounded-md bg-[#8f1d21] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">导出制作方案</button>
+              <button type="button" disabled={!patternUrl} onClick={() => patternUrl && downloadUrl(patternUrl, `${workTitle}-${language === "en" ? "bead-pattern" : "拼豆图纸"}.png`)} className="rounded-md bg-[#8f1d21] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{L("下载图纸 PNG", "Download Pattern PNG")}</button>
+              <button type="button" disabled={!cleanPatternUrl} onClick={() => cleanPatternUrl && downloadUrl(cleanPatternUrl, `${workTitle}-${language === "en" ? "clean-pattern" : "无标注图纸"}.png`)} className="rounded-md bg-[#8f1d21] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{L("下载无标注 PNG", "Download Clean PNG")}</button>
+              <button type="button" disabled={beadCounts.length === 0} onClick={() => downloadBeadCsv(beadCounts, `${workTitle}-${language === "en" ? "materials" : "材料清单"}.csv`)} className="rounded-md bg-[#8f1d21] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{L("导出材料 CSV", "Export Materials CSV")}</button>
+              <button type="button" disabled={!pattern} onClick={() => downloadTextFile(planText, `${workTitle}-${language === "en" ? "making-plan" : "制作方案"}.txt`)} className="rounded-md bg-[#8f1d21] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{L("导出制作方案", "Export Making Plan")}</button>
             </div>
           </div>
           <div className="rounded-lg border border-stone-200 bg-white p-5">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h2 className="text-xl font-semibold">保存项目</h2>
-                <p className="mt-1 text-sm leading-6 text-stone-500">保存后可在“项目”页面和个人主页历史记录中继续编辑、恢复进度或发布到社区。</p>
+                <h2 className="text-xl font-semibold">{L("保存项目", "Save Project")}</h2>
+                <p className="mt-1 text-sm leading-6 text-stone-500">{L("保存后可在“项目”页面和个人主页历史记录中继续编辑、恢复进度或发布到社区。", "After saving, continue editing from Projects or profile history, restore progress, or publish to the community.")}</p>
               </div>
               <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-600">
-                {currentProjectIdRef.current ? "更新现有项目" : "创建新项目"}
+                {currentProjectIdRef.current ? L("更新现有项目", "Update Existing Project") : L("创建新项目", "Create New Project")}
               </span>
             </div>
             <div className="mt-4 space-y-3">
               <label className="block text-sm font-medium text-stone-700">
-                项目名称
+                {L("项目名称", "Project Name")}
                 <input
                   type="text"
                   value={projectTitleDraft}
@@ -2361,7 +2598,7 @@ export default function CreativeBeadStudio() {
                   disabled={!sourceImageUrl && !pattern && !patternUrl}
                   className="rounded-md bg-[#8f1d21] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
                 >
-                  保存到项目
+                  {L("保存到项目", "Save to Projects")}
                 </button>
                 <button
                   type="button"
@@ -2373,7 +2610,7 @@ export default function CreativeBeadStudio() {
                   disabled={!sourceImageUrl && !pattern && !patternUrl}
                   className="rounded-md border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-700 disabled:opacity-50"
                 >
-                  保存并查看项目
+                  {L("保存并查看项目", "Save and View Projects")}
                 </button>
                 <button
                   type="button"
@@ -2385,7 +2622,7 @@ export default function CreativeBeadStudio() {
                   disabled={!sourceImageUrl && !pattern && !patternUrl}
                   className="rounded-md border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-700 disabled:opacity-50"
                 >
-                  保存并查看历史
+                  {L("保存并查看历史", "Save and View History")}
                 </button>
                 <button
                   type="button"
@@ -2393,7 +2630,7 @@ export default function CreativeBeadStudio() {
                   disabled={!sourceImageUrl && !pattern && !patternUrl}
                   className="rounded-md border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-700 disabled:opacity-50"
                 >
-                  保存后发布到社区
+                  {L("保存后发布到社区", "Save and Publish")}
                 </button>
               </div>
             </div>
@@ -2541,38 +2778,38 @@ export default function CreativeBeadStudio() {
   const publishCurrentWork = useCallback(async () => {
     if (!sourceImageUrl && !pattern && !patternUrl) {
       setToastType("warning");
-      setToastMsg("请先完成一个作品进度后再发布。");
+      setToastMsg(L("请先完成一个作品进度后再发布。", "Complete some project progress before publishing."));
       return;
     }
     const record = buildCurrentProjectRecord(projectTitleDraft.trim() || undefined);
     const saved = await saveProjectRecord(record);
     if (!saved) {
       setToastType("warning");
-      setToastMsg("项目保存失败，浏览器项目库暂时不可用。");
+      setToastMsg(L("项目保存失败，浏览器项目库暂时不可用。", "Project save failed. Browser project storage is unavailable."));
       return;
     }
     refreshProjectRecords();
     try {
       await publishCommunityPost({
         record,
-        author: currentUser?.nickname ?? "豆韵用户",
+        author: currentUser?.nickname ?? L("豆韵用户", "DouYun User"),
         avatar: currentUser?.avatarUrl ?? "",
         colors: forcedColors,
       });
       setCommunityRefresh((value) => value + 1);
       setToastType("success");
-      setToastMsg("作品已发布到云端社区，并同步保存到个人主页。");
+      setToastMsg(L("作品已发布到云端社区，并同步保存到个人主页。", "Work published to the cloud community and saved to your profile."));
       setView("community");
     } catch (err) {
       setToastType("warning");
-      setToastMsg(err instanceof Error ? err.message : "作品发布失败");
+      setToastMsg(err instanceof Error ? err.message : L("作品发布失败", "Failed to publish work"));
     }
-  }, [buildCurrentProjectRecord, currentUser, forcedColors, pattern, patternUrl, projectTitleDraft, refreshProjectRecords, sourceImageUrl]);
+  }, [buildCurrentProjectRecord, currentUser, forcedColors, L, pattern, patternUrl, projectTitleDraft, refreshProjectRecords, sourceImageUrl]);
 
   const saveCurrentProject = useCallback(async () => {
     if (!sourceImageUrl && !pattern && !patternUrl) {
       setToastType("warning");
-      setToastMsg("请先完成当前创作内容，再保存项目。");
+      setToastMsg(L("请先完成当前创作内容，再保存项目。", "Complete current creation content before saving."));
       return false;
     }
 
@@ -2580,24 +2817,24 @@ export default function CreativeBeadStudio() {
     const saved = await saveProjectRecord(record);
     if (!saved) {
       setToastType("warning");
-      setToastMsg("项目保存失败，浏览器项目库暂时不可用。");
+      setToastMsg(L("项目保存失败，浏览器项目库暂时不可用。", "Project save failed. Browser project storage is unavailable."));
       return false;
     }
     lastAutoSaveSignatureRef.current = buildCurrentProjectSignature();
     setProjectTitleDraft(record.title);
     refreshProjectRecords();
     setToastType("success");
-    setToastMsg("项目已保存，可在“项目”和个人主页历史记录中继续编辑或发布。");
+    setToastMsg(L("项目已保存，可在“项目”和个人主页历史记录中继续编辑或发布。", "Project saved. Continue editing or publish it from Projects or profile history."));
     setProjectTitleManual(record.title.trim() !== defaultProjectTitle);
     return true;
-  }, [buildCurrentProjectRecord, buildCurrentProjectSignature, defaultProjectTitle, pattern, patternUrl, projectTitleDraft, refreshProjectRecords, sourceImageUrl]);
+  }, [buildCurrentProjectRecord, buildCurrentProjectSignature, defaultProjectTitle, L, pattern, patternUrl, projectTitleDraft, refreshProjectRecords, sourceImageUrl]);
 
   const importCommunityPost = useCallback(async (post: CommunityPost) => {
     if (post.record) {
       const cloned: ProjectRecord = {
         ...post.record,
         id: `proj_${Date.now()}`,
-        title: `${post.title} · 导入`,
+        title: `${post.title} · ${L("导入", "Import")}`,
         createdAt: Date.now(),
         updatedAt: Date.now(),
         completed: false,
@@ -2605,7 +2842,7 @@ export default function CreativeBeadStudio() {
       const saved = await saveProjectRecord(cloned);
       if (!saved) {
         setToastType("warning");
-        setToastMsg("社区作品导入失败，浏览器项目库暂时不可用。");
+        setToastMsg(L("社区作品导入失败，浏览器项目库暂时不可用。", "Community work import failed. Browser project storage is unavailable."));
         return;
       }
       refreshProjectRecords();
@@ -2613,14 +2850,14 @@ export default function CreativeBeadStudio() {
       setCommunityRefresh((value) => value + 1);
       setSelectedCommunityPost(null);
       setToastType("success");
-      setToastMsg("已导入作品模板，并保存到个人主页。");
+      setToastMsg(L("已导入作品模板，并保存到个人主页。", "Work template imported and saved to your profile."));
       return;
     }
 
     const defaults = getProductConfigDefault(post.productId);
     const record: ProjectRecord = {
       id: `proj_${Date.now()}`,
-      title: `${post.title} · 导入`,
+      title: `${post.title} · ${L("导入", "Import")}`,
       createdAt: Date.now(),
       updatedAt: Date.now(),
       completed: false,
@@ -2649,7 +2886,7 @@ export default function CreativeBeadStudio() {
     const saved = await saveProjectRecord(record);
     if (!saved) {
       setToastType("warning");
-      setToastMsg("社区模板导入失败，浏览器项目库暂时不可用。");
+      setToastMsg(L("社区模板导入失败，浏览器项目库暂时不可用。", "Community template import failed. Browser project storage is unavailable."));
       return;
     }
     refreshProjectRecords();
@@ -2657,8 +2894,8 @@ export default function CreativeBeadStudio() {
     setSelectedCommunityPost(null);
     setCommunityRefresh((value) => value + 1);
     setToastType("success");
-    setToastMsg("已导入社区模板，并保存到个人主页。");
-  }, [handleRestoreProject, refreshProjectRecords]);
+    setToastMsg(L("已导入社区模板，并保存到个人主页。", "Community template imported and saved to your profile."));
+  }, [handleRestoreProject, L, refreshProjectRecords]);
 
   useEffect(() => {
     if (restoringRef.current) {
@@ -2677,13 +2914,13 @@ export default function CreativeBeadStudio() {
           lastAutoSaveSignatureRef.current = signature;
           void refreshProjectRecords();
           setToastType("success");
-          setToastMsg("已自动保存当前项目进度");
+          setToastMsg(L("已自动保存当前项目进度", "Current project progress autosaved"));
         }
       })();
     }, intervalMs);
 
     return () => clearInterval(timer);
-  }, [autoSaveIntervalSeconds, buildCurrentProjectRecord, buildCurrentProjectSignature, refreshProjectRecords, view]);
+  }, [autoSaveIntervalSeconds, buildCurrentProjectRecord, buildCurrentProjectSignature, L, refreshProjectRecords, view]);
 
   useEffect(() => {
     const previousView = previousViewRef.current;
@@ -2835,7 +3072,7 @@ export default function CreativeBeadStudio() {
         <>
           <section className="relative overflow-hidden bg-[#2b2118] text-white">
             <div className="mx-auto max-w-7xl px-4 pb-8 pt-14 sm:px-6 lg:px-8">
-              <p className="text-sm font-semibold text-[#f2c46d]">千年纹样 × 掌间拼豆</p>
+              <p className="text-sm font-semibold text-[#f2c46d]">{L("千年纹样 × 掌间拼豆", "Ancient Patterns x Handheld Bead Art")}</p>
 
               {/* 打字区域固定容器：防止打字时高度变化导致下方元素下移 */}
               <div className="min-h-[200px] md:min-h-[220px] lg:min-h-[260px]">
@@ -2859,7 +3096,7 @@ export default function CreativeBeadStudio() {
                 <div className={`transition-all duration-700 ${typingDone ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6 pointer-events-none"}`}>
                   <div className="mt-7 flex flex-wrap gap-4">
                     <button type="button" onClick={() => setView("start")} className="rounded-md bg-[#f2c46d] px-8 py-4 text-base font-bold text-stone-950 shadow-lg transition hover:bg-[#f4d07a] hover:shadow-xl">
-                      🚀 快速开始
+                      🚀 {L("快速开始", "Start Creating")}
                     </button>
                   </div>
                 </div>
@@ -2871,7 +3108,9 @@ export default function CreativeBeadStudio() {
 
               <div className="max-h-[42rem] overflow-y-auto pb-12 pr-2">
                 <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                {showcase.map((item) => (
+                {showcase.map((item, index) => {
+                  const text = language === "en" ? showcaseEn[index] : item;
+                  return (
                   <button
                     key={item.title}
                     type="button"
@@ -2899,15 +3138,16 @@ export default function CreativeBeadStudio() {
                   >
                     {item.previewImage ? (
                       <div className="aspect-square overflow-hidden rounded-md border border-white/15 bg-white/10">
-                        <img src={item.previewImage} alt={item.title} className="h-full w-full object-cover" />
+                        <img src={item.previewImage} alt={text.title} className="h-full w-full object-cover" />
                       </div>
                     ) : (
                       <PatternMiniature colors={item.colors} />
                     )}
-                    <h2 className="mt-4 text-lg font-semibold">{item.title}</h2>
-                    <p className="mt-1 text-sm text-stone-300">{item.theme}主题配色</p>
+                    <h2 className="mt-4 text-lg font-semibold">{text.title}</h2>
+                    <p className="mt-1 text-sm text-stone-300">{language === "en" ? "Theme palette" : `${item.theme}主题配色`}</p>
                   </button>
-                ))}
+                  );
+                })}
                 </div>
               </div>
 
@@ -2915,8 +3155,8 @@ export default function CreativeBeadStudio() {
             </div>
           </section>
 
-          <CraftSection setView={setView} />
-          <HomeCommunitySection setView={setView} />
+          <CraftSection setView={setView} language={language} />
+          <HomeCommunitySection setView={setView} language={language} />
         </>
       )}
 
@@ -2924,13 +3164,13 @@ export default function CreativeBeadStudio() {
         <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-4 border-b border-stone-200 pb-8">
             <div>
-              <p className="text-sm font-semibold text-[#8f1d21]">项目</p>
-              <h1 className="mt-2 text-4xl font-semibold tracking-tight text-stone-950">最近设计</h1>
+              <p className="text-sm font-semibold text-[#8f1d21]">{L("项目", "Projects")}</p>
+              <h1 className="mt-2 text-4xl font-semibold tracking-tight text-stone-950">{L("最近设计", "Recent Designs")}</h1>
             </div>
             <input
               value={projectQuery}
               onChange={(event) => setProjectQuery(event.target.value)}
-              placeholder="搜索项目名称、主题、元素..."
+              placeholder={L("搜索项目名称、主题、元素...", "Search project name, theme, or element...")}
               className="w-full rounded-md border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#8f1d21] focus:ring-2 focus:ring-[#8f1d21]/20"
             />
           </div>
@@ -2945,15 +3185,15 @@ export default function CreativeBeadStudio() {
                       {previewUrl ? (
                         <img src={previewUrl} alt={record.title} className="h-full w-full object-contain" />
                       ) : (
-                        <div className="grid h-full place-items-center text-sm text-stone-400">暂无预览</div>
+                        <div className="grid h-full place-items-center text-sm text-stone-400">{L("暂无预览", "No preview")}</div>
                       )}
                     </div>
-                    <h2 className="mt-4 truncate text-lg font-semibold text-stone-950">{record.title || record.theme}</h2>
-                    <p className="mt-1 text-sm text-stone-600">{record.theme} · {record.element}</p>
-                    <p className="mt-2 text-xs text-stone-400">{new Date(record.updatedAt).toLocaleString("zh-CN")}</p>
+                    <h2 className="mt-4 truncate text-lg font-semibold text-stone-950">{record.title || displayProjectTheme(record.theme)}</h2>
+                    <p className="mt-1 text-sm text-stone-600">{displayProjectTheme(record.theme)} · {record.element}</p>
+                    <p className="mt-2 text-xs text-stone-400">{new Date(record.updatedAt).toLocaleString(language === "en" ? "en-US" : "zh-CN")}</p>
                   </button>
                   <div className="mt-4 flex gap-2">
-                    <button type="button" onClick={() => handleRestoreProject(record)} className="rounded-md bg-[#8f1d21] px-3 py-2 text-sm font-semibold text-white">继续编辑</button>
+                    <button type="button" onClick={() => handleRestoreProject(record)} className="rounded-md bg-[#8f1d21] px-3 py-2 text-sm font-semibold text-white">{L("继续编辑", "Continue Editing")}</button>
                     <button
                       type="button"
                       onClick={() => {
@@ -2961,7 +3201,7 @@ export default function CreativeBeadStudio() {
                       }}
                       className="rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700"
                     >
-                      删除
+                      {L("删除", "Delete")}
                     </button>
                   </div>
                 </article>
@@ -3021,19 +3261,21 @@ export default function CreativeBeadStudio() {
 
           <div className="mt-8">
             <label className="block text-sm font-medium text-stone-700" htmlFor="community-search">
-              搜索作品
+              {L("搜索作品", "Search Works")}
             </label>
             <input
               id="community-search"
               value={communityQuery}
               onChange={(event) => setCommunityQuery(event.target.value)}
-              placeholder="输入关键词：青花、飞天、脸谱、作者名..."
+              placeholder={L("输入关键词：青花、飞天、脸谱、作者名...", "Enter keywords: porcelain, flying apsaras, mask, author...")}
               className="mt-2 w-full rounded-md border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#8f1d21] focus:ring-2 focus:ring-[#8f1d21]/20"
             />
           </div>
 
           <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {communityPosts.map((post) => (
+            {communityPosts.map((post) => {
+              const displayPost = displayCommunityPost(post);
+              return (
               <button
                 key={post.id}
                 type="button"
@@ -3042,34 +3284,35 @@ export default function CreativeBeadStudio() {
               >
                 <div className="flex items-center gap-3">
                   <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-full bg-[#8f1d21] text-sm font-semibold text-white">
-                    {post.avatar.startsWith("data:") ? (
+                    {displayPost.avatar.startsWith("data:") ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={post.avatar} alt="" className="h-full w-full object-cover" />
-                    ) : post.avatar}
+                      <img src={displayPost.avatar} alt="" className="h-full w-full object-cover" />
+                    ) : displayPost.avatar}
                   </span>
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-stone-900">{post.author}</p>
-                    <p className="text-xs text-stone-500">{formatPostTime(post.createdAt)}</p>
+                    <p className="truncate text-sm font-semibold text-stone-900">{displayPost.author}</p>
+                    <p className="text-xs text-stone-500">{formatPostTime(displayPost.createdAt, language)}</p>
                   </div>
                 </div>
                 <div className="mt-4">
                   {post.record?.patternUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={post.record.patternUrl} alt={post.title} className="aspect-square w-full rounded-md border border-stone-200 object-contain" />
+                    <img src={post.record.patternUrl} alt={displayPost.title} className="aspect-square w-full rounded-md border border-stone-200 object-contain" />
                   ) : (
                     <PatternMiniature colors={post.colors} />
                   )}
                 </div>
-                <h2 className="mt-4 text-lg font-semibold text-stone-950">{post.title}</h2>
-                <p className="mt-1 text-sm text-stone-600">{post.theme} · {post.element}</p>
-                <p className="mt-3 line-clamp-2 text-sm leading-6 text-stone-500">{post.meaning}</p>
+                <h2 className="mt-4 text-lg font-semibold text-stone-950">{displayPost.title}</h2>
+                <p className="mt-1 text-sm text-stone-600">{displayPost.theme} · {displayPost.element}</p>
+                <p className="mt-3 line-clamp-2 text-sm leading-6 text-stone-500">{displayPost.meaning}</p>
               </button>
-            ))}
+              );
+            })}
           </div>
 
           {communityLoading && (
             <div className="mt-10 rounded-lg border border-stone-200 bg-white p-8 text-center text-sm text-stone-500">
-              正在加载云端社区作品...
+              {L("正在加载云端社区作品...", "Loading cloud community works...")}
             </div>
           )}
 
@@ -3081,7 +3324,7 @@ export default function CreativeBeadStudio() {
 
           {!communityLoading && !communityError && communityPosts.length === 0 && (
             <div className="mt-10 rounded-lg border border-dashed border-stone-300 bg-white p-10 text-center text-sm text-stone-500">
-              没有找到匹配的作品。
+              {L("没有找到匹配的作品。", "No matching works found.")}
             </div>
           )}
         </main>
@@ -3089,26 +3332,29 @@ export default function CreativeBeadStudio() {
 
       {selectedCommunityPost && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/45 px-4 py-8">
+          {(() => {
+            const displayPost = displayCommunityPost(selectedCommunityPost);
+            return (
           <div className="relative flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-lg bg-white shadow-2xl">
             <button
               type="button"
               onClick={() => setSelectedCommunityPost(null)}
               className="absolute right-4 top-4 z-10 rounded-md border border-stone-200 bg-white px-3 py-1.5 text-sm text-stone-600 shadow-sm transition hover:bg-stone-50"
             >
-              关闭
+              {L("关闭", "Close")}
             </button>
             <div className="overflow-y-auto p-6">
               <div className="flex items-center gap-3 pr-20">
                 <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[#8f1d21] text-sm font-semibold text-white">
-                  {selectedCommunityPost.avatar.startsWith("data:") ? (
+                  {displayPost.avatar.startsWith("data:") ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={selectedCommunityPost.avatar} alt="" className="h-full w-full object-cover" />
-                  ) : selectedCommunityPost.avatar}
+                    <img src={displayPost.avatar} alt="" className="h-full w-full object-cover" />
+                  ) : displayPost.avatar}
                 </span>
                 <div>
-                  <h2 className="text-2xl font-semibold text-stone-950">{selectedCommunityPost.title}</h2>
+                  <h2 className="text-2xl font-semibold text-stone-950">{displayPost.title}</h2>
                   <p className="mt-1 text-sm text-stone-500">
-                    {selectedCommunityPost.author} · {formatPostTime(selectedCommunityPost.createdAt)}
+                    {displayPost.author} · {formatPostTime(displayPost.createdAt, language)}
                   </p>
                 </div>
               </div>
@@ -3117,26 +3363,26 @@ export default function CreativeBeadStudio() {
                 <div className="rounded-lg border border-stone-200 bg-stone-50 p-4">
                   {selectedCommunityPost.record?.patternUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={selectedCommunityPost.record.patternUrl} alt={selectedCommunityPost.title} className="max-h-[560px] w-full object-contain" />
+                    <img src={selectedCommunityPost.record.patternUrl} alt={displayPost.title} className="max-h-[560px] w-full object-contain" />
                   ) : (
                     <PatternMiniature colors={selectedCommunityPost.colors} />
                   )}
                 </div>
                 <div className="space-y-4">
                   <div className="rounded-lg border border-stone-200 p-4">
-                    <p className="text-xs font-semibold text-stone-500">传统主题</p>
-                    <p className="mt-1 text-lg font-semibold text-stone-950">{selectedCommunityPost.theme}</p>
+                    <p className="text-xs font-semibold text-stone-500">{L("传统主题", "Traditional Theme")}</p>
+                    <p className="mt-1 text-lg font-semibold text-stone-950">{displayPost.theme}</p>
                   </div>
                   <div className="rounded-lg border border-stone-200 p-4">
-                    <p className="text-xs font-semibold text-stone-500">核心元素</p>
-                    <p className="mt-1 text-lg font-semibold text-stone-950">{selectedCommunityPost.element}</p>
+                    <p className="text-xs font-semibold text-stone-500">{L("核心元素", "Core Element")}</p>
+                    <p className="mt-1 text-lg font-semibold text-stone-950">{displayPost.element}</p>
                   </div>
                   <div className="rounded-lg border border-stone-200 p-4">
-                    <p className="text-xs font-semibold text-stone-500">文化说明</p>
-                    <p className="mt-2 text-sm leading-6 text-stone-600">{selectedCommunityPost.meaning}</p>
+                    <p className="text-xs font-semibold text-stone-500">{L("文化说明", "Cultural Notes")}</p>
+                    <p className="mt-2 text-sm leading-6 text-stone-600">{displayPost.meaning}</p>
                   </div>
                   <div className="rounded-lg border border-stone-200 p-4">
-                    <p className="text-xs font-semibold text-stone-500">推荐配色</p>
+                    <p className="text-xs font-semibold text-stone-500">{L("推荐配色", "Suggested Palette")}</p>
                     <div className="mt-3 flex gap-2">
                       {selectedCommunityPost.colors.map((color) => (
                         <span key={color} title={color} className="h-8 w-8 rounded-full border border-stone-200" style={{ backgroundColor: color }} />
@@ -3152,10 +3398,12 @@ export default function CreativeBeadStudio() {
                 onClick={() => importCommunityPost(selectedCommunityPost)}
                 className="rounded-md bg-[#8f1d21] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#a82428]"
               >
-                一键导入作品
+                {L("一键导入作品", "Import Work")}
               </button>
             </div>
           </div>
+            );
+          })()}
         </div>
       )}
 
@@ -3164,7 +3412,7 @@ export default function CreativeBeadStudio() {
           {/* 左侧目录导航栏 */}
           <aside className="sticky top-20 hidden h-[calc(100vh-6rem)] w-56 shrink-0 overflow-y-auto lg:block">
             <nav className="space-y-1">
-              {helpSidebarNav.map((section) => (
+               {activeHelpSidebarNav.map((section) => (
                 <div key={section.id}>
                   <a
                     href={`#${section.id}`}
@@ -3201,8 +3449,8 @@ export default function CreativeBeadStudio() {
 
           {/* 右侧内容区域 */}
           <div className="min-w-0 flex-1 lg:pl-8">
-            <p className="text-sm font-semibold text-[#8f1d21]">创作指南</p>
-            <h1 className="mt-2 text-4xl font-semibold tracking-tight">豆韵 · 帮助</h1>
+            <p className="text-sm font-semibold text-[#8f1d21]">{L("创作指南", "Creation Guide")}</p>
+            <h1 className="mt-2 text-4xl font-semibold tracking-tight">{L("豆韵 · 帮助", "DouYun · Help")}</h1>
 
             {/* 移动端顶部快速导航 */}
             <div className="mt-4 flex flex-wrap gap-2 lg:hidden">
@@ -3222,7 +3470,7 @@ export default function CreativeBeadStudio() {
             </div>
 
             <div className="mt-8 space-y-6">
-              {helpData.map((section) => {
+              {activeHelpData.map((section) => {
                 // 为操作指南子章节标注 Step 1~4
                 const stepMap: Record<string, string> = {
                   "guide-theme": "Step 1",
@@ -3273,6 +3521,7 @@ export default function CreativeBeadStudio() {
         <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="mb-6 grid gap-3 lg:grid-cols-4">
             {studioSteps.map((item, index) => {
+              const stepDisplay = displayStep(item);
               // 解锁条件：config 始终可访问，其他步骤需要完成前一步
               const canAccess =
                 item.id === "config" ||
@@ -3288,13 +3537,13 @@ export default function CreativeBeadStudio() {
                     if (!canAccess) {
                       if (index === 1 && !sourceImageUrl && !extractedImageUrl) {
                         setToastType("warning");
-                        setToastMsg("请先生成或上传素材，再进入主体提取与再创作步骤。");
+                        setToastMsg(L("请先生成或上传素材，再进入主体提取与再创作步骤。", "Generate or upload material before entering subject extraction and recreation."));
                       } else if (index === 2 && !extractedImageUrl) {
                         setToastType("warning");
-                        setToastMsg("请先完成主体提取，再生成拼豆图纸。");
+                        setToastMsg(L("请先完成主体提取，再生成拼豆图纸。", "Complete subject extraction before generating the bead pattern."));
                       } else if (index === 3 && !pattern) {
                         setToastType("warning");
-                        setToastMsg("请先生成拼豆图纸，再进入制作方案。");
+                        setToastMsg(L("请先生成拼豆图纸，再进入制作方案。", "Generate the bead pattern before entering the making plan."));
                       }
                       return;
                     }
@@ -3309,8 +3558,8 @@ export default function CreativeBeadStudio() {
                   }`}
                 >
                   <span className="text-xs font-semibold">0{index + 1}</span>
-                  <span className="mt-1 block text-base font-semibold">{item.label}</span>
-                  <span className={`mt-2 block text-xs leading-5 ${step === item.id ? "text-white/80" : "text-stone-500"}`}>{item.desc}</span>
+                  <span className="mt-1 block text-base font-semibold">{stepDisplay.label}</span>
+                  <span className={`mt-2 block text-xs leading-5 ${step === item.id ? "text-white/80" : "text-stone-500"}`}>{stepDisplay.desc}</span>
                 </button>
               );
             })}
@@ -3322,11 +3571,13 @@ export default function CreativeBeadStudio() {
           {confirmNew && (
             <div className="fixed inset-0 z-[100] grid place-items-center bg-black/40">
               <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl">
-                <h3 className="text-lg font-semibold">放弃当前进度？</h3>
+                <h3 className="text-lg font-semibold">{L("放弃当前进度？", "Discard Current Progress?")}</h3>
                 <p className="mt-2 text-sm text-stone-600">
-                  您当前已有处理中的图案或图纸，{confirmNew === "ai" ? "使用 AI 重新生成" : confirmNew === "sample" ? "切换为内置样例" : "上传新图片"}将清空已生成的主体提取和拼豆图纸。
+                  {L("您当前已有处理中的图案或图纸，", "You already have a pattern or image in progress. ")}
+                  {confirmNew === "ai" ? L("使用 AI 重新生成", "Regenerating with AI") : confirmNew === "sample" ? L("切换为内置样例", "Switching to a built-in sample") : L("上传新图片", "Uploading a new image")}
+                  {L("将清空已生成的主体提取和拼豆图纸。", " will clear the generated extraction and bead pattern.")}
                 </p>
-                <p className="mt-1 text-sm text-stone-500">请先下载或保存需要的资料，再继续操作。</p>
+                <p className="mt-1 text-sm text-stone-500">{L("请先下载或保存需要的资料，再继续操作。", "Download or save anything you need before continuing.")}</p>
                 <div className="mt-5 flex justify-end gap-3">
                   <button
                     type="button"
@@ -3336,7 +3587,7 @@ export default function CreativeBeadStudio() {
                     }}
                     className="rounded-md border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700"
                   >
-                    取消
+                    {L("取消", "Cancel")}
                   </button>
                   <button
                     type="button"
@@ -3363,7 +3614,7 @@ export default function CreativeBeadStudio() {
                     }}
                     className="rounded-md bg-[#8f1d21] px-4 py-2 text-sm font-semibold text-white"
                   >
-                    确认放弃
+                    {L("确认放弃", "Discard")}
                   </button>
                 </div>
               </div>
@@ -3392,8 +3643,9 @@ export default function CreativeBeadStudio() {
           }}
           onRegisterSuccess={(username) => {
             setToastType("success");
-            setToastMsg(`用户 ${username} 账号注册成功！`);
+            setToastMsg(L(`用户 ${username} 账号注册成功！`, `User ${username} registered successfully.`));
           }}
+          language={language}
         />
       )}
 
@@ -3401,10 +3653,10 @@ export default function CreativeBeadStudio() {
       <footer className="border-t border-stone-200 bg-[#fffdf7]">
         <div className="mx-auto flex max-w-7xl flex-col items-center gap-1 px-4 py-6 text-center sm:px-6 lg:px-8">
           <p className="text-xs text-stone-400">
-            &copy; {new Date().getFullYear()} 豆韵 DouYun — 拼豆图纸生成工具
+            &copy; {new Date().getFullYear()} {L("豆韵 DouYun — 拼豆图纸生成工具", "DouYun - Bead Pattern Design Tool")}
           </p>
           <p className="text-xs text-stone-400">
-            基于 Apache 2.0 开源协议 · 以 AI 为笔，让千年纹样织入像素网格
+            {L("基于 Apache 2.0 开源协议 · 以 AI 为笔，让千年纹样织入像素网格", "Apache 2.0 licensed · Weaving heritage patterns into pixel grids with AI")}
           </p>
           <p className="mt-1 text-[11px] text-stone-300">
             All Rights Reserved.

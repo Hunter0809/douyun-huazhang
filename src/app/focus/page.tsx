@@ -18,6 +18,7 @@ import ColorPanel from '../../components/ColorPanel';
 import SettingsPanel from '../../components/SettingsPanel';
 import CelebrationAnimation from '../../components/CelebrationAnimation';
 import CompletionCard from '../../components/CompletionCard';
+import { loadAppLanguage, type AppLanguage } from '../../utils/language';
 import { getDisplayColorKey } from '../../utils/colorSystemUtils';
 
 interface FocusModeState {
@@ -58,6 +59,8 @@ interface FocusModeState {
 }
 
 export default function FocusMode() {
+  const [language] = useState<AppLanguage>(() => loadAppLanguage());
+  const L = useCallback((zh: string, en: string) => language === 'en' ? en : zh, [language]);
   // 从localStorage或URL参数获取像素数据
   const [mappedPixelData, setMappedPixelData] = useState<MappedPixel[][] | null>(null);
   const [gridDimensions, setGridDimensions] = useState<{ N: number; M: number } | null>(null);
@@ -469,7 +472,7 @@ export default function FocusMode() {
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">加载中...</p>
+          <p className="text-gray-600">{L('加载中...', 'Loading...')}</p>
         </div>
       </div>
     );
@@ -490,9 +493,9 @@ export default function FocusMode() {
           <svg className="w-6 h-6 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
-          返回
+          {L('返回', 'Back')}
         </button>
-        <h1 className="text-lg font-medium text-gray-800">专心拼豆（AlphaTest）</h1>
+        <h1 className="text-lg font-medium text-gray-800">{L('专心拼豆（AlphaTest）', 'Focus Beading (AlphaTest)')}</h1>
         <button 
           onClick={() => setFocusState(prev => ({ ...prev, showSettingsPanel: true }))}
           className="text-gray-600 hover:text-gray-800"
@@ -509,6 +512,7 @@ export default function FocusMode() {
         currentColor={focusState.currentColor}
         colorInfo={currentColorInfo}
         progressPercentage={progressPercentage}
+        language={language}
       />
 
       {/* 主画布区域 */}
@@ -536,6 +540,7 @@ export default function FocusMode() {
         progressPercentage={progressPercentage}
         recommendedCell={focusState.recommendedCell}
         colorInfo={currentColorInfo}
+        language={language}
       />
 
       {/* 底部工具栏 */}
@@ -545,6 +550,7 @@ export default function FocusMode() {
         onPause={handlePauseToggle}
         isPaused={focusState.isPaused}
         elapsedTime={formatTime(focusState.totalElapsedTime)}
+        language={language}
       />
 
       {/* 颜色选择面板 */}
@@ -554,6 +560,7 @@ export default function FocusMode() {
           currentColor={focusState.currentColor}
           onColorSelect={handleColorChange}
           onClose={() => setFocusState(prev => ({ ...prev, showColorPanel: false }))}
+          language={language}
         />
       )}
 
@@ -571,6 +578,7 @@ export default function FocusMode() {
           enableCelebration={focusState.enableCelebration}
           onEnableCelebrationChange={(enable: boolean) => setFocusState(prev => ({ ...prev, enableCelebration: enable }))}
           onClose={() => setFocusState(prev => ({ ...prev, showSettingsPanel: false }))}
+          language={language}
           onResetProgress={() => {
             // 清空所有已完成的格子
             setFocusState(prev => ({

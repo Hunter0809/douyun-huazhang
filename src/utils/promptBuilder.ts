@@ -10,9 +10,11 @@
   gridHeight?: number;
   colorCount: number;
   skillLevel?: "beginner" | "skilled" | "expert";
+  language?: "zh" | "en";
 };
 
 export function buildCulturePrompt(options: CulturePromptOptions): string {
+  const outputLanguage = options.language === "en" ? "English" : "中文";
   const productLine = options.productPrompt
     ? `作品载体：${options.product}（${options.productPrompt}）`
     : `作品载体：${options.product}`;
@@ -38,6 +40,7 @@ export function buildCulturePrompt(options: CulturePromptOptions): string {
     options.gridWidth && options.gridHeight ? `后续拼豆网格参考：${options.gridWidth} × ${options.gridHeight}` : `后续拼豆网格参考：${options.gridSize} 格`,
     `目标色彩数量：约 ${options.colorCount} 种主色与辅色`,
     `用户制作熟练度：${skillLabel}`,
+    `输出语言：${outputLanguage}`,
     "",
     "设计要求：",
     "• 将“核心意象”作为画面主体，并让它与文化主题中的纹样、器物、建筑、神话或民俗符号自然结合，不要只画一个孤立图标",
@@ -50,5 +53,6 @@ export function buildCulturePrompt(options: CulturePromptOptions): string {
     "• 这是第二步「图案设计」，后续第三步会对本结果进行像素化处理变成拼豆图纸",
     "• 不要把图案像素化，不要绘制拼豆网格，不要添加色号",
     "• 输出干净的平面装饰图，不要文字、不要水印、不要复杂背景",
+    options.language === "en" ? "• If any textual response is needed, use English only." : "",
   ].filter(Boolean).join("\n");
 }

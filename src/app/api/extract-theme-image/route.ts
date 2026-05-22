@@ -27,6 +27,7 @@ function formatSubjectIdentification(identification: SubjectIdentification): str
 
 export async function POST(req: Request) {
   const body = await req.json();
+  const language = body.language === "en" ? "en" : "zh";
   const apiKey = process.env.ARK_API_KEY;
   const baseUrl = process.env.ARK_BASE_URL ?? "https://ark.cn-beijing.volces.com/api/v3";
   const model = process.env.ARK_IMAGE_MODEL ?? process.env.AI_IMAGE_MODEL ?? "doubao-seedream-4-0-250828";
@@ -74,6 +75,7 @@ export async function POST(req: Request) {
         "• 这是第二步「主体再创作」，后续第三步会对本结果进行像素化处理变成拼豆图纸",
         "• 不要把图案像素化，不要绘制拼豆网格，不要添加色号",
         "• 不要添加文字、水印或复杂摄影背景",
+        language === "en" ? "• If any text response is needed, use English only" : "",
       ].join("\n")
     : [
         "【任务：生成传统文化主题图案】",
@@ -94,6 +96,7 @@ export async function POST(req: Request) {
         "• 这是第二步「图案设计」，后续第三步会对本结果进行像素化处理变成拼豆图纸",
         "• 不要把图案像素化，不要绘制拼豆网格，不要添加色号",
         "• 输出干净的平面装饰图，不要文字、不要水印、不要复杂背景",
+        language === "en" ? "• If any text response is needed, use English only" : "",
       ].filter(Boolean).join("\n");
 
   const response = await fetch(`${baseUrl.replace(/\/$/, "")}/images/generations`, {

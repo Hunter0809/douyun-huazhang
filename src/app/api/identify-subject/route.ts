@@ -70,6 +70,7 @@ function parseSubjectIdentification(text: string): SubjectIdentification {
 
 export async function POST(req: Request) {
   const body = await req.json();
+  const language = body.language === "en" ? "en" : "zh";
   const config = body.config as Partial<ApiConfig> | undefined;
   const useDefaultModel = config?.useDefaultModel === true;
   const envApiKey = firstConfiguredValue(process.env.ARK_API_KEY);
@@ -101,7 +102,19 @@ export async function POST(req: Request) {
   }
 
   const compactImageUrl = await compactDataUrl(rawImageUrl);
-  const prompt = `请识别参考图像中最主要的主体是什么，并输出严格 JSON。
+  const prompt = language === "en" ? `Identify the main subject in the reference image and output strict JSON.
+
+Field requirements:
+{
+  "subject": "Specific subject name, for example lotus, opera mask, bird, porcelain vase, portrait",
+  "category": "Subject category, for example plant, animal, person, object, pattern, architecture, text symbol, abstract graphic",
+  "evidence": ["3 to 6 visual evidence items describing only visible shape, structure, color, material, or local features"],
+  "confidence": a number from 0 to 1,
+  "alternatives": ["1 to 3 possible alternative identifications"],
+  "visualSummary": "An objective 60 to 120 word summary of the subject silhouette, main colors, composition, and visible style"
+}
+
+Do not infer from user configuration, filenames, or outside knowledge. Lower confidence when unclear and include alternatives. Output JSON only, no Markdown. Use English only.` : `请识别参考图像中最主要的主体是什么，并输出严格 JSON。
 
 字段要求：
 {
@@ -127,7 +140,9 @@ export async function POST(req: Request) {
         {
           role: "system",
           content:
-            "你是图像主体识别模型。只根据图像可见信息判断主体，输出严格 JSON。",
+            language === "en"
+              ? "You are an image subject identification model. Judge only from visible image information and output strict JSON in English."
+              : "你是图像主体识别模型。只根据图像可见信息判断主体，输出严格 JSON。",
         },
         {
           role: "user",

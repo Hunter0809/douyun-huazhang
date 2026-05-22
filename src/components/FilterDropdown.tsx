@@ -2,13 +2,26 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { IMAGE_FILTER_OPTIONS, type ImageFilter } from "@/utils/colorSystemUtils";
+import type { AppLanguage } from "@/utils/language";
 
 type Props = {
   value: ImageFilter;
   onChange: (value: ImageFilter) => void;
+  language?: AppLanguage;
 };
 
-export default function FilterDropdown({ value, onChange }: Props) {
+const filterNameEn: Record<ImageFilter, string> = {
+  none: "Original",
+  contrast: "High Contrast",
+  vibrant: "Vibrant",
+  pastel: "Pastel",
+  warm: "Warm",
+  cool: "Cool",
+  grayscale: "Grayscale",
+  sepia: "Sepia",
+};
+
+export default function FilterDropdown({ value, onChange, language = "zh" }: Props) {
   const [open, setOpen] = useState(false);
   const [dropUp, setDropUp] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -55,14 +68,14 @@ export default function FilterDropdown({ value, onChange }: Props) {
   const selected = IMAGE_FILTER_OPTIONS.find((f) => f.key === value) ?? IMAGE_FILTER_OPTIONS[0];
 
   return (
-    <div ref={ref} className="relative" title={selected.name}>
+    <div ref={ref} className="relative" title={language === "en" ? filterNameEn[selected.key] : selected.name}>
       {/* 按钮显示名称 */}
       <button
         type="button"
         onClick={handleToggle}
         className="flex items-center gap-1.5 rounded-md border border-[#8f1d21] bg-[#8f1d21] px-2.5 py-1.5 text-sm text-white transition hover:bg-[#a82428] whitespace-nowrap"
       >
-        <span>{selected.name}</span>
+        <span>{language === "en" ? filterNameEn[selected.key] : selected.name}</span>
       </button>
 
       {/* 自定义下拉菜单 */}
@@ -90,8 +103,8 @@ export default function FilterDropdown({ value, onChange }: Props) {
                     : "text-stone-600 hover:bg-stone-50 hover:text-stone-900"
                 }`}
               >
-                <span className="flex-1">{f.name}</span>
-                {f.key === value && <span className="text-xs text-[#8f1d21]">已选</span>}
+                <span className="flex-1">{language === "en" ? filterNameEn[f.key] : f.name}</span>
+                {f.key === value && <span className="text-xs text-[#8f1d21]">{language === "en" ? "Selected" : "已选"}</span>}
               </button>
             ))}
           </div>

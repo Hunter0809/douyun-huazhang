@@ -12,16 +12,19 @@ interface ColorPanelProps {
   currentColor: string;
   onColorSelect: (color: string) => void;
   onClose: () => void;
+  language?: 'zh' | 'en';
 }
 
 const ColorPanel: React.FC<ColorPanelProps> = ({
   colors,
   currentColor,
   onColorSelect,
-  onClose
+  onClose,
+  language = 'zh'
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'progress' | 'name' | 'total'>('progress');
+  const L = (zh: string, en: string) => language === 'en' ? en : zh;
 
   // 过滤和排序颜色
   const filteredAndSortedColors = colors
@@ -57,7 +60,7 @@ const ColorPanel: React.FC<ColorPanelProps> = ({
           <div className="relative">
             <input
               type="text"
-              placeholder="搜索颜色..."
+              placeholder={L('搜索颜色...', 'Search colors...')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -80,9 +83,9 @@ const ColorPanel: React.FC<ColorPanelProps> = ({
             onChange={(e) => setSortBy(e.target.value as 'progress' | 'name' | 'total')}
             className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="progress">按进度排序</option>
-            <option value="name">按名称排序</option>
-            <option value="total">按数量排序</option>
+            <option value="progress">{L('按进度排序', 'Sort by progress')}</option>
+            <option value="name">{L('按名称排序', 'Sort by name')}</option>
+            <option value="total">{L('按数量排序', 'Sort by count')}</option>
           </select>
         </div>
 
@@ -157,7 +160,7 @@ const ColorPanel: React.FC<ColorPanelProps> = ({
             onClick={onClose}
             className="w-full py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
           >
-            关闭
+            {L('关闭', 'Close')}
           </button>
         </div>
       </div>

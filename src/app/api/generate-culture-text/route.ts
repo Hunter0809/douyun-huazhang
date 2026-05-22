@@ -46,6 +46,7 @@ function formatSubjectIdentification(identification: SubjectIdentification | und
 
 export async function POST(req: Request) {
   const body = await req.json();
+  const language = body.language === "en" ? "en" : "zh";
   const apiKey = process.env.ARK_API_KEY;
   const baseUrl = process.env.ARK_BASE_URL ?? "https://ark.cn-beijing.volces.com/api/v3";
   const model = process.env.ARK_TEXT_MODEL ?? process.env.AI_TEXT_MODEL ?? "doubao-seed-1-6-250615";
@@ -58,7 +59,31 @@ export async function POST(req: Request) {
     );
   }
 
-  const prompt = `请根据参考图像中可见的主体、色彩、构图和风格，以及下方人工可编辑的主体识别结果，为一个中华文创拼豆作品生成“作品介绍”。
+  const prompt = language === "en" ? `Generate a work introduction for a Chinese cultural bead-art product based only on the visible subject, colors, composition, style, and the editable subject identification below.
+
+Return strict JSON only:
+{
+  "title": "An English work title that includes the product type",
+  "source": "Cultural source in English, based only on visible patterns, objects, symbols, colors, aesthetic traits, and subject identification, 80 to 140 words",
+  "meaning": "Pattern meaning in English, explaining symbolism from the subject, colors, composition, and visual evidence, 80 to 140 words",
+  "design": "Design notes in English, describing bead conversion, product carrier, color control, and use scenario, 100 to 180 words"
+}
+
+Only output strict JSON with fields title, source, meaning, design.
+
+Product: ${body.product}
+Grid: ${body.gridWidth && body.gridHeight ? `${body.gridWidth}x${body.gridHeight}` : `${body.gridSize}x${body.gridSize}`}
+Color count: ${body.colorCount}
+Material colors: ${JSON.stringify(body.beadCounts ?? [])}
+Subject identification:
+${formatSubjectIdentification(subjectIdentification)}
+Requirements:
+1. Use only the reference image and subject identification. Do not extend, assume, or reuse the theme, element, or cultural note from the configuration page.
+2. If subject identification conflicts with visible image evidence, prioritize visible image evidence and the identification evidence.
+3. The title must include the product type "${body.product}" and must not replace it with another product category.
+4. The design note must explain how the bead result works as "${body.product}".
+5. Self-check before output: title, source, meaning, and design must all be supported by the image or subject identification.
+6. Use English only.` : `请根据参考图像中可见的主体、色彩、构图和风格，以及下方人工可编辑的主体识别结果，为一个中华文创拼豆作品生成“作品介绍”。
 
 参考生成模板：
 {
@@ -88,7 +113,9 @@ ${formatSubjectIdentification(subjectIdentification)}
     typeof rawImageUrl === "string" && rawImageUrl.length > 0
       ? await compactDataUrl(rawImageUrl)
       : null;
-  const finalTextConstraint = `最终检查：产品必须是“${body.product}”。title 必须直接包含“${body.product}”，不得使用“拼豆画”或其他产品词替代“${body.product}”。`;
+  const finalTextConstraint = language === "en"
+    ? `Final check: the product must be "${body.product}". The title must directly include "${body.product}" and use English only.`
+    : `最终检查：产品必须是“${body.product}”。title 必须直接包含“${body.product}”，不得使用“拼豆画”或其他产品词替代“${body.product}”。`;
   const userContent = compactImageUrl
     ? [
         { type: "text", text: prompt },
@@ -109,7 +136,9 @@ ${formatSubjectIdentification(subjectIdentification)}
         {
           role: "system",
           content:
-            "你是文创产品策划师和视觉分析师。文化判断必须以参考图像的可见内容和独立主体识别结果为依据，不得使用配置页主题、核心元素或用户文化说明来补全。只输出严格 JSON，不要 Markdown。",
+            language === "en"
+              ? "You are a cultural product planner and visual analyst. Cultural judgments must rely on the reference image and independent subject identification only. Output strict JSON only, no Markdown, in English."
+              : "你是文创产品策划师和视觉分析师。文化判断必须以参考图像的可见内容和独立主体识别结果为依据，不得使用配置页主题、核心元素或用户文化说明来补全。只输出严格 JSON，不要 Markdown。",
         },
         { role: "user", content: userContent },
       ],
