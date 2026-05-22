@@ -73,8 +73,10 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout, onApiC
   const text = {
     backHome: language === "en" ? "Back Home" : "返回首页",
     profileTitle: language === "en" ? "Profile" : "个人主页",
-    languageTitle: "语言 / Language",
-    languageDesc: "选择系统语言 / Select the system language. Navigation, profile settings, and future AI responses follow this choice.",
+    languageTitle: "Language",
+    languageDesc: language === "en"
+      ? "Select the system language. Navigation, profile settings, and future AI responses follow this choice."
+      : "选择系统语言。导航、个人配置和后续 AI 输出都会跟随此选项。",
     personalInfo: language === "en" ? "Personal Info" : "个人资料",
     personalInfoDesc: language === "en" ? "Set your avatar and nickname. This information is stored only in this browser." : "设置头像和昵称，信息仅存储在本地浏览器中。",
     skillLevel: language === "en" ? "Skill Level" : "制作熟练度",
@@ -397,7 +399,7 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout, onApiC
         <section className="rounded-lg border border-stone-200 bg-white p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-xl font-semibold">{text.languageTitle} / Language</h2>
+              <h2 className="text-xl font-semibold">{text.languageTitle}</h2>
               <p className="mt-1 text-sm text-stone-500">{text.languageDesc}</p>
             </div>
             <div className="inline-flex rounded-lg border border-[#8f1d21]/25 bg-[#8f1d21]/8 p-1">

@@ -204,6 +204,21 @@ const beadUsageEn: Record<string, string> = {
   "填充": "Fill",
 };
 
+const colorFamilyLabelEn: Record<ColorFamily, string> = {
+  "全部": "All",
+  "红色系": "Red",
+  "橙色系": "Orange",
+  "黄色系": "Yellow",
+  "绿色系": "Green",
+  "青色系": "Cyan",
+  "蓝色系": "Blue",
+  "紫色系": "Purple",
+  "粉色系": "Pink",
+  "灰色系": "Gray",
+  "白色系": "White",
+  "黑色系": "Black",
+};
+
 const productConfigDefaults: Record<string, ProductConfigDefault> = {
   coaster: { aspectRatio: "1:1", gridSize: 48, colorCount: 12 },
   keychain: { aspectRatio: "1:1", gridSize: 32, colorCount: 8 },
@@ -953,7 +968,7 @@ function ScrollingPatternBand() {
 export default function CreativeBeadStudio() {
   const [language, setLanguage] = useState<AppLanguage>(() => loadAppLanguage());
   const ui = {
-    brand: language === "en" ? "DouYun | Traditional Pattern Bead Design" : "豆韵 | 传统纹样拼豆设计工具",
+    brand: language === "en" ? "DouYun" : "豆韵 | 传统纹样拼豆设计工具",
     login: language === "en" ? "Log in" : "登录",
     register: language === "en" ? "Register" : "注册",
     newProject: language === "en" ? "New Project" : "新建项目",
@@ -1037,8 +1052,11 @@ export default function CreativeBeadStudio() {
 
   const forcedColorWarning = useMemo(() => {
     if (forcedColors.length <= colorCount) return null;
+    if (language === "en") {
+      return `${forcedColors.length} colors are selected, exceeding the current ${colorCount}-color limit. The extra ${forcedColors.length - colorCount} colors will not be used in final mapping. Reduce selected colors or raise the color limit.`;
+    }
     return `已指定 ${forcedColors.length} 种颜色，超过当前 ${colorCount} 色上限。超出的 ${forcedColors.length - colorCount} 种颜色不会进入最终映射，请减少指定颜色或提高颜色上限。`;
-  }, [colorCount, forcedColors.length]);
+  }, [colorCount, forcedColors.length, language]);
 
   const selectedCultureTheme = useMemo(
     () => cultureThemes.find((item) => item.name === theme || item.id === theme),
@@ -1083,8 +1101,14 @@ export default function CreativeBeadStudio() {
     ].join("\n");
   }, [language]);
   const defaultProjectTitle = useMemo(
-    () => buildDefaultProjectTitle(theme, element, formLabel),
-    [element, formLabel, theme],
+    () => language === "en"
+      ? buildDefaultProjectTitle(
+        selectedCultureTheme ? displayThemeName(selectedCultureTheme) : theme,
+        displayElementName(element),
+        formLabel,
+      )
+      : buildDefaultProjectTitle(theme, element, formLabel),
+    [displayElementName, displayThemeName, element, formLabel, language, selectedCultureTheme, theme],
   );
   const activeHelpSidebarNav = language === "en" ? helpSidebarNavEn : helpSidebarNav;
   const activeHelpData = language === "en" ? helpDataEn : helpData;
@@ -1947,7 +1971,7 @@ export default function CreativeBeadStudio() {
                       : "bg-stone-100 text-stone-600 hover:bg-stone-200"
                   }`}
                 >
-                  {f.icon} {language === "en" ? f.key.replace("全部", "All").replace("红", "Red").replace("橙黄", "Orange/Yellow").replace("绿", "Green").replace("蓝紫", "Blue/Purple").replace("棕", "Brown").replace("黑白灰", "Neutral") : f.key}
+                  {f.icon} {language === "en" ? colorFamilyLabelEn[f.key] : f.key}
                 </button>
               ))}
             </div>
@@ -2391,7 +2415,7 @@ export default function CreativeBeadStudio() {
     const total = beadCounts.reduce((sum, item) => sum + item.count, 0);
     const beadingMinutes = estimateBeadingMinutes(total, beadCounts.length);
     const cost = estimateMaterialCost(total, beadCounts.length);
-    const workTitle = aiCultureCopy?.title?.trim() || `${element}${formLabel}`;
+    const workTitle = aiCultureCopy?.title?.trim() || (language === "en" ? `${displayElementName(element)} ${formLabel}` : `${element}${formLabel}`);
     const planText = [
       language === "en" ? `${workTitle} Bead Making Plan` : `${workTitle} 拼豆制作方案`,
       "",
@@ -2969,7 +2993,7 @@ export default function CreativeBeadStudio() {
         <div className="relative mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           {/* 左侧 Logo + 品牌文字 */}
           <button type="button" onClick={() => setView("home")} className="flex shrink-0 items-center gap-2">
-            <img src="/logo.jpg" alt="豆韵" className="h-8 w-8 rounded-md object-cover" />
+            <img src="/logo.jpg" alt={language === "en" ? "DouYun" : "豆韵"} className="h-8 w-8 rounded-md object-cover" />
             <span className="hidden text-sm font-semibold text-stone-800 sm:inline">{ui.brand}</span>
           </button>
 
