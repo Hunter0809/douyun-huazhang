@@ -126,11 +126,12 @@ const showcase = [
     previewImage: "/showcase/feitian-coaster-draft.png",
   },
   {
-    title: "京剧脸谱",
-    theme: "京剧",
-    element: "脸谱",
-    meaning: "以京剧脸谱的对称结构和红、黑、白高对比色表达戏曲人物符号，适合做识别度强的拼豆图纸。",
-    colors: ["#FFFFFF", "#E7002F", "#000000", "#FFDA45"],
+    title: "宫墙龙纹",
+    theme: "故宫宫廷纹样",
+    element: "宫墙",
+    meaning: "故宫宫廷纹样体现皇家建筑、礼制色彩与吉祥纹饰，适合庄重、华丽、纪念品风格的设计。",
+    colors: ["#8F1D21", "#F2C94C", "#1B4F9C", "#D6A23A", "#F8E8C8"],
+    previewImage: "/showcase/宫墙龙纹.png",
   },
   {
     title: "山海瑞兽",
@@ -144,8 +145,8 @@ const showcase = [
 const communityTemplates: CommunityTemplate[] = showcase.map((item, index) => ({
   id: `template_${index}`,
   title: item.title,
-  author: ["青瓷手作", "敦煌拾色", "梨园拼豆", "山海造物"][index] ?? "豆韵工坊",
-  avatar: ["青", "敦", "京", "山"][index] ?? "豆",
+  author: ["青瓷手作", "敦煌拾色", "宫墙手作", "山海造物"][index] ?? "豆韵工坊",
+  avatar: ["青", "敦", "宫", "山"][index] ?? "豆",
   createdAt: Date.UTC(2026, 4, 19 - index, 2, 0, 0),
   theme: item.theme,
   element: item.element,
@@ -157,7 +158,7 @@ const communityTemplates: CommunityTemplate[] = showcase.map((item, index) => ({
 const scrollingPatterns = [
   ["#FFFFFF", "#1557A8", "#3677D2", "#CDE8FF"],
   ["#FCF9E0", "#EDB045", "#943630", "#0B3C43"],
-  ["#FFFFFF", "#E7002F", "#000000", "#FFDA45"],
+  ["#8F1D21", "#F2C94C", "#1B4F9C", "#F8E8C8"],
   ["#1D1414", "#D30022", "#166F41", "#FFC830"],
   ["#F8E8C8", "#9F2B22", "#D9A441", "#111827"],
   ["#F7F2E8", "#245C45", "#8F1D21", "#E4B95B"],
