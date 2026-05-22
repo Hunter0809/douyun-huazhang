@@ -670,29 +670,9 @@ export function renderPatternToCanvas(
         ctx.fillStyle = pixel.isExternal ? "#ffffff" : pixel.color;
         ctx.fillRect(px, py, cell, cell);
 
-        if (!pixel.isExternal && highlightedColor && pixel.color.toUpperCase() === highlightedColor.toUpperCase()) {
-          const beadInset = Math.max(2, Math.floor(cell * 0.12));
-          const cx = px + cell / 2;
-          const cy = py + cell / 2;
-          const radius = Math.max(2, (cell - beadInset * 2) / 2);
-          const gradient = ctx.createRadialGradient(
-            cx - radius * 0.35,
-            cy - radius * 0.35,
-            Math.max(1, radius * 0.12),
-            cx,
-            cy,
-            radius,
-          );
-          gradient.addColorStop(0, "rgba(255,255,255,0.72)");
-          gradient.addColorStop(0.38, pixel.color);
-          gradient.addColorStop(1, "rgba(0,0,0,0.25)");
-          ctx.fillStyle = gradient;
-          ctx.beginPath();
-          ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.strokeStyle = "rgba(17, 24, 39, 0.32)";
-          ctx.lineWidth = Math.max(1, Math.floor(cell * 0.06));
-          ctx.stroke();
+        if (!pixel.isExternal && highlightedColor && pixel.color.toUpperCase() !== highlightedColor.toUpperCase()) {
+          ctx.fillStyle = "rgba(255, 251, 245, 0.68)";
+          ctx.fillRect(px, py, cell, cell);
         }
         
         // 在非外部背景的格子里显示色号

@@ -291,13 +291,13 @@ export default function AiChatPanel({ isOpen = true, onClose, resetToken = 0, em
         {error && !loading && (
           <p className="mb-2 text-xs text-red-500">{error}</p>
         )}
-        <div className="mb-3 inline-flex rounded-lg border border-stone-200 bg-stone-50 p-1">
+        <div className="mb-3 inline-flex rounded-lg border border-[#8f1d21]/25 bg-[#8f1d21]/8 p-1">
           <button
             type="button"
             onClick={() => setMode("text")}
             disabled={loading}
             className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
-              mode === "text" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-800"
+              mode === "text" ? "bg-[#8f1d21] text-white shadow-sm" : "text-[#8f1d21]/72 hover:text-[#8f1d21]"
             } disabled:opacity-50`}
           >
             文字对话
@@ -307,7 +307,7 @@ export default function AiChatPanel({ isOpen = true, onClose, resetToken = 0, em
             onClick={() => setMode("image")}
             disabled={loading}
             className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
-              mode === "image" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-800"
+              mode === "image" ? "bg-[#8f1d21] text-white shadow-sm" : "text-[#8f1d21]/72 hover:text-[#8f1d21]"
             } disabled:opacity-50`}
           >
             生图模式

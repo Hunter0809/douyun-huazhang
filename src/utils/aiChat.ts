@@ -35,12 +35,20 @@ function normalizeMessages(messages: ChatMessage[]): ChatMessage[] {
   }));
 }
 
+function cloneMessages(messages: ChatMessage[]): ChatMessage[] {
+  return messages.slice(-HISTORY_LIMIT).map((message) => ({
+    role: message.role,
+    content: message.content,
+    imageUrl: message.imageUrl,
+  }));
+}
+
 export const DEFAULT_CHAT_MESSAGES: ChatMessage[] = [
   { role: "assistant", content: "你好，我是豆韵AI。可以切换到“文字对话”或“生图模式”分别使用。" },
 ];
 
 export function loadAiChatHistory(): ChatMessage[] {
-  if (memoryChatHistory) return normalizeMessages(memoryChatHistory);
+  if (memoryChatHistory) return cloneMessages(memoryChatHistory);
   if (!isStorageAvailable()) return DEFAULT_CHAT_MESSAGES;
   try {
     const raw = localStorage.getItem(AI_CHAT_HISTORY_KEY);
@@ -62,17 +70,17 @@ export function loadAiChatHistory(): ChatMessage[] {
         content: item.content,
         imageUrl: getPersistableImageUrl(item.imageUrl),
       }));
-    memoryChatHistory = history.length > 0 ? history : DEFAULT_CHAT_MESSAGES;
-    return memoryChatHistory;
+    memoryChatHistory = history.length > 0 ? cloneMessages(history) : cloneMessages(DEFAULT_CHAT_MESSAGES);
+    return cloneMessages(memoryChatHistory);
   } catch {
-    memoryChatHistory = DEFAULT_CHAT_MESSAGES;
-    return DEFAULT_CHAT_MESSAGES;
+    memoryChatHistory = cloneMessages(DEFAULT_CHAT_MESSAGES);
+    return cloneMessages(DEFAULT_CHAT_MESSAGES);
   }
 }
 
 export function saveAiChatHistory(messages: ChatMessage[]): void {
+  memoryChatHistory = cloneMessages(messages);
   const normalizedMessages = normalizeMessages(messages);
-  memoryChatHistory = normalizedMessages;
   if (!isStorageAvailable()) return;
   try {
     localStorage.setItem(AI_CHAT_HISTORY_KEY, JSON.stringify(normalizedMessages));
@@ -87,7 +95,7 @@ export function saveAiChatHistory(messages: ChatMessage[]): void {
 }
 
 export function clearAiChatHistory(): void {
-  memoryChatHistory = DEFAULT_CHAT_MESSAGES;
+  memoryChatHistory = cloneMessages(DEFAULT_CHAT_MESSAGES);
   if (!isStorageAvailable()) return;
   localStorage.removeItem(AI_CHAT_HISTORY_KEY);
 }

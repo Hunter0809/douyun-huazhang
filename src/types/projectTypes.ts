@@ -50,6 +50,7 @@ export interface ProjectRecord {
   createdAt: number;
   updatedAt: number;
   completed: boolean;
+  currentStep?: "config" | "extract" | "pattern" | "preview";
   theme: string;
   element: string;
   meaning?: string;
@@ -59,8 +60,12 @@ export interface ProjectRecord {
   aspectRatio: string;
   showGrid: boolean;
   antiAlias: boolean;
+  connectIslands?: boolean;
+  selectedFilter?: "none" | "contrast" | "vibrant" | "pastel" | "warm" | "cool" | "grayscale" | "sepia";
+  forcedColors?: string[];
   sourceImageUrl: string | null;
   extractedImageUrl: string | null;
+  extractPrompt?: string | null;
   patternData: string | null;
   patternUrl: string | null;
   cleanPatternUrl: string | null;

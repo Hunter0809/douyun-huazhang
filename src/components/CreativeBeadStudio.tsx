@@ -833,6 +833,7 @@ export default function CreativeBeadStudio() {
   const restoringRef = useRef(false);
   const currentProjectIdRef = useRef<string | null>(null);
   const lastAutoSaveSignatureRef = useRef<string>("");
+  const previousViewRef = useRef<SiteView>("home");
 
   const [confirmNew, setConfirmNew] = useState<"ai" | "sample" | "upload" | null>(null);
   const pendingUploadRef = useRef<File | null>(null);
@@ -2289,6 +2290,10 @@ export default function CreativeBeadStudio() {
   };
 
   const handleRestoreProject = useCallback((record: ProjectRecord) => {
+    const restoredStep: StudioStep = record.currentStep
+      ?? (record.patternData || record.patternUrl
+        ? (record.completed ? "preview" : "pattern")
+        : (record.extractedImageUrl || record.sourceImageUrl ? "extract" : "config"));
     restoringRef.current = true;
     currentProjectIdRef.current = record.id;
     lastAutoSaveSignatureRef.current = "";
@@ -2303,9 +2308,14 @@ export default function CreativeBeadStudio() {
     setAspectRatio(record.aspectRatio as AspectRatioId);
     setShowGrid(record.showGrid);
     setAntiAlias(record.antiAlias);
+    setConnectIslands(record.connectIslands ?? true);
+    setSelectedFilter(record.selectedFilter ?? "none");
+    setForcedColors(record.forcedColors ?? []);
     directOutputRef.current = !!record.sourceImageUrl && record.extractedImageUrl === record.sourceImageUrl;
     setSourceImageUrl(record.sourceImageUrl);
     setExtractedImageUrl(record.extractedImageUrl);
+    setExtractPrompt(record.extractPrompt ?? null);
+    setHighlightedPatternColor(null);
     setSubjectMaskSnapshot(null);
     clearSubjectIdentification();
     clearResultSubjectSelection();
@@ -2323,7 +2333,7 @@ export default function CreativeBeadStudio() {
       setPattern(null);
     }
 
-    setStep("config");
+    setStep((record.patternData || record.patternUrl || record.extractedImageUrl || record.sourceImageUrl) ? restoredStep : "config");
     setView("start");
   }, [clearResultSubjectSelection, clearSubjectIdentification]);
 
@@ -2340,6 +2350,7 @@ export default function CreativeBeadStudio() {
       createdAt: existingRecord?.createdAt ?? Date.now(),
       updatedAt: Date.now(),
       completed: step === "preview" && !!pattern,
+      currentStep: step,
       theme,
       element,
       meaning,
@@ -2349,15 +2360,19 @@ export default function CreativeBeadStudio() {
       aspectRatio,
       showGrid,
       antiAlias,
+      connectIslands,
+      selectedFilter,
+      forcedColors,
       sourceImageUrl,
       extractedImageUrl,
+      extractPrompt,
       patternData: pattern ? JSON.stringify(pattern) : null,
       patternUrl,
       cleanPatternUrl,
       mockupUrl: null,
       productSceneUrl: null,
     };
-  }, [antiAlias, aspectRatio, cleanPatternUrl, colorCount, element, extractedImageUrl, gridSize, meaning, pattern, patternUrl, productId, projectRecords, projectTitleDraft, showGrid, sourceImageUrl, step, theme]);
+  }, [antiAlias, aspectRatio, cleanPatternUrl, colorCount, connectIslands, element, extractPrompt, extractedImageUrl, forcedColors, gridSize, meaning, pattern, patternUrl, productId, projectRecords, projectTitleDraft, selectedFilter, showGrid, sourceImageUrl, step, theme]);
 
   const buildCurrentProjectSignature = useCallback(() => JSON.stringify({
     theme,
@@ -2369,12 +2384,17 @@ export default function CreativeBeadStudio() {
     aspectRatio,
     showGrid,
     antiAlias,
+    connectIslands,
+    selectedFilter,
+    forcedColors,
     sourceImageUrl,
     extractedImageUrl,
+    currentStep: step,
+    extractPrompt,
     patternData: pattern ? JSON.stringify(pattern) : null,
     patternUrl,
     cleanPatternUrl,
-  }), [antiAlias, aspectRatio, cleanPatternUrl, colorCount, element, extractedImageUrl, gridSize, meaning, pattern, patternUrl, productId, showGrid, sourceImageUrl, theme]);
+  }), [antiAlias, aspectRatio, cleanPatternUrl, colorCount, connectIslands, element, extractPrompt, extractedImageUrl, forcedColors, gridSize, meaning, pattern, patternUrl, productId, selectedFilter, showGrid, sourceImageUrl, step, theme]);
 
   const publishCurrentWork = useCallback(async () => {
     if (!sourceImageUrl && !pattern && !patternUrl) {
@@ -2439,7 +2459,12 @@ export default function CreativeBeadStudio() {
         updatedAt: Date.now(),
         completed: false,
       };
-      saveProjectRecord(cloned);
+      const saved = saveProjectRecord(cloned);
+      if (!saved) {
+        setToastType("warning");
+        setToastMsg("社区作品导入失败，当前项目数据过大，无法写入本地存储。");
+        return;
+      }
       refreshProjectRecords();
       handleRestoreProject(cloned);
       setCommunityRefresh((value) => value + 1);
@@ -2456,6 +2481,7 @@ export default function CreativeBeadStudio() {
       createdAt: Date.now(),
       updatedAt: Date.now(),
       completed: false,
+      currentStep: "config",
       theme: post.theme,
       element: post.element,
       meaning: post.meaning,
@@ -2465,43 +2491,31 @@ export default function CreativeBeadStudio() {
       aspectRatio: defaults.aspectRatio,
       showGrid: true,
       antiAlias: true,
+      connectIslands: true,
+      selectedFilter: "none",
+      forcedColors: post.colors,
       sourceImageUrl: null,
       extractedImageUrl: null,
+      extractPrompt: null,
       patternData: null,
       patternUrl: null,
       cleanPatternUrl: null,
       mockupUrl: null,
       productSceneUrl: null,
     };
-    saveProjectRecord(record);
+    const saved = saveProjectRecord(record);
+    if (!saved) {
+      setToastType("warning");
+      setToastMsg("社区模板导入失败，当前项目数据过大，无法写入本地存储。");
+      return;
+    }
     refreshProjectRecords();
-    setTheme(post.theme);
-    setElement(post.element);
-    setMeaning(post.meaning);
-    setProductId(post.productId);
-    setAspectRatio(defaults.aspectRatio);
-    setGridSize(defaults.gridSize);
-    setColorCount(defaults.colorCount);
-    setShowGrid(true);
-    setAntiAlias(true);
-    setForcedColors(post.colors);
-    clearPatternArtifacts();
-    setSourceImageUrl(null);
-    setExtractedImageUrl(null);
-    clearResultSubjectSelection();
-    setSubjectAnalysis(null);
-    setSubjectMaskSnapshot(null);
-    clearSubjectIdentification();
-    setSubjectDirty(false);
-    setExtractPrompt(null);
-    directOutputRef.current = false;
-    setStep("config");
-    setView("start");
+    handleRestoreProject(record);
     setSelectedCommunityPost(null);
     setCommunityRefresh((value) => value + 1);
     setToastType("success");
     setToastMsg("已导入社区模板，并保存到个人主页。");
-  }, [clearPatternArtifacts, clearResultSubjectSelection, clearSubjectIdentification, handleRestoreProject, refreshProjectRecords]);
+  }, [handleRestoreProject, refreshProjectRecords]);
 
   useEffect(() => {
     if (restoringRef.current) {
@@ -2518,11 +2532,26 @@ export default function CreativeBeadStudio() {
       if (saved) {
         lastAutoSaveSignatureRef.current = signature;
         refreshProjectRecords();
+        setToastType("success");
+        setToastMsg("已自动保存当前项目进度");
       }
     }, intervalMs);
 
     return () => clearInterval(timer);
   }, [autoSaveIntervalSeconds, buildCurrentProjectRecord, buildCurrentProjectSignature, refreshProjectRecords, view]);
+
+  useEffect(() => {
+    const previousView = previousViewRef.current;
+    previousViewRef.current = view;
+    if (previousView !== "start" || view === "start" || restoringRef.current) return;
+    const signature = buildCurrentProjectSignature();
+    if (signature === lastAutoSaveSignatureRef.current) return;
+    const record = buildCurrentProjectRecord();
+    const saved = saveProjectRecord(record);
+    if (!saved) return;
+    lastAutoSaveSignatureRef.current = signature;
+    refreshProjectRecords();
+  }, [buildCurrentProjectRecord, buildCurrentProjectSignature, refreshProjectRecords, view]);
 
   // 帮助页面：当 details 离开视口时自动收起
   useEffect(() => {
@@ -2688,6 +2717,10 @@ export default function CreativeBeadStudio() {
                 </div>
               </div>
               {/* 精选主题 — 始终展示 */}
+              <div className="pb-8">
+                <ScrollingPatternBand />
+              </div>
+
               <div className="max-h-[42rem] overflow-y-auto pb-12 pr-2">
                 <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
                 {showcase.map((item) => (
@@ -2731,9 +2764,6 @@ export default function CreativeBeadStudio() {
               </div>
 
               {/* 纹样滚动带 — 始终展示 */}
-            </div>
-            <div className="mx-auto max-w-7xl px-4 pb-8 sm:px-6 lg:px-8">
-              <ScrollingPatternBand />
             </div>
           </section>
 

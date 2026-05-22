@@ -26,6 +26,14 @@ type Props = {
 
 const BRUSH_SIZES = [8, 16, 24, 36, 48];
 const MIN_BOX_SIZE = 4;
+const NEIGHBOR_OFFSETS = [
+  [-1, 0],
+  [1, 0],
+  [0, -1],
+  [0, 1],
+] as const;
+
+type LabColor = { l: number; a: number; b: number };
 
 function rgbDistance(data: Uint8ClampedArray, a: number, b: number): number {
   const ai = a * 4;
@@ -35,6 +43,37 @@ function rgbDistance(data: Uint8ClampedArray, a: number, b: number): number {
     data[ai + 1] - data[bi + 1],
     data[ai + 2] - data[bi + 2],
   );
+}
+
+function srgbToLinear(value: number): number {
+  const normalized = value / 255;
+  return normalized <= 0.04045 ? normalized / 12.92 : Math.pow((normalized + 0.055) / 1.055, 2.4);
+}
+
+function labFromIndex(data: Uint8ClampedArray, index: number): LabColor {
+  const offset = index * 4;
+  const r = srgbToLinear(data[offset]);
+  const g = srgbToLinear(data[offset + 1]);
+  const b = srgbToLinear(data[offset + 2]);
+
+  let x = (0.4124564 * r + 0.3575761 * g + 0.1804375 * b) / 0.95047;
+  let y = (0.2126729 * r + 0.7151522 * g + 0.072175 * b) / 1.0;
+  let z = (0.0193339 * r + 0.119192 * g + 0.9503041 * b) / 1.08883;
+
+  const pivot = (value: number) => value > 0.008856 ? Math.cbrt(value) : (7.787 * value) + (16 / 116);
+  x = pivot(x);
+  y = pivot(y);
+  z = pivot(z);
+
+  return {
+    l: (116 * y) - 16,
+    a: 500 * (x - y),
+    b: 200 * (y - z),
+  };
+}
+
+function labDistance(a: LabColor, b: LabColor): number {
+  return Math.hypot(a.l - b.l, a.a - b.a, a.b - b.b);
 }
 
 function cloneSubjectMask(mask: SubjectMask): SubjectMask {
@@ -136,6 +175,33 @@ function largestComponentWithin(mask: Uint8Array, width: number, height: number)
     if (component.length > best.length) best = component;
   }
   return best;
+}
+
+function collectComponent(mask: Uint8Array, width: number, height: number, seedIndex: number): number[] {
+  if (!mask[seedIndex]) return [];
+  const visited = new Uint8Array(width * height);
+  const queue = [seedIndex];
+  const component: number[] = [];
+  visited[seedIndex] = 1;
+  let head = 0;
+
+  while (head < queue.length) {
+    const current = queue[head++];
+    component.push(current);
+    const x = current % width;
+    const y = Math.floor(current / width);
+    for (const [dx, dy] of NEIGHBOR_OFFSETS) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+      const next = ny * width + nx;
+      if (!mask[next] || visited[next]) continue;
+      visited[next] = 1;
+      queue.push(next);
+    }
+  }
+
+  return component;
 }
 
 export default function SubjectMaskEditor({
@@ -296,12 +362,13 @@ export default function SubjectMaskEditor({
     const subject = maskRef.current;
     if (!subject) return;
     const seedIndex = y * subject.width + x;
+    const seedLab = labFromIndex(subject.imageData.data, seedIndex);
     const visited = new Uint8Array(subject.width * subject.height);
     const queue = [seedIndex];
     const selected: number[] = [];
     visited[seedIndex] = 1;
     let head = 0;
-    const threshold = 44;
+    const threshold = 24;
     const removingMask = subject.mask[seedIndex] === 1;
 
     while (head < queue.length) {
@@ -309,18 +376,15 @@ export default function SubjectMaskEditor({
       selected.push(current);
       const cx = current % subject.width;
       const cy = Math.floor(current / subject.width);
-      const neighbors = [
-        cx > 0 ? current - 1 : -1,
-        cx + 1 < subject.width ? current + 1 : -1,
-        cy > 0 ? current - subject.width : -1,
-        cy + 1 < subject.height ? current + subject.width : -1,
-      ];
-
-      for (const next of neighbors) {
-        if (next < 0 || visited[next]) continue;
+      for (const [dx, dy] of NEIGHBOR_OFFSETS) {
+        const nx = cx + dx;
+        const ny = cy + dy;
+        if (nx < 0 || ny < 0 || nx >= subject.width || ny >= subject.height) continue;
+        const next = ny * subject.width + nx;
+        if (visited[next]) continue;
         if (removingMask) {
           if (!subject.mask[next]) continue;
-        } else if (rgbDistance(subject.imageData.data, seedIndex, next) > threshold) {
+        } else if (labDistance(seedLab, labFromIndex(subject.imageData.data, next)) > threshold) {
           continue;
         }
         visited[next] = 1;
@@ -372,21 +436,48 @@ export default function SubjectMaskEditor({
     }
     const backgroundPalette = buildPaletteFromIndices(subject.imageData.data, boundaryIndices.length ? boundaryIndices : insideIndices, 5);
     if (backgroundPalette.length === 0) return;
+    const backgroundLabs = backgroundPalette.map((index) => labFromIndex(subject.imageData.data, index));
 
     const distances = new Float32Array(subject.width * subject.height);
     const values: number[] = [];
     for (const index of insideIndices) {
-      const distance = Math.min(...backgroundPalette.map((background) => rgbDistance(subject.imageData.data, index, background)));
+      const pixelLab = labFromIndex(subject.imageData.data, index);
+      const distance = Math.min(...backgroundLabs.map((background) => labDistance(pixelLab, background)));
       distances[index] = distance;
       values.push(distance);
     }
-    const threshold = otsu(values);
+    const threshold = Math.max(otsu(values), 10);
     const candidate = new Uint8Array(subject.width * subject.height);
     for (const index of insideIndices) {
       if (distances[index] > threshold) candidate[index] = 1;
     }
 
-    const component = largestComponentWithin(candidate, subject.width, subject.height);
+    const centerX = Math.round((minX + maxX) / 2);
+    const centerY = Math.round((minY + maxY) / 2);
+    let seedIndex = centerY * subject.width + centerX;
+    if (!candidate[seedIndex]) {
+      let bestIndex = -1;
+      let bestScore = -Infinity;
+      for (const index of insideIndices) {
+        if (!candidate[index]) continue;
+        const x = index % subject.width;
+        const y = Math.floor(index / subject.width);
+        const dx = x - centerX;
+        const dy = y - centerY;
+        const centerPenalty = Math.hypot(dx, dy);
+        const score = distances[index] - centerPenalty * 0.35;
+        if (score > bestScore) {
+          bestScore = score;
+          bestIndex = index;
+        }
+      }
+      seedIndex = bestIndex >= 0 ? bestIndex : seedIndex;
+    }
+
+    const component = candidate[seedIndex]
+      ? collectComponent(candidate, subject.width, subject.height, seedIndex)
+      : largestComponentWithin(candidate, subject.width, subject.height);
+    for (const index of insideIndices) subject.mask[index] = 0;
     for (const index of component) subject.mask[index] = 1;
     draw();
     saveSnapshot();

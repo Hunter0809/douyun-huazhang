@@ -75,11 +75,18 @@ export async function POST(req: Request) {
   const envApiKey = firstConfiguredValue(process.env.ARK_API_KEY);
   const apiKey = useDefaultModel
     ? envApiKey
-    : firstConfiguredValue(config?.visionModelApiKey, envApiKey);
+    : firstConfiguredValue(config?.visionModelApiKey, config?.textModelApiKey, config?.imageModelApiKey, envApiKey);
   const baseUrl = process.env.ARK_BASE_URL ?? "https://ark.cn-beijing.volces.com/api/v3";
   const model = useDefaultModel
     ? firstConfiguredValue(process.env.ARK_VISION_MODEL, process.env.AI_VISION_MODEL, process.env.AI_TEXT_MODEL, "doubao-seed-1-6-250615")
-    : firstConfiguredValue(config?.visionModelName, process.env.ARK_VISION_MODEL, process.env.AI_VISION_MODEL, process.env.AI_TEXT_MODEL, "doubao-seed-1-6-250615");
+    : firstConfiguredValue(
+      config?.visionModelName,
+      config?.textModelName,
+      process.env.ARK_VISION_MODEL,
+      process.env.AI_VISION_MODEL,
+      process.env.AI_TEXT_MODEL,
+      "doubao-seed-1-6-250615",
+    );
 
   if (!apiKey) {
     return NextResponse.json(
