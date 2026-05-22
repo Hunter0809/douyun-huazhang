@@ -154,6 +154,19 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout, onApiC
     setTimeout(() => setSaved(false), 2000);
   }, [apiConfig, onApiConfigSaved]);
 
+  const handleDefaultModelToggle = useCallback((checked: boolean) => {
+    const nextConfig: ApiConfig = {
+      ...apiConfig,
+      useDefaultModel: checked,
+      autoSaveIntervalSeconds: normalizeAutoSaveIntervalSeconds(apiConfig.autoSaveIntervalSeconds),
+    };
+    setApiConfig(nextConfig);
+    saveApiConfig(nextConfig);
+    onApiConfigSaved?.(nextConfig);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  }, [apiConfig, onApiConfigSaved]);
+
   const handleExport = useCallback((record: ProjectRecord, format: "png" | "preview" | "csv" | "pdf") => {
     const title = record.title || "豆韵作品";
     switch (format) {
@@ -300,7 +313,7 @@ export default function ProfilePage({ onBack, onRestoreProject, onLogout, onApiC
               <input
                 type="checkbox"
                 checked={apiConfig.useDefaultModel ?? false}
-                onChange={(e) => setApiConfig(p => ({ ...p, useDefaultModel: e.target.checked }))}
+                onChange={(e) => handleDefaultModelToggle(e.target.checked)}
                 className="peer sr-only"
               />
               <div className="h-6 w-11 rounded-full bg-stone-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-stone-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-emerald-500 peer-checked:after:translate-x-full peer-checked:after:border-white" />
