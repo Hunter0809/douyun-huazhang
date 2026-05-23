@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import sharp from "sharp";
 import type { SubjectIdentification } from "@/types/subjectIdentification";
-import type { ApiConfig } from "@/types/projectTypes";
 
 export const runtime = "nodejs";
 
@@ -11,19 +10,12 @@ function formatUpstreamError(detail: string, fallback: string): string {
     const code = parsed?.error?.code;
     const message = parsed?.error?.message;
     if (code === "ModelNotOpen") {
-      return `当前 Ark 账号未开通所选视觉识别模型：${message}`;
+      return `当前 Ark 账号未开通所选文案模型：${message}`;
     }
     return message ? `${fallback}：${message}` : fallback;
   } catch {
     return fallback;
   }
-}
-
-function firstConfiguredValue(...values: Array<unknown>): string | undefined {
-  for (const value of values) {
-    if (typeof value === "string" && value.trim().length > 0) return value.trim();
-  }
-  return undefined;
 }
 
 async function compactDataUrl(imageUrl: string): Promise<string> {
@@ -71,23 +63,9 @@ function parseSubjectIdentification(text: string): SubjectIdentification {
 export async function POST(req: Request) {
   const body = await req.json();
   const language = body.language === "en" ? "en" : "zh";
-  const config = body.config as Partial<ApiConfig> | undefined;
-  const useDefaultModel = config?.useDefaultModel === true;
-  const envApiKey = firstConfiguredValue(process.env.ARK_API_KEY);
-  const apiKey = useDefaultModel
-    ? envApiKey
-    : firstConfiguredValue(config?.visionModelApiKey, config?.textModelApiKey, config?.imageModelApiKey, envApiKey);
+  const apiKey = process.env.ARK_API_KEY;
   const baseUrl = process.env.ARK_BASE_URL ?? "https://ark.cn-beijing.volces.com/api/v3";
-  const model = useDefaultModel
-    ? firstConfiguredValue(process.env.ARK_VISION_MODEL, process.env.AI_VISION_MODEL, process.env.AI_TEXT_MODEL, "doubao-seed-1-6-250615")
-    : firstConfiguredValue(
-      config?.visionModelName,
-      config?.textModelName,
-      process.env.ARK_VISION_MODEL,
-      process.env.AI_VISION_MODEL,
-      process.env.AI_TEXT_MODEL,
-      "doubao-seed-1-6-250615",
-    );
+  const model = process.env.ARK_TEXT_MODEL ?? process.env.AI_TEXT_MODEL ?? "doubao-seed-1-6-250615";
 
   if (!apiKey) {
     return NextResponse.json(
