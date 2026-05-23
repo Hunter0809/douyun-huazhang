@@ -3054,9 +3054,9 @@ export default function CreativeBeadStudio() {
       <header className="sticky top-0 z-50 border-b border-stone-200/80 bg-[#fffdf7]/95 backdrop-blur">
         <div className="relative mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           {/* 左侧 Logo + 品牌文字 */}
-          <button type="button" onClick={() => setView("home")} className="flex shrink-0 items-center gap-2">
-            <img src="/logo.jpg" alt={language === "en" ? "DouYun" : "豆韵"} className="h-8 w-8 rounded-md object-cover" />
-            <span className="hidden text-sm font-semibold text-stone-800 sm:inline">{ui.brand}</span>
+          <button type="button" onClick={() => setView("home")} className="flex shrink-0 items-center gap-3">
+            <img src="/logo.jpg" alt={language === "en" ? "DouYun" : "豆韵"} className="h-11 w-11 rounded-md object-cover" />
+            <span className="hidden text-base font-semibold text-stone-800 sm:inline">{ui.brand}</span>
           </button>
 
           {/* 中间导航 - 绝对居中 */}
