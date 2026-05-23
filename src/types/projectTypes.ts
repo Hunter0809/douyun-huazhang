@@ -40,8 +40,7 @@ export const VISION_MODEL_OPTIONS: { name: string; icon: string; purchaseUrl: st
   { name: "GPT-4o", icon: "👁️", purchaseUrl: "https://platform.openai.com/api-keys" },
   { name: "GPT-4o-mini", icon: "👁️", purchaseUrl: "https://platform.openai.com/api-keys" },
   { name: "Qwen2.5-VL", icon: "🔍", purchaseUrl: "https://help.aliyun.com/document_detail/2712195.html" },
-  { name: "doubao-vision-lite-32k-241015", icon: "🔍", purchaseUrl: "https://console.volcengine.com/" },
-  { name: "doubao-vision-pro-32k-241028", icon: "🔍", purchaseUrl: "https://console.volcengine.com/" },
+  { name: "doubao-seed-1-6-vision", icon: "🔍", purchaseUrl: "https://console.volcengine.com/" },
   { name: "Gemini 1.5 Pro", icon: "✦", purchaseUrl: "https://aistudio.google.com/apikey" },
 ];
 

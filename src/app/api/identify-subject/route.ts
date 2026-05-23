@@ -5,8 +5,6 @@ import type { ApiConfig } from "@/types/projectTypes";
 
 export const runtime = "nodejs";
 
-const DEFAULT_VISION_MODEL = "doubao-vision-lite-32k-241015";
-
 function formatUpstreamError(detail: string, fallback: string): string {
   try {
     const parsed = JSON.parse(detail);
@@ -81,12 +79,14 @@ export async function POST(req: Request) {
     : firstConfiguredValue(config?.visionModelApiKey, config?.textModelApiKey, config?.imageModelApiKey, envApiKey);
   const baseUrl = process.env.ARK_BASE_URL ?? "https://ark.cn-beijing.volces.com/api/v3";
   const model = useDefaultModel
-    ? firstConfiguredValue(process.env.ARK_VISION_MODEL, process.env.AI_VISION_MODEL, DEFAULT_VISION_MODEL)
+    ? firstConfiguredValue(process.env.ARK_VISION_MODEL, process.env.AI_VISION_MODEL, process.env.AI_TEXT_MODEL, "doubao-seed-1-6-250615")
     : firstConfiguredValue(
       config?.visionModelName,
+      config?.textModelName,
       process.env.ARK_VISION_MODEL,
       process.env.AI_VISION_MODEL,
-      DEFAULT_VISION_MODEL,
+      process.env.AI_TEXT_MODEL,
+      "doubao-seed-1-6-250615",
     );
 
   if (!apiKey) {
