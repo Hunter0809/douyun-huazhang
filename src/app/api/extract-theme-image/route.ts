@@ -35,6 +35,7 @@ export async function POST(req: Request) {
   const isUpload = body.isUpload === true;
   const subjectIdentification = body.subjectIdentification as SubjectIdentification | undefined;
   const promptOverride = typeof body.prompt === "string" ? body.prompt.trim() : "";
+  const sourceColorSummary = typeof body.sourceColorSummary === "string" ? body.sourceColorSummary.trim() : "";
 
   if (!apiKey) {
     return NextResponse.json(
@@ -58,6 +59,7 @@ export async function POST(req: Request) {
         "",
         "主体识别信息：",
         subjectIdentification ? formatSubjectIdentification(subjectIdentification) : "",
+        sourceColorSummary ? ["", "原图/主体颜色组成：", sourceColorSummary].join("\n") : "",
         "",
         `作品形式：${body.product ?? "拼豆文创底稿"}`,
         "",
@@ -65,7 +67,7 @@ export async function POST(req: Request) {
         "以主体名称、类别、视觉证据和视觉摘要为基础，重新设计为适合拼豆转化的文创图案。",
         "不要强行替换主体；应保留识别信息中描述的关键轮廓、结构、颜色关系和可识别特征。",
         "可以结合主体自身特征选择合适的传统纹样、边饰、符号或结构语言进行融合。",
-        "颜色应服务于文化主题和作品形式，保持主体清晰、层次克制、色块分明。",
+        "颜色应参考原图/主体颜色组成，在保留主要色彩关系的基础上服务于文化主题和作品形式，保持主体清晰、层次克制、色块分明。",
         "背景建议为纯白或浅纯色，背景色不计入主体表达。",
         "可以围绕主体元素融入中国传统纹样来增强文化感，但主体应占据画面主要面积。",
         "",

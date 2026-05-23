@@ -17,6 +17,7 @@ type Props = {
   imageUrl: string | null;
   loading?: boolean;
   autoDetect?: boolean;
+  initialSelection?: "auto" | "full" | "empty";
   showHeader?: boolean;
   mode?: MaskMode;
   language?: AppLanguage;
@@ -210,6 +211,7 @@ export default function SubjectMaskEditor({
   imageUrl,
   loading,
   autoDetect = true,
+  initialSelection,
   showHeader = true,
   mode,
   language = "zh",
@@ -310,14 +312,14 @@ export default function SubjectMaskEditor({
       return;
     }
 
-    createSubjectMask(imageUrl, { autoDetect })
+    createSubjectMask(imageUrl, { autoDetect, initialSelection })
       .then((subject) => {
         if (cancelled) return;
         maskRef.current = subject;
         saveSnapshot();
         setReady(true);
         draw();
-        if (autoDetect) {
+        if (autoDetect || initialSelection === "full") {
           const next = analyzeSubjectMask(subject);
           setAnalysis(next);
           onSubjectChange(next);
@@ -330,7 +332,7 @@ export default function SubjectMaskEditor({
     return () => {
       cancelled = true;
     };
-  }, [autoDetect, draw, imageUrl, onSubjectChange, saveSnapshot]);
+  }, [autoDetect, draw, imageUrl, initialSelection, onSubjectChange, saveSnapshot]);
 
   const getCanvasPoint = useCallback((clientX: number, clientY: number) => {
     const canvas = canvasRef.current;
@@ -537,17 +539,17 @@ export default function SubjectMaskEditor({
   const resetMask = useCallback(() => {
     if (!imageUrl) return;
     selectionBoxRef.current = null;
-    createSubjectMask(imageUrl, { autoDetect }).then((subject) => {
+    createSubjectMask(imageUrl, { autoDetect, initialSelection }).then((subject) => {
       maskRef.current = cloneSubjectMask(subject);
       saveSnapshot();
       draw();
-      if (autoDetect) {
+      if (autoDetect || initialSelection === "full") {
         publish();
       } else {
         setAnalysis(null);
       }
     });
-  }, [autoDetect, draw, imageUrl, publish, saveSnapshot]);
+  }, [autoDetect, draw, imageUrl, initialSelection, publish, saveSnapshot]);
 
   return (
     <div>

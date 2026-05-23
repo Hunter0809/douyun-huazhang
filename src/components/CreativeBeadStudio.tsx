@@ -63,6 +63,21 @@ const emptySubjectIdentification: SubjectIdentification = {
   visualSummary: "",
 };
 
+function isSubjectIdentification(value: unknown): value is SubjectIdentification {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<SubjectIdentification>;
+  return (
+    typeof candidate.subject === "string" &&
+    typeof candidate.category === "string" &&
+    Array.isArray(candidate.evidence) &&
+    candidate.evidence.every((item) => typeof item === "string") &&
+    typeof candidate.confidence === "number" &&
+    Array.isArray(candidate.alternatives) &&
+    candidate.alternatives.every((item) => typeof item === "string") &&
+    typeof candidate.visualSummary === "string"
+  );
+}
+
 function formatSubjectIdentification(identification: SubjectIdentification): string {
   return [
     `主体名称：${identification.subject || "-"}`,
@@ -1658,6 +1673,9 @@ export default function CreativeBeadStudio() {
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result?.error ?? L("主体识别失败", "Subject identification failed"));
+      if (!isSubjectIdentification(result?.identification)) {
+        throw new Error(L("主体识别接口未返回有效识别结果。", "Subject identification did not return a valid result."));
+      }
       setSubjectIdentification(result.identification);
       setSubjectIdentificationPrompt(result.prompt ?? null);
     } catch (err) {
@@ -1693,6 +1711,8 @@ export default function CreativeBeadStudio() {
           product: formLabel,
           productPrompt: product.aiPrompt,
           aspectRatio,
+          sourceColorSummary: subjectAnalysis.colorSummary,
+          sourceColors: subjectAnalysis.colors,
           prompt: promptOverride,
           language,
         }),
@@ -2093,6 +2113,7 @@ export default function CreativeBeadStudio() {
               imageUrl={sourceImageUrl}
               loading={loading}
               autoDetect={true}
+              initialSelection={directGeneratedImage ? "auto" : "full"}
               mode={subjectMaskMode}
               language={language}
               savedMask={subjectMaskSnapshot}
