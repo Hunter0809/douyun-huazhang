@@ -20,7 +20,8 @@ function formatUpstreamError(detail: string, fallback: string): string {
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const prompt = buildCulturePrompt(body);
+  const promptOverride = typeof body.prompt === "string" ? body.prompt.trim() : "";
+  const prompt = promptOverride || buildCulturePrompt(body);
   const apiKey = process.env.ARK_API_KEY;
   const baseUrl = process.env.ARK_BASE_URL ?? "https://ark.cn-beijing.volces.com/api/v3";
   const model = process.env.ARK_IMAGE_MODEL ?? process.env.AI_IMAGE_MODEL ?? "doubao-seedream-4-0-250828";

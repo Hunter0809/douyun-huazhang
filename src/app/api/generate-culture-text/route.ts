@@ -51,6 +51,7 @@ export async function POST(req: Request) {
   const baseUrl = process.env.ARK_BASE_URL ?? "https://ark.cn-beijing.volces.com/api/v3";
   const model = process.env.ARK_TEXT_MODEL ?? process.env.AI_TEXT_MODEL ?? "doubao-seed-1-6-250615";
   const subjectIdentification = body.subjectIdentification as SubjectIdentification | undefined;
+  const promptOverride = typeof body.prompt === "string" ? body.prompt.trim() : "";
 
   if (!apiKey) {
     return NextResponse.json(
@@ -59,7 +60,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const prompt = language === "en" ? `Generate a work introduction for a Chinese cultural bead-art product based only on the visible subject, colors, composition, style, and the editable subject identification below.
+  const generatedPrompt = language === "en" ? `Generate a work introduction for a Chinese cultural bead-art product based only on the visible subject, colors, composition, style, and the editable subject identification below.
 
 Return strict JSON only:
 {
@@ -108,6 +109,7 @@ ${formatSubjectIdentification(subjectIdentification)}
 4. 设计说明必须说明该拼豆成果如何作为“${body.product}”落地使用。
 5. 输出前自检：title、source、meaning、design 四项都必须能被参考图像或主体识别结果支撑。`;
 
+  const prompt = promptOverride || generatedPrompt;
   const rawImageUrl = Array.isArray(body.imageUrl) ? body.imageUrl[0] : body.imageUrl;
   const compactImageUrl =
     typeof rawImageUrl === "string" && rawImageUrl.length > 0

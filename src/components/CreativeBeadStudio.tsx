@@ -239,7 +239,7 @@ const showcase = [
     element: "莲花",
     meaning: "以青花瓷蓝白配色表现莲花的清雅与洁净，适合转译为轮廓简洁、留白明确的杯垫底稿。",
     colors: ["#FFFFFF", "#1557A8", "#3677D2", "#CDE8FF"],
-    previewImage: "/showcase/qinghua-lotus-draft.png",
+    previewImage: "/showcase/lotus-coaster-draft.png",
   },
   {
     title: "敦煌飞天",
@@ -280,13 +280,34 @@ const communityTemplates: CommunityTemplate[] = showcase.map((item, index) => ({
   productId: "coaster",
 }));
 
-const scrollingPatterns = [
-  ["#FFFFFF", "#1557A8", "#3677D2", "#CDE8FF"],
-  ["#FCF9E0", "#EDB045", "#943630", "#0B3C43"],
-  ["#8F1D21", "#F2C94C", "#1B4F9C", "#F8E8C8"],
-  ["#1D1414", "#D30022", "#166F41", "#FFC830"],
-  ["#F8E8C8", "#9F2B22", "#D9A441", "#111827"],
-  ["#F7F2E8", "#245C45", "#8F1D21", "#E4B95B"],
+const showcaseReferenceImages = [
+  { src: "/showcase/lotus-coaster-draft.png", alt: "Lotus coaster draft" },
+  { src: "/showcase/feitian-coaster-draft.png", alt: "Feitian coaster draft" },
+  { src: "/showcase/forbidden-city-dragon-draft.png", alt: "Forbidden City dragon draft" },
+  { src: "/showcase/auspicious-beast-coaster-draft.png", alt: "Auspicious beast coaster draft" },
+  { src: "/showcase/beast-mask-coaster-draft.png", alt: "Beast mask coaster draft" },
+  { src: "/showcase/new-year-child-coaster-draft.png", alt: "New Year child coaster draft" },
+  { src: "/showcase/moon-rabbit-coaster-draft.png", alt: "Moon rabbit coaster draft" },
+  { src: "/showcase/ru-kiln-crackle-magnet-draft.png", alt: "Ru kiln crackle magnet draft" },
+  { src: "/showcase/vase-pattern-coaster-draft.png", alt: "Vase pattern coaster draft" },
+  { src: "/showcase/bamboo-shadow-coaster-draft.png", alt: "Bamboo shadow coaster draft" },
+  { src: "/showcase/jinli-coaster-pattern-draft.png", alt: "Jinli coaster pattern draft" },
+  { src: "/showcase/bronze-drum-coaster-draft.png", alt: "Bronze drum coaster draft" },
+  { src: "/showcase/tea-mountain-magnet-draft.png", alt: "Tea mountain magnet draft" },
+];
+
+const homeStepImages = [
+  showcaseReferenceImages[6],
+  showcaseReferenceImages[9],
+  showcaseReferenceImages[3],
+  showcaseReferenceImages[11],
+];
+
+const homeForumImages = [
+  showcaseReferenceImages[1],
+  showcaseReferenceImages[4],
+  showcaseReferenceImages[7],
+  showcaseReferenceImages[10],
 ];
 
 const craftSteps = [
@@ -826,7 +847,10 @@ function CraftSection({ setView, language }: { setView: (v: SiteView) => void; l
                 transitionDelay: visible ? `${i * 250 + 500}ms` : "0ms",
               }}
             >
-              <PatternMiniature colors={["#FFFFFF", "#1557A8", "#943630", "#EDB045"]} />
+              <div className="aspect-square overflow-hidden rounded-md border border-stone-200 bg-white">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={homeStepImages[i].src} alt={homeStepImages[i].alt} className="h-full w-full object-cover" />
+              </div>
               <p className="mt-3 text-xs font-bold tracking-wider text-[#8f1d21] uppercase">
                 Step {i + 1}
               </p>
@@ -898,10 +922,11 @@ function HomeCommunitySection({ setView, language }: { setView: (v: SiteView) =>
               onClick={() => setView("community")}
               className={`mt-8 w-full rounded-lg border border-stone-200 bg-white p-6 text-left shadow-sm transition-all duration-700 hover:border-[#8f1d21]/50 hover:shadow-md ${visible ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"}`}
             >
-              <div className="grid max-w-md grid-cols-4 gap-3">
-                {showcase.slice(0, 4).map((item) => (
-                  <div key={item.title} className="rounded-md bg-stone-50 p-2 ring-1 ring-stone-200">
-                    <PatternMiniature colors={item.colors} />
+              <div className="grid w-full grid-cols-4 gap-3">
+                {homeForumImages.map((image) => (
+                  <div key={image.src} className="aspect-square overflow-hidden rounded-md bg-stone-50 ring-1 ring-stone-200">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={image.src} alt={image.alt} className="h-full w-full object-cover" />
                   </div>
                 ))}
               </div>
@@ -944,18 +969,17 @@ function HomeCommunitySection({ setView, language }: { setView: (v: SiteView) =>
 }
 
 function ScrollingPatternBand() {
-  const patternSet = [...scrollingPatterns, ...scrollingPatterns.slice(0, 2)];
-
   return (
-    <div className="relative mt-12 overflow-hidden py-4" aria-hidden="true">
+    <div className="relative mt-12 overflow-hidden pt-4 pb-10" aria-hidden="true">
       <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-[#2b2118] to-transparent" />
       <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-[#2b2118] to-transparent" />
       <div className="home-pattern-scroll-track">
         {[0, 1].map((group) => (
           <div key={group} className="home-pattern-scroll-set">
-            {patternSet.map((colors, index) => (
-              <div key={`${group}-${index}`} className="h-24 w-24 flex-none rounded-lg bg-white/10 p-2 shadow-lg ring-1 ring-white/15 sm:h-28 sm:w-28">
-                <PatternMiniature colors={colors} />
+            {showcaseReferenceImages.map((image) => (
+              <div key={`${group}-${image.src}`} className="h-32 w-32 flex-none overflow-hidden rounded-lg bg-white/10 p-2 shadow-lg ring-1 ring-white/15 sm:h-40 sm:w-40">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={image.src} alt={image.alt} className="h-full w-full rounded-md object-cover" />
               </div>
             ))}
           </div>
@@ -1330,7 +1354,7 @@ export default function CreativeBeadStudio() {
     setSubjectIdentificationPrompt(null);
   }, []);
 
-  const generateCultureText = useCallback(async () => {
+  const generateCultureText = useCallback(async (promptOverride?: string) => {
     if (!pattern || beadCounts.length === 0) {
       setToastType("warning");
       setToastMsg(L("请先生成拼豆图纸。", "Generate the bead pattern first."));
@@ -1355,6 +1379,7 @@ export default function CreativeBeadStudio() {
           beadCounts,
           imageUrl: extractedImageUrl,
           subjectIdentification,
+          prompt: promptOverride,
           language,
         }),
       });
@@ -1550,14 +1575,17 @@ export default function CreativeBeadStudio() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, extractedImageUrl, options, antiAlias, connectIslands, forcedColors, selectedFilter]);
 
-  const handleGenerateAI = async () => {
+  const handleGenerateAI = async (promptOverride?: string) => {
     setLoading(true);
     setError(null);
     try {
       const response = await fetch("/api/generate-culture-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(options),
+        body: JSON.stringify({
+          ...options,
+          prompt: promptOverride,
+        }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result?.error ?? L("AI 图案生成失败", "AI pattern generation failed"));
@@ -1631,7 +1659,7 @@ export default function CreativeBeadStudio() {
     }
   }, [language, L, subjectAnalysis]);
 
-  const generateSubjectRecreation = useCallback(async () => {
+  const generateSubjectRecreation = useCallback(async (promptOverride?: string) => {
     if (directOutputRef.current) return;
     if (!subjectAnalysis) {
       setError(null);
@@ -1657,6 +1685,7 @@ export default function CreativeBeadStudio() {
           product: formLabel,
           productPrompt: product.aiPrompt,
           aspectRatio,
+          prompt: promptOverride,
           language,
         }),
       });
@@ -2064,9 +2093,6 @@ export default function CreativeBeadStudio() {
               onMaskSnapshotChange={handleSourceMaskSnapshotChange}
             />
             <div className="mt-4 flex flex-wrap gap-3">
-              <button type="button" onClick={handleGenerateAI} disabled={loading} className="rounded-md bg-[#8f1d21] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
-                {loading ? L("生成中...", "Generating...") : L("重新 AI 生成", "Regenerate with AI")}
-              </button>
               <label className="cursor-pointer rounded-md border border-stone-300 bg-white px-4 py-2 text-sm font-semibold">
                 {L("重新上传", "Upload Again")}
                 <input type="file" accept="image/*" className="hidden" onChange={(event) => {
@@ -2093,24 +2119,43 @@ export default function CreativeBeadStudio() {
                     {L("主体区域已变化，需要重新 AI 再创作后再生成拼豆图纸。", "The subject area changed. Re-run AI recreation before generating the bead pattern.")}
                   </div>
                 )}
-                <button
-                  type="button"
-                  onClick={generateSubjectRecreation}
-                  disabled={loading || !subjectAnalysis || !subjectIdentification}
-                  className="mt-4 rounded-md bg-[#8f1d21] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
-                >
-                  {loading ? L("生成中...", "Generating...") : extractedImageUrl ? L("重新 AI 再创作", "Recreate Again") : L("AI 再创作", "AI Recreation")}
-                </button>
+                {!extractPrompt && (
+                  <button
+                    type="button"
+                    onClick={() => generateSubjectRecreation()}
+                    disabled={loading || !subjectAnalysis || !subjectIdentification}
+                    className="mt-4 rounded-md bg-[#8f1d21] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                  >
+                    {loading ? L("生成中...", "Generating...") : L("AI 再创作", "AI Recreation")}
+                  </button>
+                )}
               </section>
             )}
-            {extractedImageUrl && (
+            {extractPrompt && (
               <section className="rounded-lg border border-stone-200 bg-white p-5">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <h2 className="text-xl font-semibold">{L("当前 AI 提示词", "Current AI Prompt")}</h2>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (directGeneratedImage) {
+                        void handleGenerateAI(extractPrompt);
+                      } else {
+                        void generateSubjectRecreation(extractPrompt);
+                      }
+                    }}
+                    disabled={loading || (!directGeneratedImage && (!subjectAnalysis || !subjectIdentification))}
+                    className="rounded-md bg-[#8f1d21] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+                  >
+                    {loading ? L("生成中...", "Generating...") : L("重新 AI 生成", "Regenerate with AI")}
+                  </button>
                 </div>
-                <div className="mt-3 max-h-40 overflow-y-auto rounded-md bg-stone-50 p-3 text-xs leading-relaxed text-stone-600 font-mono whitespace-pre-wrap">
-                  {extractPrompt || L("无", "None")}
-                </div>
+                <textarea
+                  value={extractPrompt}
+                  onChange={(event) => setExtractPrompt(event.target.value)}
+                  rows={10}
+                  className="mt-3 w-full resize-y rounded-md border border-stone-300 bg-stone-50 p-3 font-mono text-xs leading-relaxed text-stone-700"
+                />
               </section>
             )}
             <section className="rounded-lg border border-stone-200 bg-white p-5">
@@ -2539,25 +2584,38 @@ export default function CreativeBeadStudio() {
               {renderSubjectIdentificationEditor("preview")}
               {culturePrompt && (
                 <div className="rounded-lg border border-stone-200 bg-white p-5">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
                     <h2 className="text-xl font-semibold">{L("AI 文化文案提示词", "AI Cultural Copy Prompt")}</h2>
+                    <button
+                      type="button"
+                      onClick={() => generateCultureText(culturePrompt)}
+                      disabled={cultureTextLoading}
+                      className="rounded-md bg-[#8f1d21] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+                    >
+                      {cultureTextLoading ? L("AI 生成中...", "Generating...") : L("重新 AI 生成", "Regenerate with AI")}
+                    </button>
                   </div>
-                  <div className="mt-3 max-h-48 overflow-y-auto rounded-md bg-stone-50 p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap text-stone-600">
-                    {culturePrompt}
-                  </div>
+                  <textarea
+                    value={culturePrompt}
+                    onChange={(event) => setCulturePrompt(event.target.value)}
+                    rows={12}
+                    className="mt-3 w-full resize-y rounded-md border border-stone-300 bg-stone-50 p-3 font-mono text-xs leading-relaxed text-stone-700"
+                  />
                 </div>
               )}
               <div className="rounded-lg border border-stone-200 bg-white p-5">
                 <div className="mb-3 flex items-center justify-between">
                   <h2 className="text-xl font-semibold">{L("文化说明", "Cultural Notes")}</h2>
-                  <button
-                    type="button"
-                    onClick={generateCultureText}
-                    disabled={cultureTextLoading}
-                    className="rounded-md bg-[#8f1d21] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
-                  >
-                    {cultureTextLoading ? L("AI 生成中...", "Generating...") : L("AI 生成文化说明", "Generate Cultural Notes")}
-                  </button>
+                  {!culturePrompt && (
+                    <button
+                      type="button"
+                      onClick={() => generateCultureText()}
+                      disabled={cultureTextLoading}
+                      className="rounded-md bg-[#8f1d21] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+                    >
+                      {cultureTextLoading ? L("AI 生成中...", "Generating...") : L("AI 生成文化说明", "Generate Cultural Notes")}
+                    </button>
+                  )}
                 </div>
                 {aiCultureCopy ? (
                   <CultureExplanation copy={aiCultureCopy} language={language} />

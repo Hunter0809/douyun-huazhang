@@ -34,6 +34,7 @@ export async function POST(req: Request) {
   const ratio = getAspectRatio(body.aspectRatio ?? "1:1");
   const isUpload = body.isUpload === true;
   const subjectIdentification = body.subjectIdentification as SubjectIdentification | undefined;
+  const promptOverride = typeof body.prompt === "string" ? body.prompt.trim() : "";
 
   if (!apiKey) {
     return NextResponse.json(
@@ -50,7 +51,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "缺少主体识别结果，无法进行文本驱动再创作。" }, { status: 400 });
   }
 
-  const promptText = isUpload
+  const generatedPromptText = isUpload
     ? [
         "【任务：基于主体识别结果进行文化意象再创作】",
         "请只依据下方主体识别信息进行图案再创作，不要读取或依赖原始图片。",
@@ -98,6 +99,7 @@ export async function POST(req: Request) {
         "• 输出干净的平面装饰图，不要文字、不要水印、不要复杂背景",
         language === "en" ? "• If any text response is needed, use English only" : "",
       ].filter(Boolean).join("\n");
+  const promptText = promptOverride || generatedPromptText;
 
   const response = await fetch(`${baseUrl.replace(/\/$/, "")}/images/generations`, {
     method: "POST",
