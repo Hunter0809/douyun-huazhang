@@ -2194,7 +2194,8 @@ export default function CreativeBeadStudio() {
                   key={`${extractedImageUrl ?? "empty"}-${directGeneratedImage ? resultMaskSyncVersion : 0}`}
                   imageUrl={extractedImageUrl}
                   loading={loading}
-                  autoDetect={false}
+                  autoDetect={!directGeneratedImage}
+                  initialSelection={directGeneratedImage ? "empty" : "auto"}
                   showHeader={false}
                   mode={resultMaskMode}
                   language={language}
