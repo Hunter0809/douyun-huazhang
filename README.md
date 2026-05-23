@@ -2,11 +2,12 @@
   <img src="public/logo.jpg" alt="豆韵 Logo" width="120" />
   <h1>豆韵 DouYun</h1>
   <p><strong>传统文化 x 新潮手工拼豆的 AI 图纸生成网站</strong></p>
+  <p>
+    <a href="https://douyun-huazhang-3g29.vercel.app/">
+      <img src="https://img.shields.io/badge/网站-douyun--huazhang--3g29.vercel.app-8b5cf6?style=for-the-badge" alt="豆韵网站入口" />
+    </a>
+  </p>
 </div>
-
-## 网站链接
-
-[![DouYun](https://img.shields.io/badge/网站-douyun--huazhang--3g29.vercel.app-8b5cf6?style=for-the-badge)](https://douyun-huazhang-3g29.vercel.app/)
 
 豆韵是一个面向中华传统文化主题的拼豆图纸生成网站。项目将传统纹样、民俗意象、文学典故、器物审美和当下流行的手工拼豆创作结合起来，让用户可以从文化主题出发，通过 AI 生成图案或上传本地图片，再转化为可实际制作的拼豆图纸、材料清单和制作方案。它不是单纯的图片转像素工具，而是一套覆盖选题、生成、识别、再创作、像素化、配色映射、用量统计、保存、分享和导出的完整创作流程。
 
