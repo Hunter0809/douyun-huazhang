@@ -192,6 +192,10 @@ const themeEn: Record<string, { name: string; meaning: string; elements: Record<
   forbidden_city: { name: "Forbidden City Court Patterns", meaning: "Forbidden City court patterns combine royal architecture, ceremonial colors, and auspicious ornament.", elements: { "宫墙": "Palace Wall", "琉璃瓦": "Glazed Tile", "龙纹": "Dragon Pattern", "海水江崖": "Sea-and-Cliff Pattern", "如意纹": "Ruyi Pattern" } },
   auspicious_animals: { name: "Traditional Auspicious Animals", meaning: "Auspicious animals carry blessing, protection, and good fortune symbolism.", elements: { "麒麟": "Qilin", "貔貅": "Pixiu", "凤凰": "Phoenix", "龙": "Dragon", "狮子": "Lion" } },
   zodiac: { name: "Chinese Zodiac", meaning: "The zodiac combines folk calendar culture and blessings, suitable for festive charms and family crafts.", elements: { "鼠": "Rat", "牛": "Ox", "虎": "Tiger", "兔": "Rabbit", "龙": "Dragon", "蛇": "Snake", "马": "Horse", "羊": "Goat", "猴": "Monkey", "鸡": "Rooster", "狗": "Dog", "猪": "Pig" } },
+  dream_red_chamber: { name: "Dream of the Red Chamber", meaning: "Dream of the Red Chamber combines garden imagery, poetry, character fate, and jade symbolism, suitable for refined bead patterns with classical literary feeling.", elements: { "通灵宝玉": "Magic Jade", "绛珠仙草": "Crimson Pearl Plant", "海棠花": "Crabapple Blossom", "大观园": "Grand View Garden", "金陵十二钗": "Twelve Beauties of Jinling" } },
+  journey_west: { name: "Journey to the West", meaning: "Journey to the West centers on mythic adventure, pilgrimage, and vivid character forms, suitable for dynamic bead charms and coaster designs.", elements: { "孙悟空": "Sun Wukong", "金箍棒": "Golden Cudgel", "筋斗云": "Somersault Cloud", "莲花座": "Lotus Seat", "火焰山": "Flaming Mountain" } },
+  romance_three_kingdoms: { name: "Romance of the Three Kingdoms", meaning: "Romance of the Three Kingdoms emphasizes heroes, strategy, weapons, horses, and banners, suitable for solemn high-contrast cultural patterns.", elements: { "青龙偃月刀": "Green Dragon Crescent Blade", "羽扇纶巾": "Feather Fan and Silk Cap", "赤兔马": "Red Hare Horse", "桃园结义": "Oath of the Peach Garden", "战旗": "Battle Banner" } },
+  water_margin: { name: "Water Margin", meaning: "Water Margin evokes brotherhood, rivers-and-lakes heroism, Liangshan gathering, and bold folk storytelling, suitable for strong graphic bead pieces.", elements: { "梁山泊": "Liangshan Marsh", "替天行道旗": "Justice Banner", "虎纹": "Tiger Pattern", "酒碗": "Wine Bowl", "朴刀": "Podao Blade" } },
 };
 
 const beadUsageEn: Record<string, string> = {
@@ -1855,7 +1859,7 @@ export default function CreativeBeadStudio() {
                 <select
                   value={theme}
                   onChange={(event) => handleThemeInput(event.target.value)}
-                  className="mt-2 max-h-64 w-full rounded-md border border-stone-300 bg-white px-3 py-2"
+                  className="mt-1.5 max-h-64 w-full rounded-md border border-stone-300 bg-white px-3 py-1.5"
                 >
                   {cultureThemes.map((item) => (
                     <option key={item.id} value={item.name}>
@@ -3056,7 +3060,7 @@ export default function CreativeBeadStudio() {
           {/* 左侧 Logo + 品牌文字 */}
           <button type="button" onClick={() => setView("home")} className="flex shrink-0 items-center gap-3">
             <img src="/logo.jpg" alt={language === "en" ? "DouYun" : "豆韵"} className="h-11 w-11 rounded-md object-cover" />
-            <span className="hidden text-base font-semibold text-stone-800 sm:inline">{ui.brand}</span>
+            <span className="hidden text-lg font-semibold text-stone-800 sm:inline">{ui.brand}</span>
           </button>
 
           {/* 中间导航 - 绝对居中 */}
@@ -3087,9 +3091,9 @@ export default function CreativeBeadStudio() {
                 if (p) setCurrentUser(p);
                 setView("profile");
               }}
-              className="flex shrink-0 items-center gap-3 rounded-md px-4 py-2 text-base font-semibold text-stone-700 transition hover:bg-stone-100 hover:text-stone-950"
+              className="flex shrink-0 items-center gap-3 rounded-md px-4 py-2 text-lg font-semibold text-stone-700 transition hover:bg-stone-100 hover:text-stone-950"
             >
-              <span className="grid h-9 w-9 overflow-hidden rounded-full bg-stone-300 text-sm font-semibold text-white">
+              <span className="grid h-10 w-10 overflow-hidden rounded-full bg-stone-300 text-sm font-semibold text-white">
                 {currentUser.avatarUrl && currentUser.avatarUrl.startsWith("data:") ? (
                   <img src={currentUser.avatarUrl} alt="" className="h-full w-full object-cover" />
                 ) : (
